@@ -27,7 +27,7 @@ class LayerWidget extends StatelessWidget {
         borderRadius: BorderRadius.circular(GameSizes.stackBorderRadius),
         boxShadow: [
           BoxShadow(
-            color: layer.color.withOpacity(0.4),
+            color: layer.color.withValues(alpha: 0.4),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -38,7 +38,7 @@ class LayerWidget extends StatelessWidget {
           colors: [
             layer.color.withValues(alpha: 0.9),
             layer.color,
-            layer.color.withOpacity(0.8),
+            layer.color.withValues(alpha: 0.8),
           ],
         ),
       ),
@@ -49,10 +49,10 @@ class LayerWidget extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Colors.white.withOpacity(0.3),
+          colors: [
+              Colors.white.withValues(alpha: 0.3),
               Colors.transparent,
-              Colors.black.withOpacity(0.1),
+              Colors.black.withValues(alpha: 0.1),
             ],
           ),
         ),

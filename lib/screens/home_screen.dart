@@ -85,7 +85,7 @@ class HomeScreen extends StatelessWidget {
                     vertical: 10,
                   ),
                   decoration: BoxDecoration(
-                    color: GameColors.surface.withOpacity(0.5),
+                    color: GameColors.surface.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(

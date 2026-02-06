@@ -102,7 +102,7 @@ class _GameButtonState extends State<GameButton>
                           color: (widget.isPrimary
                                   ? GameColors.accent
                                   : GameColors.surface)
-                              .withOpacity(0.3),
+                              .withValues(alpha: 0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),
@@ -207,7 +207,7 @@ class _GameIconButtonState extends State<GameIconButton>
                     border: Border.all(
                       color: widget.isDisabled
                           ? GameColors.empty
-                          : GameColors.accent.withOpacity(0.5),
+                          : GameColors.accent.withValues(alpha: 0.5),
                     ),
                   ),
                   child: Icon(

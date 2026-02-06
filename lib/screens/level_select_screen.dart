@@ -131,7 +131,7 @@ class _LevelButton extends StatelessWidget {
           boxShadow: isCurrent
               ? [
                   BoxShadow(
-                    color: GameColors.accent.withOpacity(0.4),
+                    color: GameColors.accent.withValues(alpha: 0.4),
                     blurRadius: 8,
                     spreadRadius: 1,
                   ),
@@ -149,7 +149,7 @@ class _LevelButton extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                   color: isUnlocked
                       ? GameColors.text
-                      : GameColors.textMuted.withOpacity(0.5),
+                      : GameColors.textMuted.withValues(alpha: 0.5),
                 ),
               ),
             ),
@@ -172,7 +172,7 @@ class _LevelButton extends StatelessWidget {
                 child: Icon(
                   Icons.lock,
                   size: 20,
-                  color: GameColors.textMuted.withOpacity(0.3),
+                  color: GameColors.textMuted.withValues(alpha: 0.3),
                 ),
               ),
           ],

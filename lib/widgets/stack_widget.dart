@@ -36,14 +36,14 @@ class StackWidget extends StatelessWidget {
               color: isSelected
                   ? GameColors.accent
                   : isHighlighted
-                      ? GameColors.accent.withOpacity(0.5)
+                      ? GameColors.accent.withValues(alpha: 0.5)
                       : GameColors.surface,
               width: isSelected ? 3 : 2,
             ),
             boxShadow: isSelected
                 ? [
                     BoxShadow(
-                      color: GameColors.accent.withOpacity(0.4),
+                      color: GameColors.accent.withValues(alpha: 0.4),
                       blurRadius: 12,
                       spreadRadius: 2,
                     ),
@@ -78,7 +78,7 @@ class StackWidget extends StatelessWidget {
                   child: Center(
                     child: Icon(
                       Icons.add_circle_outline,
-                      color: GameColors.textMuted.withOpacity(0.3),
+                      color: GameColors.textMuted.withValues(alpha: 0.3),
                       size: 32,
                     ),
                   ),

@@ -56,7 +56,7 @@ class _CelebrationOverlayState extends State<CelebrationOverlay>
     return FadeTransition(
       opacity: _fadeAnimation,
       child: Container(
-        color: Colors.black.withOpacity(0.7),
+        color: Colors.black.withValues(alpha: 0.7),
         child: Stack(
           children: [
             // Confetti

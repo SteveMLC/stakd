@@ -122,7 +122,12 @@ class _GameScreenState extends State<GameScreen> {
                       
                       // Game board
                       Expanded(
-                        child: GameBoard(gameState: gameState),
+                        child: GameBoard(
+                          gameState: gameState,
+                          onTap: () => AudioService().playTap(),
+                          onMove: () => AudioService().playSlide(),
+                          onClear: () => AudioService().playClear(),
+                        ),
                       ),
                       
                       // Bottom controls

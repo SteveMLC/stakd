@@ -1,14 +1,22 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/game_state.dart';
 import '../utils/constants.dart';
 
 /// Game board widget - displays all stacks and handles interactions
 class GameBoard extends StatelessWidget {
   final GameState gameState;
+  final VoidCallback? onTap;
+  final VoidCallback? onMove;
+  final VoidCallback? onClear;
 
   const GameBoard({
     super.key,
     required this.gameState,
+    this.onTap,
+    this.onMove,
+    this.onClear,
   });
 
   @override
@@ -61,7 +69,25 @@ class GameBoard extends StatelessWidget {
                         index: actualIndex,
                         isSelected: isSelected,
                         isRecentlyCleared: isRecentlyCleared,
-                        onTap: () => gameState.onStackTap(actualIndex),
+                        onTap: () {
+                          final previousMoveCount = gameState.moveCount;
+                          final previousCleared = List<int>.from(
+                            gameState.recentlyCleared,
+                          );
+
+                          gameState.onStackTap(actualIndex);
+                          onTap?.call();
+
+                          if (gameState.moveCount > previousMoveCount) {
+                            onMove?.call();
+                          }
+
+                          final currentCleared = gameState.recentlyCleared;
+                          if (currentCleared.isNotEmpty &&
+                              !listEquals(previousCleared, currentCleared)) {
+                            onClear?.call();
+                          }
+                        },
                       ),
                     );
                   }),
@@ -149,7 +175,10 @@ class _StackWidgetState extends State<_StackWidget>
         return Transform.translate(
           offset: Offset(0, widget.isSelected ? -8 : _bounceAnimation.value),
           child: GestureDetector(
-            onTap: widget.onTap,
+            onTap: () {
+              HapticFeedback.lightImpact();
+              widget.onTap();
+            },
             child: AnimatedContainer(
               duration: GameDurations.buttonPress,
               width: GameSizes.stackWidth,
@@ -168,14 +197,14 @@ class _StackWidgetState extends State<_StackWidget>
                 boxShadow: [
                   if (widget.isSelected)
                     BoxShadow(
-                      color: GameColors.accent.withOpacity(0.4),
+                      color: GameColors.accent.withValues(alpha: 0.4),
                       blurRadius: 12,
                       spreadRadius: 2,
                     ),
                   if (widget.isRecentlyCleared)
                     BoxShadow(
                       color: GameColors.palette[2]
-                          .withOpacity(0.4 * _glowAnimation.value),
+                          .withValues(alpha: 0.4 * _glowAnimation.value),
                       blurRadius: 16,
                       spreadRadius: 4,
                     ),
