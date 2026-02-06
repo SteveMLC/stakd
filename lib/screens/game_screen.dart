@@ -167,8 +167,8 @@ class _GameScreenState extends State<GameScreen> {
     });
   }
 
-  void _onTutorialSkip() async {
-    await _onTutorialComplete();
+  void _onTutorialSkip() {
+    _onTutorialComplete();
   }
 
   void _loadLevel() {

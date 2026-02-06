@@ -164,4 +164,48 @@ class LevelGenerator {
     
     return level;
   }
+
+  /// Generate the daily challenge level (deterministic by date)
+  List<GameStack> generateDailyChallenge({DateTime? date}) {
+    final challengeDate = (date ?? DateTime.now().toUtc());
+    final seed = _dateSeed(challengeDate);
+
+    // Slightly harder than normal levels: more colors, fewer empty slots
+    final baseParams = LevelParams.forLevel(30);
+    final colors = (baseParams.colors + 1).clamp(3, GameConfig.maxColors);
+    final emptySlots = max(1, baseParams.emptySlots - 1);
+    final depth = min(GameConfig.maxStackDepth, baseParams.depth);
+    final shuffleMoves = baseParams.shuffleMoves + 12;
+
+    final params = LevelParams(
+      colors: colors,
+      stacks: colors + emptySlots,
+      emptySlots: emptySlots,
+      depth: depth,
+      shuffleMoves: shuffleMoves,
+    );
+
+    var levelRandom = Random(seed);
+    var level = _createSolvedState(params, levelRandom);
+    level = _shuffleLevel(level, params.shuffleMoves, levelRandom);
+
+    if (!isSolvable(level, maxStates: 5000)) {
+      // Deterministic retries based on the same date seed
+      for (int attempt = 1; attempt <= 5; attempt++) {
+        levelRandom = Random(seed + attempt * 997);
+        level = _createSolvedState(params, levelRandom);
+        level = _shuffleLevel(level, params.shuffleMoves, levelRandom);
+        if (isSolvable(level, maxStates: 5000)) break;
+      }
+    }
+
+    return level;
+  }
+
+  int _dateSeed(DateTime date) {
+    final year = date.year.toString().padLeft(4, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return int.parse('$year$month$day');
+  }
 }

@@ -15,6 +15,8 @@ class StorageService {
   static const String _keyMusicEnabled = 'music_enabled';
   static const String _keyTotalMoves = 'total_moves';
   static const String _keyAdsRemoved = 'ads_removed';
+  static const String _keyLastDailyChallengeDate = 'last_daily_challenge_date';
+  static const String _keyDailyChallengeStreak = 'daily_challenge_streak';
   static const String _keyTutorialCompleted = 'tutorial_completed';
 
   /// Initialize the storage service
@@ -106,6 +108,58 @@ class StorageService {
     await _prefs?.setBool(_keyAdsRemoved, removed);
   }
 
+  /// Get the last completed daily challenge date (YYYYMMDD, UTC)
+  String? getLastDailyChallengeDate() {
+    return _prefs?.getString(_keyLastDailyChallengeDate);
+  }
+
+  /// Get the current daily challenge streak
+  int getDailyChallengeStreak() {
+    return _prefs?.getInt(_keyDailyChallengeStreak) ?? 0;
+  }
+
+  /// Check if the daily challenge is completed for a given date (YYYYMMDD)
+  bool isDailyChallengeCompleted(String dateKey) {
+    return getLastDailyChallengeDate() == dateKey;
+  }
+
+  /// Mark daily challenge completed and update streak, returns updated streak
+  Future<int> markDailyChallengeCompleted(String dateKey) async {
+    final lastDateKey = getLastDailyChallengeDate();
+    var streak = getDailyChallengeStreak();
+
+    if (lastDateKey == dateKey) {
+      return streak;
+    }
+
+    final lastDate = _parseDateKey(lastDateKey);
+    final currentDate = _parseDateKey(dateKey);
+
+    if (lastDate != null && currentDate != null) {
+      final diffDays = currentDate.difference(lastDate).inDays;
+      if (diffDays == 1) {
+        streak += 1;
+      } else {
+        streak = 1;
+      }
+    } else {
+      streak = 1;
+    }
+
+    await _prefs?.setString(_keyLastDailyChallengeDate, dateKey);
+    await _prefs?.setInt(_keyDailyChallengeStreak, streak);
+    return streak;
+  }
+
+  DateTime? _parseDateKey(String? dateKey) {
+    if (dateKey == null || dateKey.length != 8) return null;
+    final year = int.tryParse(dateKey.substring(0, 4));
+    final month = int.tryParse(dateKey.substring(4, 6));
+    final day = int.tryParse(dateKey.substring(6, 8));
+    if (year == null || month == null || day == null) return null;
+    return DateTime.utc(year, month, day);
+  }
+
   /// Check if tutorial has been completed
   bool getTutorialCompleted() {
     return _prefs?.getBool(_keyTutorialCompleted) ?? false;
@@ -127,6 +181,7 @@ class StorageService {
       'highestLevel': getHighestLevel(),
       'completedCount': getCompletedLevels().length,
       'totalMoves': getTotalMoves(),
+      'dailyStreak': getDailyChallengeStreak(),
     };
   }
 }

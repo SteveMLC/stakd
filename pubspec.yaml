@@ -15,6 +15,7 @@ dependencies:
   audioplayers: ^6.1.0
   shared_preferences: ^2.3.5
   url_launcher: ^6.2.0
+  in_app_purchase: ^3.2.0
 
 dev_dependencies:
   flutter_test:
