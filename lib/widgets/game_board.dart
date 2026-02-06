@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../models/game_state.dart';
 import '../utils/constants.dart';
 import 'particles/particle_burst.dart';
+import 'combo_popup.dart';
 
 /// Game board widget - displays all stacks and handles interactions
 class GameBoard extends StatefulWidget {
@@ -11,6 +12,7 @@ class GameBoard extends StatefulWidget {
   final VoidCallback? onTap;
   final VoidCallback? onMove;
   final VoidCallback? onClear;
+  final Map<int, GlobalKey>? stackKeys;
 
   const GameBoard({
     super.key,
@@ -18,6 +20,7 @@ class GameBoard extends StatefulWidget {
     this.onTap,
     this.onMove,
     this.onClear,
+    this.stackKeys,
   });
 
   @override
@@ -25,8 +28,16 @@ class GameBoard extends StatefulWidget {
 }
 
 class _GameBoardState extends State<GameBoard> {
-  final Map<int, GlobalKey> _stackKeys = {};
+  late final Map<int, GlobalKey> _stackKeys;
   List<ParticleBurstData> _currentBursts = [];
+  int? _showComboMultiplier;
+
+  @override
+  void initState() {
+    super.initState();
+    // Use provided keys or create new ones
+    _stackKeys = widget.stackKeys ?? {};
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -116,6 +127,14 @@ class _GameBoardState extends State<GameBoard> {
                                   !listEquals(previousCleared, currentCleared)) {
                                 widget.onClear?.call();
                                 _triggerParticleBursts(currentCleared);
+                                
+                                // Show combo popup if combo > 1
+                                final currentCombo = widget.gameState.currentCombo;
+                                if (currentCombo > 1) {
+                                  setState(() {
+                                    _showComboMultiplier = currentCombo;
+                                  });
+                                }
                               }
                             },
                           ),
@@ -134,6 +153,16 @@ class _GameBoardState extends State<GameBoard> {
                   onComplete: () {
                     widget.gameState.completeMove();
                     widget.onMove?.call();
+                  },
+                ),
+              // Combo popup overlay
+              if (_showComboMultiplier != null && _showComboMultiplier! > 1)
+                ComboPopupOverlay(
+                  comboMultiplier: _showComboMultiplier!,
+                  onComplete: () {
+                    setState(() {
+                      _showComboMultiplier = null;
+                    });
                   },
                 ),
             ],
