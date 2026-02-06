@@ -22,10 +22,10 @@ class Particle {
   void update(double currentTime) {
     final elapsed = currentTime - startTime;
     final progress = (elapsed / lifetime).clamp(0.0, 1.0);
-    
+
     // Update position
     position = position + velocity;
-    
+
     // Fade out and scale down over time
     opacity = 1.0 - progress;
     scale = 1.0 - (progress * 0.6); // Scale to 40% of original
@@ -69,44 +69,42 @@ class _ParticleBurstState extends State<ParticleBurst>
   @override
   void initState() {
     super.initState();
-    
-    _controller = AnimationController(
-      vsync: this,
-      duration: widget.lifetime,
-    );
+
+    _controller = AnimationController(vsync: this, duration: widget.lifetime);
 
     _startTime = 0;
     _initializeParticles();
-    
+
     _controller.addListener(_updateParticles);
     _controller.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
         widget.onComplete?.call();
       }
     });
-    
+
     _controller.forward();
   }
 
   void _initializeParticles() {
     for (int i = 0; i < widget.particleCount; i++) {
-      final angle = (i / widget.particleCount) * 2 * pi + 
-                   (_random.nextDouble() - 0.5) * 0.5; // Add some randomness
-      final speed = widget.minSpeed + 
-                   _random.nextDouble() * (widget.maxSpeed - widget.minSpeed);
-      
-      final velocity = Offset(
-        cos(angle) * speed,
-        sin(angle) * speed,
-      );
+      final angle =
+          (i / widget.particleCount) * 2 * pi +
+          (_random.nextDouble() - 0.5) * 0.5; // Add some randomness
+      final speed =
+          widget.minSpeed +
+          _random.nextDouble() * (widget.maxSpeed - widget.minSpeed);
 
-      _particles.add(Particle(
-        position: widget.center,
-        velocity: velocity,
-        color: widget.color,
-        startTime: _startTime,
-        lifetime: widget.lifetime.inMilliseconds.toDouble(),
-      ));
+      final velocity = Offset(cos(angle) * speed, sin(angle) * speed);
+
+      _particles.add(
+        Particle(
+          position: widget.center,
+          velocity: velocity,
+          color: widget.color,
+          startTime: _startTime,
+          lifetime: widget.lifetime.inMilliseconds.toDouble(),
+        ),
+      );
     }
   }
 
@@ -152,11 +150,7 @@ class _ParticlePainter extends CustomPainter {
         ..style = PaintingStyle.fill;
 
       // Draw small circles for particles
-      canvas.drawCircle(
-        particle.position,
-        4.0 * particle.scale,
-        paint,
-      );
+      canvas.drawCircle(particle.position, 4.0 * particle.scale, paint);
     }
   }
 

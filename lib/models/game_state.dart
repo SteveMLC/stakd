@@ -40,7 +40,7 @@ class GameState extends ChangeNotifier {
   List<Move> _moveHistory = [];
   List<int> _recentlyCleared = [];
   AnimatingLayer? _animatingLayer;
-  
+
   // Combo tracking
   int _comboCount = 0;
   DateTime? _lastClearTime;
@@ -115,11 +115,11 @@ class GameState extends ChangeNotifier {
         fromStackIndex: fromIndex,
         toStackIndex: toIndex,
       );
-      
+
       // Remove from source stack immediately (will be hidden during animation)
       _stacks[fromIndex] = fromStack.withTopLayerRemoved();
       _selectedStackIndex = -1;
-      
+
       notifyListeners();
     } else {
       // Invalid move - if destination has layers, select it instead
@@ -135,19 +135,23 @@ class GameState extends ChangeNotifier {
     if (_animatingLayer == null) return;
 
     final anim = _animatingLayer!;
-    
+
     // Clear recently cleared list when completing a new move
     _recentlyCleared = [];
-    
+
     // Add layer to destination stack
-    _stacks[anim.toStackIndex] = _stacks[anim.toStackIndex].withLayerAdded(anim.layer);
-    
-    _moveHistory.add(Move(
-      fromStackIndex: anim.fromStackIndex,
-      toStackIndex: anim.toStackIndex,
-      layer: anim.layer,
-    ));
-    
+    _stacks[anim.toStackIndex] = _stacks[anim.toStackIndex].withLayerAdded(
+      anim.layer,
+    );
+
+    _moveHistory.add(
+      Move(
+        fromStackIndex: anim.fromStackIndex,
+        toStackIndex: anim.toStackIndex,
+        layer: anim.layer,
+      ),
+    );
+
     _moveCount++;
     _animatingLayer = null;
 
@@ -168,19 +172,19 @@ class GameState extends ChangeNotifier {
         _recentlyCleared.add(i);
       }
     }
-    
+
     // Update combo if stacks were cleared
     if (_recentlyCleared.isNotEmpty) {
       _updateCombo();
     }
   }
-  
+
   /// Update combo counter based on clear timing
   void _updateCombo() {
     final now = DateTime.now();
-    
+
     // Check if this clear is within combo window (3 seconds)
-    if (_lastClearTime != null && 
+    if (_lastClearTime != null &&
         now.difference(_lastClearTime!).inMilliseconds <= 3000) {
       _comboCount = (_comboCount + 1).clamp(0, 5); // Cap at 5x
       if (_comboCount > _maxCombo) {
@@ -190,7 +194,7 @@ class GameState extends ChangeNotifier {
       // Start new combo
       _comboCount = 1;
     }
-    
+
     _lastClearTime = now;
   }
 
@@ -209,11 +213,13 @@ class GameState extends ChangeNotifier {
     if (!canUndo) return;
 
     final lastMove = _moveHistory.removeLast();
-    
+
     // Reverse the move
-    _stacks[lastMove.toStackIndex] = _stacks[lastMove.toStackIndex].withTopLayerRemoved();
-    _stacks[lastMove.fromStackIndex] = _stacks[lastMove.fromStackIndex].withLayerAdded(lastMove.layer);
-    
+    _stacks[lastMove.toStackIndex] = _stacks[lastMove.toStackIndex]
+        .withTopLayerRemoved();
+    _stacks[lastMove.fromStackIndex] = _stacks[lastMove.fromStackIndex]
+        .withLayerAdded(lastMove.layer);
+
     _undosRemaining--;
     _moveCount--;
     _selectedStackIndex = -1;

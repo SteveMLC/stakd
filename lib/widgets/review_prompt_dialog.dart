@@ -119,10 +119,7 @@ class _ReviewPromptDialogState extends State<ReviewPromptDialog>
               mainAxisSize: MainAxisSize.min,
               children: [
                 // Emoji
-                const Text(
-                  '😊',
-                  style: TextStyle(fontSize: 64),
-                ),
+                const Text('😊', style: TextStyle(fontSize: 64)),
                 const SizedBox(height: 16),
 
                 // Title
@@ -140,10 +137,7 @@ class _ReviewPromptDialogState extends State<ReviewPromptDialog>
                 // Subtitle
                 const Text(
                   'Your feedback helps us improve!',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: GameColors.textMuted,
-                  ),
+                  style: TextStyle(fontSize: 14, color: GameColors.textMuted),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
@@ -171,10 +165,7 @@ class _ReviewPromptDialogState extends State<ReviewPromptDialog>
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        Text(
-                          '💚',
-                          style: TextStyle(fontSize: 18),
-                        ),
+                        Text('💚', style: TextStyle(fontSize: 18)),
                       ],
                     ),
                   ),
@@ -207,10 +198,7 @@ class _ReviewPromptDialogState extends State<ReviewPromptDialog>
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        Text(
-                          '😕',
-                          style: TextStyle(fontSize: 18),
-                        ),
+                        Text('😕', style: TextStyle(fontSize: 18)),
                       ],
                     ),
                   ),

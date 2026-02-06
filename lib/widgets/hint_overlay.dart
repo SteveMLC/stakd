@@ -29,7 +29,7 @@ class _HintOverlayState extends State<HintOverlay>
   late AnimationController _glowController;
   late Animation<double> _drawProgress;
   late Animation<double> _glowPulse;
-  
+
   Offset _startPos = Offset.zero;
   Offset _endPos = Offset.zero;
   double _arcHeight = 60.0;
@@ -38,13 +38,13 @@ class _HintOverlayState extends State<HintOverlay>
   @override
   void initState() {
     super.initState();
-    
+
     // Arrow drawing animation (progressive draw)
     _arrowController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-    
+
     _drawProgress = CurvedAnimation(
       parent: _arrowController,
       curve: Curves.easeInOut,
@@ -55,19 +55,16 @@ class _HintOverlayState extends State<HintOverlay>
       vsync: this,
       duration: const Duration(milliseconds: 500),
     )..repeat(reverse: true);
-    
+
     _glowPulse = Tween<double>(begin: 0.3, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _glowController,
-        curve: Curves.easeInOut,
-      ),
+      CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
     );
 
     // Calculate positions and start animation
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _calculatePositions();
       _arrowController.forward();
-      
+
       // Auto-dismiss after 2 seconds
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) {
@@ -78,8 +75,10 @@ class _HintOverlayState extends State<HintOverlay>
   }
 
   void _calculatePositions() {
-    final fromBox = widget.sourceKey.currentContext?.findRenderObject() as RenderBox?;
-    final toBox = widget.destKey.currentContext?.findRenderObject() as RenderBox?;
+    final fromBox =
+        widget.sourceKey.currentContext?.findRenderObject() as RenderBox?;
+    final toBox =
+        widget.destKey.currentContext?.findRenderObject() as RenderBox?;
 
     if (fromBox == null || toBox == null) {
       widget.onDismiss();
@@ -94,7 +93,7 @@ class _HintOverlayState extends State<HintOverlay>
       fromGlobal.dx + GameSizes.stackWidth / 2,
       fromGlobal.dy + GameSizes.stackHeight / 2,
     );
-    
+
     final toCenter = Offset(
       toGlobal.dx + GameSizes.stackWidth / 2,
       toGlobal.dy + GameSizes.stackHeight / 2,
@@ -103,7 +102,7 @@ class _HintOverlayState extends State<HintOverlay>
     setState(() {
       _startPos = fromCenter;
       _endPos = toCenter;
-      
+
       // Arc height based on distance
       final distance = (_endPos - _startPos).distance;
       _arcHeight = (distance * 0.25).clamp(50.0, 100.0);
@@ -131,10 +130,10 @@ class _HintOverlayState extends State<HintOverlay>
         children: [
           // Pulsing glow on source stack
           _buildStackGlow(widget.sourceKey),
-          
+
           // Pulsing glow on destination stack
           _buildStackGlow(widget.destKey),
-          
+
           // Animated arrow
           AnimatedBuilder(
             animation: _arrowController,
@@ -161,7 +160,7 @@ class _HintOverlayState extends State<HintOverlay>
     if (box == null) return const SizedBox.shrink();
 
     final pos = box.localToGlobal(Offset.zero);
-    
+
     return AnimatedBuilder(
       animation: _glowPulse,
       builder: (context, child) {
@@ -173,10 +172,14 @@ class _HintOverlayState extends State<HintOverlay>
               width: GameSizes.stackWidth,
               height: GameSizes.stackHeight,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(GameSizes.stackBorderRadius),
+                borderRadius: BorderRadius.circular(
+                  GameSizes.stackBorderRadius,
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: GameColors.accent.withValues(alpha: 0.5 * _glowPulse.value),
+                    color: GameColors.accent.withValues(
+                      alpha: 0.5 * _glowPulse.value,
+                    ),
                     blurRadius: 20 * _glowPulse.value,
                     spreadRadius: 4 * _glowPulse.value,
                   ),
@@ -226,14 +229,14 @@ class _HintArrowPainter extends CustomPainter {
 
     // Create path for the arc
     final path = _createArcPath();
-    
+
     // Measure the path to draw partial progress
     final pathMetric = path.computeMetrics().first;
     final partialPath = pathMetric.extractPath(0, pathMetric.length * progress);
 
     // Draw shadow/glow
     canvas.drawPath(partialPath, shadowPaint);
-    
+
     // Draw main arrow path
     canvas.drawPath(partialPath, paint);
 
@@ -251,22 +254,22 @@ class _HintArrowPainter extends CustomPainter {
     // Calculate control point for quadratic bezier (arc)
     final midX = (startPos.dx + endPos.dx) / 2;
     final midY = (startPos.dy + endPos.dy) / 2;
-    
+
     // Offset the control point perpendicular to the line
     final dx = endPos.dx - startPos.dx;
     final dy = endPos.dy - startPos.dy;
     final length = math.sqrt(dx * dx + dy * dy);
-    
+
     if (length > 0) {
       // Perpendicular vector (rotated 90 degrees)
       final perpX = -dy / length;
       final perpY = dx / length;
-      
+
       final controlPoint = Offset(
         midX + perpX * arcHeight,
         midY + perpY * arcHeight,
       );
-      
+
       path.quadraticBezierTo(
         controlPoint.dx,
         controlPoint.dy,
@@ -316,7 +319,7 @@ class _HintArrowPainter extends CustomPainter {
       ..color = color.withValues(alpha: 0.4)
       ..style = PaintingStyle.fill
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
-    
+
     canvas.drawPath(arrowPath, arrowShadow);
     canvas.drawPath(arrowPath, arrowPaint);
   }

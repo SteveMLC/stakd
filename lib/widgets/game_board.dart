@@ -41,25 +41,25 @@ class _GameBoardState extends State<GameBoard>
     super.initState();
     // Use provided keys or create new ones
     _stackKeys = widget.stackKeys ?? {};
-    
+
     // Initialize shake animation
     _shakeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 400),
     );
-    
-    _shakeAnimation = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 0.0, end: 8.0), weight: 1),
-      TweenSequenceItem(tween: Tween(begin: 8.0, end: -8.0), weight: 1),
-      TweenSequenceItem(tween: Tween(begin: -8.0, end: 6.0), weight: 1),
-      TweenSequenceItem(tween: Tween(begin: 6.0, end: -6.0), weight: 1),
-      TweenSequenceItem(tween: Tween(begin: -6.0, end: 0.0), weight: 1),
-    ]).animate(CurvedAnimation(
-      parent: _shakeController,
-      curve: Curves.easeInOut,
-    ));
+
+    _shakeAnimation =
+        TweenSequence<double>([
+          TweenSequenceItem(tween: Tween(begin: 0.0, end: 8.0), weight: 1),
+          TweenSequenceItem(tween: Tween(begin: 8.0, end: -8.0), weight: 1),
+          TweenSequenceItem(tween: Tween(begin: -8.0, end: 6.0), weight: 1),
+          TweenSequenceItem(tween: Tween(begin: 6.0, end: -6.0), weight: 1),
+          TweenSequenceItem(tween: Tween(begin: -6.0, end: 0.0), weight: 1),
+        ]).animate(
+          CurvedAnimation(parent: _shakeController, curve: Curves.easeInOut),
+        );
   }
-  
+
   @override
   void dispose() {
     _shakeController.dispose();
@@ -73,10 +73,7 @@ class _GameBoardState extends State<GameBoard>
       return const Center(
         child: Text(
           'Loading...',
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            color: GameColors.textMuted,
-          ),
+          style: TextStyle(fontFamily: 'Poppins', color: GameColors.textMuted),
         ),
       );
     }
@@ -97,115 +94,142 @@ class _GameBoardState extends State<GameBoard>
               builder: (context, constraints) {
                 // Calculate optimal layout based on number of stacks
                 final stackCount = stacks.length;
-                final maxStacksPerRow = _getStacksPerRow(stackCount, constraints.maxWidth);
+                final maxStacksPerRow = _getStacksPerRow(
+                  stackCount,
+                  constraints.maxWidth,
+                );
                 final rows = (stackCount / maxStacksPerRow).ceil();
-                
-                return Stack(
-            children: [
-              // Particle bursts overlay
-              if (_currentBursts.isNotEmpty)
-                Positioned.fill(
-                  child: ParticleBurstOverlay(
-                    bursts: _currentBursts,
-                    onAllComplete: () {
-                      setState(() {
-                        _currentBursts = [];
-                      });
-                    },
-                  ),
-                ),
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(rows, (rowIndex) {
-                  final startIndex = rowIndex * maxStacksPerRow;
-                  final endIndex = (startIndex + maxStacksPerRow).clamp(0, stackCount);
-                  final rowStacks = stacks.sublist(startIndex, endIndex);
 
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Row(
+                return Stack(
+                  children: [
+                    // Particle bursts overlay
+                    if (_currentBursts.isNotEmpty)
+                      Positioned.fill(
+                        child: ParticleBurstOverlay(
+                          bursts: _currentBursts,
+                          onAllComplete: () {
+                            setState(() {
+                              _currentBursts = [];
+                            });
+                          },
+                        ),
+                      ),
+                    Column(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(rowStacks.length, (index) {
-                        final actualIndex = startIndex + index;
-                        final stack = rowStacks[index];
-                        final isSelected = actualIndex == widget.gameState.selectedStackIndex;
-                        final isRecentlyCleared = widget.gameState.recentlyCleared.contains(actualIndex);
+                      children: List.generate(rows, (rowIndex) {
+                        final startIndex = rowIndex * maxStacksPerRow;
+                        final endIndex = (startIndex + maxStacksPerRow).clamp(
+                          0,
+                          stackCount,
+                        );
+                        final rowStacks = stacks.sublist(startIndex, endIndex);
 
                         return Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: GameSizes.stackSpacing / 2,
-                          ),
-                          child: _StackWidget(
-                            key: _stackKeys[actualIndex],
-                            stack: stack,
-                            index: actualIndex,
-                            isSelected: isSelected,
-                            isRecentlyCleared: isRecentlyCleared,
-                            onTap: () {
-                              final previousMoveCount = widget.gameState.moveCount;
-                              final previousCleared = List<int>.from(
-                                widget.gameState.recentlyCleared,
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: List.generate(rowStacks.length, (index) {
+                              final actualIndex = startIndex + index;
+                              final stack = rowStacks[index];
+                              final isSelected =
+                                  actualIndex ==
+                                  widget.gameState.selectedStackIndex;
+                              final isRecentlyCleared = widget
+                                  .gameState
+                                  .recentlyCleared
+                                  .contains(actualIndex);
+
+                              return Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: GameSizes.stackSpacing / 2,
+                                ),
+                                child: _StackWidget(
+                                  key: _stackKeys[actualIndex],
+                                  stack: stack,
+                                  index: actualIndex,
+                                  isSelected: isSelected,
+                                  isRecentlyCleared: isRecentlyCleared,
+                                  onTap: () {
+                                    final previousMoveCount =
+                                        widget.gameState.moveCount;
+                                    final previousCleared = List<int>.from(
+                                      widget.gameState.recentlyCleared,
+                                    );
+
+                                    widget.gameState.onStackTap(actualIndex);
+                                    widget.onTap?.call();
+
+                                    if (widget.gameState.moveCount >
+                                        previousMoveCount) {
+                                      widget.onMove?.call();
+                                    }
+
+                                    final currentCleared =
+                                        widget.gameState.recentlyCleared;
+                                    if (currentCleared.isNotEmpty &&
+                                        !listEquals(
+                                          previousCleared,
+                                          currentCleared,
+                                        )) {
+                                      widget.onClear?.call();
+                                      _triggerParticleBursts(currentCleared);
+
+                                      // Show combo popup if combo > 1
+                                      final currentCombo =
+                                          widget.gameState.currentCombo;
+                                      if (currentCombo > 1) {
+                                        setState(() {
+                                          _showComboMultiplier = currentCombo;
+                                        });
+
+                                        // Trigger screen shake for 4x+ combos
+                                        if (currentCombo >= 4) {
+                                          _shakeController.forward(from: 0);
+                                        }
+                                      }
+                                    }
+                                  },
+                                ),
                               );
-
-                              widget.gameState.onStackTap(actualIndex);
-                              widget.onTap?.call();
-
-                              if (widget.gameState.moveCount > previousMoveCount) {
-                                widget.onMove?.call();
-                              }
-
-                              final currentCleared = widget.gameState.recentlyCleared;
-                              if (currentCleared.isNotEmpty &&
-                                  !listEquals(previousCleared, currentCleared)) {
-                                widget.onClear?.call();
-                                _triggerParticleBursts(currentCleared);
-                                
-                                // Show combo popup if combo > 1
-                                final currentCombo = widget.gameState.currentCombo;
-                                if (currentCombo > 1) {
-                                  setState(() {
-                                    _showComboMultiplier = currentCombo;
-                                  });
-                                  
-                                  // Trigger screen shake for 4x+ combos
-                                  if (currentCombo >= 4) {
-                                    _shakeController.forward(from: 0);
-                                  }
-                                }
-                              }
-                            },
+                            }),
                           ),
                         );
                       }),
                     ),
-                  );
-                }),
-              ),
-              // Animation overlay
-              if (widget.gameState.animatingLayer != null)
-                _AnimatedLayerOverlay(
-                  animatingLayer: widget.gameState.animatingLayer!,
-                  fromKey: _stackKeys[widget.gameState.animatingLayer!.fromStackIndex]!,
-                  toKey: _stackKeys[widget.gameState.animatingLayer!.toStackIndex]!,
-                  onComplete: () {
-                    widget.gameState.completeMove();
-                    widget.onMove?.call();
-                  },
-                ),
-              // Combo popup overlay
-              if (_showComboMultiplier != null && _showComboMultiplier! > 1)
-                ComboPopupOverlay(
-                  comboMultiplier: _showComboMultiplier!,
-                  onComplete: () {
-                    setState(() {
-                      _showComboMultiplier = null;
-                    });
-                  },
-                ),
-            ],
-          );
-        },
-      ),
+                    // Animation overlay
+                    if (widget.gameState.animatingLayer != null)
+                      _AnimatedLayerOverlay(
+                        animatingLayer: widget.gameState.animatingLayer!,
+                        fromKey:
+                            _stackKeys[widget
+                                .gameState
+                                .animatingLayer!
+                                .fromStackIndex]!,
+                        toKey:
+                            _stackKeys[widget
+                                .gameState
+                                .animatingLayer!
+                                .toStackIndex]!,
+                        onComplete: () {
+                          widget.gameState.completeMove();
+                          widget.onMove?.call();
+                        },
+                      ),
+                    // Combo popup overlay
+                    if (_showComboMultiplier != null &&
+                        _showComboMultiplier! > 1)
+                      ComboPopupOverlay(
+                        comboMultiplier: _showComboMultiplier!,
+                        onComplete: () {
+                          setState(() {
+                            _showComboMultiplier = null;
+                          });
+                        },
+                      ),
+                  ],
+                );
+              },
+            ),
           ),
         );
       },
@@ -215,7 +239,7 @@ class _GameBoardState extends State<GameBoard>
   int _getStacksPerRow(int total, double maxWidth) {
     final stackWidth = GameSizes.stackWidth + GameSizes.stackSpacing;
     final maxFit = (maxWidth / stackWidth).floor();
-    
+
     // Try to balance rows
     if (total <= 4) return total;
     if (total <= 6) return 3;
@@ -227,19 +251,20 @@ class _GameBoardState extends State<GameBoard>
     if (clearedIndices.isEmpty) return;
 
     final bursts = <ParticleBurstData>[];
-    
+
     for (final stackIndex in clearedIndices) {
       final stackKey = _stackKeys[stackIndex];
       if (stackKey?.currentContext == null) continue;
 
       // Get the render box to find the position
-      final renderBox = stackKey!.currentContext!.findRenderObject() as RenderBox?;
+      final renderBox =
+          stackKey!.currentContext!.findRenderObject() as RenderBox?;
       if (renderBox == null) continue;
 
       // Get position relative to the screen
       final position = renderBox.localToGlobal(Offset.zero);
       final size = renderBox.size;
-      
+
       // Calculate center of the stack
       final center = Offset(
         position.dx + size.width / 2,
@@ -249,16 +274,18 @@ class _GameBoardState extends State<GameBoard>
       // Get the stack's color
       final stack = widget.gameState.stacks[stackIndex];
       final topLayer = stack.layers.isNotEmpty ? stack.layers.first : null;
-      final color = topLayer != null 
+      final color = topLayer != null
           ? GameColors.getColor(topLayer.colorIndex)
           : GameColors.accent;
 
-      bursts.add(ParticleBurstData(
-        center: center,
-        color: color,
-        particleCount: 18,
-        lifetime: const Duration(milliseconds: 500),
-      ));
+      bursts.add(
+        ParticleBurstData(
+          center: center,
+          color: color,
+          particleCount: 18,
+          lifetime: const Duration(milliseconds: 500),
+        ),
+      );
     }
 
     if (bursts.isNotEmpty) {
@@ -302,12 +329,10 @@ class _StackWidgetState extends State<_StackWidget>
       vsync: this,
       duration: GameDurations.stackClear,
     );
-    _bounceAnimation = Tween<double>(begin: 0, end: -8).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeOut,
-      ),
-    );
+    _bounceAnimation = Tween<double>(
+      begin: 0,
+      end: -8,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
     _glowAnimation = Tween<double>(begin: 0, end: 1).animate(_controller);
   }
 
@@ -362,13 +387,15 @@ class _StackWidgetState extends State<_StackWidget>
                 height: GameSizes.stackHeight,
                 decoration: BoxDecoration(
                   color: GameColors.empty,
-                  borderRadius: BorderRadius.circular(GameSizes.stackBorderRadius),
+                  borderRadius: BorderRadius.circular(
+                    GameSizes.stackBorderRadius,
+                  ),
                   border: Border.all(
                     color: widget.isSelected
                         ? GameColors.accent
                         : widget.isRecentlyCleared
-                            ? GameColors.palette[2]
-                            : GameColors.empty,
+                        ? GameColors.palette[2]
+                        : GameColors.empty,
                     width: widget.isSelected ? 3 : 2,
                   ),
                   boxShadow: [
@@ -380,8 +407,9 @@ class _StackWidgetState extends State<_StackWidget>
                       ),
                     if (widget.isRecentlyCleared)
                       BoxShadow(
-                        color: GameColors.palette[2]
-                            .withValues(alpha: 0.4 * _glowAnimation.value),
+                        color: GameColors.palette[2].withValues(
+                          alpha: 0.4 * _glowAnimation.value,
+                        ),
                         blurRadius: 16,
                         spreadRadius: 4,
                       ),
@@ -454,7 +482,7 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
   @override
   void initState() {
     super.initState();
-    
+
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 250),
@@ -469,18 +497,24 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
     // Squash/stretch effect - compress slightly at end
     _scaleAnimation = TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.0, end: 1.05)
-            .chain(CurveTween(curve: Curves.easeOut)),
+        tween: Tween<double>(
+          begin: 1.0,
+          end: 1.05,
+        ).chain(CurveTween(curve: Curves.easeOut)),
         weight: 50,
       ),
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.05, end: 0.95)
-            .chain(CurveTween(curve: Curves.easeIn)),
+        tween: Tween<double>(
+          begin: 1.05,
+          end: 0.95,
+        ).chain(CurveTween(curve: Curves.easeIn)),
         weight: 30,
       ),
       TweenSequenceItem(
-        tween: Tween<double>(begin: 0.95, end: 1.0)
-            .chain(CurveTween(curve: Curves.easeOutBack)),
+        tween: Tween<double>(
+          begin: 0.95,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeOutBack)),
         weight: 20,
       ),
     ]).animate(_controller);
@@ -495,7 +529,8 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
   }
 
   void _calculatePositions() {
-    final fromBox = widget.fromKey.currentContext?.findRenderObject() as RenderBox?;
+    final fromBox =
+        widget.fromKey.currentContext?.findRenderObject() as RenderBox?;
     final toBox = widget.toKey.currentContext?.findRenderObject() as RenderBox?;
 
     if (fromBox == null || toBox == null) {
@@ -508,15 +543,17 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
     final toGlobal = toBox.localToGlobal(Offset.zero);
 
     // Calculate position of top layer on source stack
-    final fromLayerY = fromGlobal.dy + GameSizes.stackHeight - GameSizes.layerHeight - 2;
-    
+    final fromLayerY =
+        fromGlobal.dy + GameSizes.stackHeight - GameSizes.layerHeight - 2;
+
     // Calculate position where layer should land on destination stack (top of stack)
-    final toLayerY = toGlobal.dy + GameSizes.stackHeight - GameSizes.layerHeight - 2;
+    final toLayerY =
+        toGlobal.dy + GameSizes.stackHeight - GameSizes.layerHeight - 2;
 
     setState(() {
       _startPos = Offset(fromGlobal.dx, fromLayerY);
       _endPos = Offset(toGlobal.dx, toLayerY);
-      
+
       // Arc height based on distance
       final distance = (_endPos - _startPos).distance;
       _arcHeight = (distance * 0.3).clamp(40.0, 80.0);
@@ -537,10 +574,13 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
         // Calculate arc trajectory
         final t = _curveAnimation.value;
         final x = _startPos.dx + (_endPos.dx - _startPos.dx) * t;
-        
+
         // Parabolic arc: goes up then down
         final arcProgress = 4 * t * (1 - t); // Peaks at t=0.5
-        final y = _startPos.dy + (_endPos.dy - _startPos.dy) * t - _arcHeight * arcProgress;
+        final y =
+            _startPos.dy +
+            (_endPos.dy - _startPos.dy) * t -
+            _arcHeight * arcProgress;
 
         return Positioned(
           left: x,
@@ -551,7 +591,9 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
               width: GameSizes.stackWidth,
               height: GameSizes.layerHeight,
               decoration: BoxDecoration(
-                color: GameColors.getColor(widget.animatingLayer.layer.colorIndex),
+                color: GameColors.getColor(
+                  widget.animatingLayer.layer.colorIndex,
+                ),
                 borderRadius: BorderRadius.circular(4),
                 boxShadow: [
                   BoxShadow(

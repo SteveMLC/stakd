@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Handles local storage for game progress and settings
@@ -15,140 +16,250 @@ class StorageService {
   static const String _keyMusicEnabled = 'music_enabled';
   static const String _keyTotalMoves = 'total_moves';
   static const String _keyAdsRemoved = 'ads_removed';
+  static const String _keyHintCount = 'hint_count';
+  static const int _defaultHintCount = 3;
   static const String _keyLastDailyChallengeDate = 'last_daily_challenge_date';
   static const String _keyDailyChallengeStreak = 'daily_challenge_streak';
   static const String _keyTutorialCompleted = 'tutorial_completed';
 
   /// Initialize the storage service
   Future<void> init() async {
-    _prefs = await SharedPreferences.getInstance();
+    try {
+      _prefs = await SharedPreferences.getInstance();
+    } catch (e) {
+      debugPrint('StorageService init failed: $e');
+      _prefs = null;
+    }
   }
 
   /// Get the highest unlocked level
   int getHighestLevel() {
-    return _prefs?.getInt(_keyHighestLevel) ?? 1;
+    try {
+      return _prefs?.getInt(_keyHighestLevel) ?? 1;
+    } catch (e) {
+      debugPrint('StorageService getHighestLevel failed: $e');
+      return 1;
+    }
   }
 
   /// Set the highest unlocked level
   Future<void> setHighestLevel(int level) async {
-    await _prefs?.setInt(_keyHighestLevel, level);
+    try {
+      await _prefs?.setInt(_keyHighestLevel, level);
+    } catch (e) {
+      debugPrint('StorageService setHighestLevel failed: $e');
+    }
   }
 
   /// Get list of completed level numbers
   List<int> getCompletedLevels() {
-    final data = _prefs?.getStringList(_keyCompletedLevels) ?? [];
-    return data.map((s) => int.parse(s)).toList();
+    try {
+      final data = _prefs?.getStringList(_keyCompletedLevels) ?? [];
+      return data.map((s) => int.parse(s)).toList();
+    } catch (e) {
+      debugPrint('StorageService getCompletedLevels failed: $e');
+      return [];
+    }
   }
 
   /// Mark a level as completed
   Future<void> markLevelCompleted(int level) async {
-    final completed = getCompletedLevels();
-    if (!completed.contains(level)) {
-      completed.add(level);
-      await _prefs?.setStringList(
-        _keyCompletedLevels,
-        completed.map((l) => l.toString()).toList(),
-      );
-    }
-    
-    // Update highest level if needed
-    if (level >= getHighestLevel()) {
-      await setHighestLevel(level + 1);
+    try {
+      final completed = getCompletedLevels();
+      if (!completed.contains(level)) {
+        completed.add(level);
+        await _prefs?.setStringList(
+          _keyCompletedLevels,
+          completed.map((l) => l.toString()).toList(),
+        );
+      }
+
+      // Update highest level if needed
+      if (level >= getHighestLevel()) {
+        await setHighestLevel(level + 1);
+      }
+    } catch (e) {
+      debugPrint('StorageService markLevelCompleted failed: $e');
     }
   }
 
   /// Check if a level is completed
   bool isLevelCompleted(int level) {
-    return getCompletedLevels().contains(level);
+    try {
+      return getCompletedLevels().contains(level);
+    } catch (e) {
+      debugPrint('StorageService isLevelCompleted failed: $e');
+      return false;
+    }
   }
 
   /// Check if a level is unlocked
   bool isLevelUnlocked(int level) {
-    return level <= getHighestLevel();
+    try {
+      return level <= getHighestLevel();
+    } catch (e) {
+      debugPrint('StorageService isLevelUnlocked failed: $e');
+      return false;
+    }
   }
 
   /// Get sound enabled setting
   bool getSoundEnabled() {
-    return _prefs?.getBool(_keySoundEnabled) ?? true;
+    try {
+      return _prefs?.getBool(_keySoundEnabled) ?? true;
+    } catch (e) {
+      debugPrint('StorageService getSoundEnabled failed: $e');
+      return true;
+    }
   }
 
   /// Set sound enabled setting
   Future<void> setSoundEnabled(bool enabled) async {
-    await _prefs?.setBool(_keySoundEnabled, enabled);
+    try {
+      await _prefs?.setBool(_keySoundEnabled, enabled);
+    } catch (e) {
+      debugPrint('StorageService setSoundEnabled failed: $e');
+    }
   }
 
   /// Get music enabled setting
   bool getMusicEnabled() {
-    return _prefs?.getBool(_keyMusicEnabled) ?? true;
+    try {
+      return _prefs?.getBool(_keyMusicEnabled) ?? true;
+    } catch (e) {
+      debugPrint('StorageService getMusicEnabled failed: $e');
+      return true;
+    }
   }
 
   /// Set music enabled setting
   Future<void> setMusicEnabled(bool enabled) async {
-    await _prefs?.setBool(_keyMusicEnabled, enabled);
+    try {
+      await _prefs?.setBool(_keyMusicEnabled, enabled);
+    } catch (e) {
+      debugPrint('StorageService setMusicEnabled failed: $e');
+    }
   }
 
   /// Get total moves across all games
   int getTotalMoves() {
-    return _prefs?.getInt(_keyTotalMoves) ?? 0;
+    try {
+      return _prefs?.getInt(_keyTotalMoves) ?? 0;
+    } catch (e) {
+      debugPrint('StorageService getTotalMoves failed: $e');
+      return 0;
+    }
   }
 
   /// Add to total moves count
   Future<void> addMoves(int moves) async {
-    final total = getTotalMoves() + moves;
-    await _prefs?.setInt(_keyTotalMoves, total);
+    try {
+      final total = getTotalMoves() + moves;
+      await _prefs?.setInt(_keyTotalMoves, total);
+    } catch (e) {
+      debugPrint('StorageService addMoves failed: $e');
+    }
   }
 
   /// Check if ads have been removed (IAP)
   bool getAdsRemoved() {
-    return _prefs?.getBool(_keyAdsRemoved) ?? false;
+    try {
+      return _prefs?.getBool(_keyAdsRemoved) ?? false;
+    } catch (e) {
+      debugPrint('StorageService getAdsRemoved failed: $e');
+      return false;
+    }
   }
 
   /// Set ads removed (after IAP purchase)
   Future<void> setAdsRemoved(bool removed) async {
-    await _prefs?.setBool(_keyAdsRemoved, removed);
+    try {
+      await _prefs?.setBool(_keyAdsRemoved, removed);
+    } catch (e) {
+      debugPrint('StorageService setAdsRemoved failed: $e');
+    }
+  }
+
+  /// Get remaining hints
+  int getHintCount() {
+    try {
+      return _prefs?.getInt(_keyHintCount) ?? _defaultHintCount;
+    } catch (e) {
+      debugPrint('StorageService getHintCount failed: $e');
+      return _defaultHintCount;
+    }
+  }
+
+  /// Set remaining hints
+  Future<void> setHintCount(int count) async {
+    try {
+      await _prefs?.setInt(_keyHintCount, count);
+    } catch (e) {
+      debugPrint('StorageService setHintCount failed: $e');
+    }
   }
 
   /// Get the last completed daily challenge date (YYYYMMDD, UTC)
   String? getLastDailyChallengeDate() {
-    return _prefs?.getString(_keyLastDailyChallengeDate);
+    try {
+      return _prefs?.getString(_keyLastDailyChallengeDate);
+    } catch (e) {
+      debugPrint('StorageService getLastDailyChallengeDate failed: $e');
+      return null;
+    }
   }
 
   /// Get the current daily challenge streak
   int getDailyChallengeStreak() {
-    return _prefs?.getInt(_keyDailyChallengeStreak) ?? 0;
+    try {
+      return _prefs?.getInt(_keyDailyChallengeStreak) ?? 0;
+    } catch (e) {
+      debugPrint('StorageService getDailyChallengeStreak failed: $e');
+      return 0;
+    }
   }
 
   /// Check if the daily challenge is completed for a given date (YYYYMMDD)
   bool isDailyChallengeCompleted(String dateKey) {
-    return getLastDailyChallengeDate() == dateKey;
+    try {
+      return getLastDailyChallengeDate() == dateKey;
+    } catch (e) {
+      debugPrint('StorageService isDailyChallengeCompleted failed: $e');
+      return false;
+    }
   }
 
   /// Mark daily challenge completed and update streak, returns updated streak
   Future<int> markDailyChallengeCompleted(String dateKey) async {
-    final lastDateKey = getLastDailyChallengeDate();
-    var streak = getDailyChallengeStreak();
+    try {
+      final lastDateKey = getLastDailyChallengeDate();
+      var streak = getDailyChallengeStreak();
 
-    if (lastDateKey == dateKey) {
-      return streak;
-    }
+      if (lastDateKey == dateKey) {
+        return streak;
+      }
 
-    final lastDate = _parseDateKey(lastDateKey);
-    final currentDate = _parseDateKey(dateKey);
+      final lastDate = _parseDateKey(lastDateKey);
+      final currentDate = _parseDateKey(dateKey);
 
-    if (lastDate != null && currentDate != null) {
-      final diffDays = currentDate.difference(lastDate).inDays;
-      if (diffDays == 1) {
-        streak += 1;
+      if (lastDate != null && currentDate != null) {
+        final diffDays = currentDate.difference(lastDate).inDays;
+        if (diffDays == 1) {
+          streak += 1;
+        } else {
+          streak = 1;
+        }
       } else {
         streak = 1;
       }
-    } else {
-      streak = 1;
-    }
 
-    await _prefs?.setString(_keyLastDailyChallengeDate, dateKey);
-    await _prefs?.setInt(_keyDailyChallengeStreak, streak);
-    return streak;
+      await _prefs?.setString(_keyLastDailyChallengeDate, dateKey);
+      await _prefs?.setInt(_keyDailyChallengeStreak, streak);
+      return streak;
+    } catch (e) {
+      debugPrint('StorageService markDailyChallengeCompleted failed: $e');
+      return getDailyChallengeStreak();
+    }
   }
 
   DateTime? _parseDateKey(String? dateKey) {
@@ -162,21 +273,34 @@ class StorageService {
 
   /// Check if tutorial has been completed
   bool getTutorialCompleted() {
-    return _prefs?.getBool(_keyTutorialCompleted) ?? false;
+    try {
+      return _prefs?.getBool(_keyTutorialCompleted) ?? false;
+    } catch (e) {
+      debugPrint('StorageService getTutorialCompleted failed: $e');
+      return false;
+    }
   }
 
   /// Set tutorial as completed
   Future<void> setTutorialCompleted(bool completed) async {
-    await _prefs?.setBool(_keyTutorialCompleted, completed);
+    try {
+      await _prefs?.setBool(_keyTutorialCompleted, completed);
+    } catch (e) {
+      debugPrint('StorageService setTutorialCompleted failed: $e');
+    }
   }
 
   /// Clear all data (for testing)
   Future<void> clearAll() async {
-    await _prefs?.clear();
+    try {
+      await _prefs?.clear();
+    } catch (e) {
+      debugPrint('StorageService clearAll failed: $e');
+    }
   }
 
   /// Get progress stats
-  Map<String, dynamic> getStats() {
+  Map<String, Object?> getStats() {
     return {
       'highestLevel': getHighestLevel(),
       'completedCount': getCompletedLevels().length,

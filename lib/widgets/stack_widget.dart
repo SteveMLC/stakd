@@ -36,8 +36,8 @@ class StackWidget extends StatelessWidget {
               color: isSelected
                   ? GameColors.accent
                   : isHighlighted
-                      ? GameColors.accent.withValues(alpha: 0.5)
-                      : GameColors.surface,
+                  ? GameColors.accent.withValues(alpha: 0.5)
+                  : GameColors.surface,
               width: isSelected ? 3 : 2,
             ),
             boxShadow: isSelected
@@ -58,20 +58,17 @@ class StackWidget extends StatelessWidget {
                 final index = entry.key;
                 final layer = entry.value;
                 final isTop = index == stack.layers.length - 1;
-                
+
                 return Padding(
                   padding: EdgeInsets.only(
                     bottom: index == 0 ? 4 : 2,
                     left: 4,
                     right: 4,
                   ),
-                  child: LayerWidget(
-                    layer: layer,
-                    isTop: isTop,
-                  ),
+                  child: LayerWidget(layer: layer, isTop: isTop),
                 );
               }),
-              
+
               // Empty slots indicator
               if (stack.isEmpty)
                 Expanded(
@@ -122,9 +119,10 @@ class _AnimatedStackWidgetState extends State<AnimatedStackWidget>
       duration: GameDurations.stackClear,
       vsync: this,
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.elasticOut));
   }
 
   @override

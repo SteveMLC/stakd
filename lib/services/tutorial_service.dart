@@ -1,13 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// Represents each step in the tutorial flow
-enum TutorialStep {
-  selectStack,
-  moveLayer,
-  stackClear,
-  undo,
-  complete,
-}
+enum TutorialStep { selectStack, moveLayer, stackClear, undo, complete }
 
 /// Data for each tutorial step
 class TutorialStepData {
@@ -30,7 +24,7 @@ class TutorialService extends ChangeNotifier {
   bool _isActive = false;
   int? _targetStackIndex;
   GlobalKey? _targetKey;
-  
+
   TutorialStep get currentStep => _currentStep;
   bool get isActive => _isActive;
   int? get targetStackIndex => _targetStackIndex;
@@ -135,7 +129,7 @@ class TutorialService extends ChangeNotifier {
   /// Handle game events to progress tutorial
   void onStackSelected(int stackIndex) {
     if (!_isActive) return;
-    
+
     if (_currentStep == TutorialStep.selectStack) {
       nextStep();
     }
@@ -143,7 +137,7 @@ class TutorialService extends ChangeNotifier {
 
   void onLayerMoved() {
     if (!_isActive) return;
-    
+
     if (_currentStep == TutorialStep.moveLayer) {
       nextStep();
     }
@@ -151,14 +145,14 @@ class TutorialService extends ChangeNotifier {
 
   void onStackCleared() {
     if (!_isActive) return;
-    
+
     // Stack clear message is shown automatically
     // and advances after delay
   }
 
   void onUndoUsed() {
     if (!_isActive) return;
-    
+
     if (_currentStep == TutorialStep.undo) {
       nextStep();
     }

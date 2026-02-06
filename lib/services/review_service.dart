@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Manages review prompts and tracking user engagement
@@ -27,54 +28,90 @@ class ReviewService {
 
   /// Increment session count (call when app opens)
   Future<void> incrementSessionCount() async {
-    final current = getSessionCount();
-    await _prefs?.setInt(_keySessionCount, current + 1);
+    try {
+      final current = getSessionCount();
+      await _prefs?.setInt(_keySessionCount, current + 1);
+    } catch (e) {
+      debugPrint('ReviewService incrementSessionCount failed: $e');
+    }
   }
 
   /// Get current session count
   int getSessionCount() {
-    return _prefs?.getInt(_keySessionCount) ?? 0;
+    try {
+      return _prefs?.getInt(_keySessionCount) ?? 0;
+    } catch (e) {
+      debugPrint('ReviewService getSessionCount failed: $e');
+      return 0;
+    }
   }
 
   /// Mark level 10 as completed (call when level 10 is completed for first time)
   Future<void> markLevel10Completed() async {
-    await _prefs?.setBool(_keyLevel10Completed, true);
+    try {
+      await _prefs?.setBool(_keyLevel10Completed, true);
+    } catch (e) {
+      debugPrint('ReviewService markLevel10Completed failed: $e');
+    }
   }
 
   /// Check if level 10 has been completed
   bool isLevel10Completed() {
-    return _prefs?.getBool(_keyLevel10Completed) ?? false;
+    try {
+      return _prefs?.getBool(_keyLevel10Completed) ?? false;
+    } catch (e) {
+      debugPrint('ReviewService isLevel10Completed failed: $e');
+      return false;
+    }
   }
 
   /// Check if user has already reviewed
   bool hasReviewed() {
-    return _prefs?.getBool(_keyHasReviewed) ?? false;
+    try {
+      return _prefs?.getBool(_keyHasReviewed) ?? false;
+    } catch (e) {
+      debugPrint('ReviewService hasReviewed failed: $e');
+      return false;
+    }
   }
 
   /// Mark that user has reviewed
   Future<void> markReviewed() async {
-    await _prefs?.setBool(_keyHasReviewed, true);
-    await markReviewPromptShown(); // Also update last shown date
+    try {
+      await _prefs?.setBool(_keyHasReviewed, true);
+      await markReviewPromptShown(); // Also update last shown date
+    } catch (e) {
+      debugPrint('ReviewService markReviewed failed: $e');
+    }
   }
 
   /// Mark that review prompt was shown (declined or accepted)
   Future<void> markReviewPromptShown() async {
-    final now = DateTime.now().millisecondsSinceEpoch;
-    await _prefs?.setInt(_keyLastPromptDate, now);
+    try {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      await _prefs?.setInt(_keyLastPromptDate, now);
+    } catch (e) {
+      debugPrint('ReviewService markReviewPromptShown failed: $e');
+    }
   }
 
   /// Get last prompt date
   DateTime? getLastPromptDate() {
-    final millis = _prefs?.getInt(_keyLastPromptDate);
-    if (millis == null) return null;
-    return DateTime.fromMillisecondsSinceEpoch(millis);
+    try {
+      final millis = _prefs?.getInt(_keyLastPromptDate);
+      if (millis == null) return null;
+      return DateTime.fromMillisecondsSinceEpoch(millis);
+    } catch (e) {
+      debugPrint('ReviewService getLastPromptDate failed: $e');
+      return null;
+    }
   }
 
   /// Check if we're within cooldown period
   bool isInCooldown() {
     final lastPrompt = getLastPromptDate();
     if (lastPrompt == null) return false;
-    
+
     final daysSinceLastPrompt = DateTime.now().difference(lastPrompt).inDays;
     return daysSinceLastPrompt < _cooldownDays;
   }
@@ -108,15 +145,19 @@ class ReviewService {
 
   /// Reset all review tracking (for testing)
   Future<void> resetReviewData() async {
-    await _prefs?.remove(_keySessionCount);
-    await _prefs?.remove(_keyTotalMoves);
-    await _prefs?.remove(_keyLastPromptDate);
-    await _prefs?.remove(_keyHasReviewed);
-    await _prefs?.remove(_keyLevel10Completed);
+    try {
+      await _prefs?.remove(_keySessionCount);
+      await _prefs?.remove(_keyTotalMoves);
+      await _prefs?.remove(_keyLastPromptDate);
+      await _prefs?.remove(_keyHasReviewed);
+      await _prefs?.remove(_keyLevel10Completed);
+    } catch (e) {
+      debugPrint('ReviewService resetReviewData failed: $e');
+    }
   }
 
   /// Get review stats for debugging
-  Map<String, dynamic> getStats() {
+  Map<String, Object?> getStats() {
     return {
       'sessionCount': getSessionCount(),
       'lastPromptDate': getLastPromptDate()?.toIso8601String(),

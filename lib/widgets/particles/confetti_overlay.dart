@@ -23,12 +23,9 @@ class Confetto {
     // Update position with drift
     position = position + velocity;
     rotation += rotationSpeed;
-    
+
     // Slow horizontal drift
-    position = Offset(
-      position.dx + sin(rotation * 0.1) * 0.3,
-      position.dy,
-    );
+    position = Offset(position.dx + sin(rotation * 0.1) * 0.3, position.dy);
   }
 
   bool isOffScreen(double screenHeight) => position.dy > screenHeight + 20;
@@ -61,11 +58,8 @@ class _ConfettiOverlayState extends State<ConfettiOverlay>
   @override
   void initState() {
     super.initState();
-    
-    _controller = AnimationController(
-      vsync: this,
-      duration: widget.duration,
-    );
+
+    _controller = AnimationController(vsync: this, duration: widget.duration);
 
     _controller.addListener(_updateConfetti);
     _controller.forward();
@@ -76,7 +70,7 @@ class _ConfettiOverlayState extends State<ConfettiOverlay>
     super.didChangeDependencies();
     final size = MediaQuery.of(context).size;
     _screenWidth = size.width;
-    
+
     if (_confetti.isEmpty) {
       _initializeConfetti();
     }
@@ -86,37 +80,39 @@ class _ConfettiOverlayState extends State<ConfettiOverlay>
     for (int i = 0; i < widget.confettiCount; i++) {
       // Random starting X position
       final x = _random.nextDouble() * _screenWidth;
-      
+
       // Start above screen, stagger the spawn
       final y = -20.0 - (_random.nextDouble() * 100);
-      
+
       // Fall speed with slight variation
       final fallSpeed = 1.5 + _random.nextDouble() * 1.0;
-      
+
       // Random horizontal drift
       final driftSpeed = (_random.nextDouble() - 0.5) * 0.5;
-      
+
       // Random rotation speed
       final rotationSpeed = (_random.nextDouble() - 0.5) * 0.15;
-      
+
       // Random size for rectangles
       final width = 6.0 + _random.nextDouble() * 4.0;
       final height = 10.0 + _random.nextDouble() * 6.0;
-      
-      _confetti.add(Confetto(
-        position: Offset(x, y - (i * 8)), // Stagger vertically
-        velocity: Offset(driftSpeed, fallSpeed),
-        color: widget.colors[_random.nextInt(widget.colors.length)],
-        rotationSpeed: rotationSpeed,
-        size: Size(width, height),
-      ));
+
+      _confetti.add(
+        Confetto(
+          position: Offset(x, y - (i * 8)), // Stagger vertically
+          velocity: Offset(driftSpeed, fallSpeed),
+          color: widget.colors[_random.nextInt(widget.colors.length)],
+          rotationSpeed: rotationSpeed,
+          size: Size(width, height),
+        ),
+      );
     }
   }
 
   void _updateConfetti() {
     for (final confetto in _confetti) {
       confetto.update();
-      
+
       // Wrap around horizontally
       if (confetto.position.dx < -20) {
         confetto.position = Offset(_screenWidth + 10, confetto.position.dy);
@@ -155,10 +151,7 @@ class _ConfettiPainter extends CustomPainter {
   final List<Confetto> confetti;
   final double progress;
 
-  _ConfettiPainter({
-    required this.confetti,
-    required this.progress,
-  });
+  _ConfettiPainter({required this.confetti, required this.progress});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -173,25 +166,25 @@ class _ConfettiPainter extends CustomPainter {
         ..style = PaintingStyle.fill;
 
       canvas.save();
-      
+
       // Translate to confetto position
       canvas.translate(confetto.position.dx, confetto.position.dy);
-      
+
       // Rotate around center
       canvas.rotate(confetto.rotation);
-      
+
       // Draw rectangle
       final rect = Rect.fromCenter(
         center: Offset.zero,
         width: confetto.size.width,
         height: confetto.size.height,
       );
-      
+
       canvas.drawRRect(
         RRect.fromRectAndRadius(rect, const Radius.circular(1)),
         paint,
       );
-      
+
       canvas.restore();
     }
   }

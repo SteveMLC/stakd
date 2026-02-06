@@ -5,6 +5,7 @@ import '../services/level_generator.dart';
 import '../services/storage_service.dart';
 import '../services/ad_service.dart';
 import '../services/audio_service.dart';
+import '../services/iap_service.dart';
 import '../services/tutorial_service.dart';
 import '../utils/constants.dart';
 import '../widgets/game_board.dart';
@@ -17,10 +18,7 @@ import '../widgets/tutorial_overlay.dart';
 class GameScreen extends StatefulWidget {
   final int level;
 
-  const GameScreen({
-    super.key,
-    required this.level,
-  });
+  const GameScreen({super.key, required this.level});
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -58,7 +56,7 @@ class _GameScreenState extends State<GameScreen> {
   void _initTutorial() {
     if (!_tutorialInitialized && _showTutorial) {
       _tutorialInitialized = true;
-      
+
       // Wait for first frame to get stack keys
       WidgetsBinding.instance.addPostFrameCallback((_) {
         // Find first non-empty stack
@@ -70,7 +68,7 @@ class _GameScreenState extends State<GameScreen> {
             break;
           }
         }
-        
+
         if (firstNonEmptyStack != null && mounted) {
           _tutorialService.setTarget(
             firstNonEmptyStack,
@@ -125,13 +123,13 @@ class _GameScreenState extends State<GameScreen> {
     if (!_tutorialService.isActive) return;
 
     // Detect stack selection
-    final currentSelected = gameState.selectedStackIndex >= 0 
-        ? gameState.selectedStackIndex 
+    final currentSelected = gameState.selectedStackIndex >= 0
+        ? gameState.selectedStackIndex
         : null;
     if (currentSelected != null && _previousSelectedStack != currentSelected) {
       _tutorialService.onStackSelected(currentSelected);
       _previousSelectedStack = currentSelected;
-      
+
       // Update targets for next step
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
@@ -144,7 +142,7 @@ class _GameScreenState extends State<GameScreen> {
     if (gameState.moveCount > _previousMoveCount) {
       _tutorialService.onLayerMoved();
       _previousMoveCount = gameState.moveCount;
-      
+
       // Update targets for next step
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
@@ -174,7 +172,7 @@ class _GameScreenState extends State<GameScreen> {
   void _loadLevel() {
     final stacks = _levelGenerator.generateSolvableLevel(_currentLevel);
     context.read<GameState>().initGame(stacks, _currentLevel);
-    
+
     // Reset hint state
     setState(() {
       _showingHint = false;
@@ -190,10 +188,11 @@ class _GameScreenState extends State<GameScreen> {
   void _onLevelComplete() async {
     final storage = StorageService();
     final adService = AdService();
+    final moveCount = context.read<GameState>().moveCount;
 
     // Save progress
     await storage.markLevelCompleted(_currentLevel);
-    await storage.addMoves(context.read<GameState>().moveCount);
+    await storage.addMoves(moveCount);
 
     // Track for ads
     adService.onLevelComplete();
@@ -222,7 +221,7 @@ class _GameScreenState extends State<GameScreen> {
     if (gameState.canUndo) {
       AudioService().playTap();
       gameState.undo();
-      
+
       // Track undo for tutorial
       if (_tutorialService.isActive) {
         _tutorialService.onUndoUsed();
@@ -247,10 +246,28 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _showHint() {
+    final iap = context.read<IapService>();
+    if (iap.hintCount <= 0) {
+      _showHintPurchaseDialog(iap);
+      return;
+    }
+
     final gameState = context.read<GameState>();
     final hint = gameState.getHint();
-    
-    if (hint != null && !_showingHint) {
+
+    if (hint == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No valid moves right now.')),
+      );
+      return;
+    }
+
+    if (!iap.consumeHint()) {
+      _showHintPurchaseDialog(iap);
+      return;
+    }
+
+    if (!_showingHint) {
       setState(() {
         _showingHint = true;
         _hintSourceIndex = hint.$1;
@@ -258,6 +275,42 @@ class _GameScreenState extends State<GameScreen> {
       });
       AudioService().playTap();
     }
+  }
+
+  void _showHintPurchaseDialog(IapService iap) {
+    if (!iap.isAvailable) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Store unavailable.')),
+      );
+      return;
+    }
+
+    final price = iap.hintPackPrice ?? '\$1.99';
+
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Out of hints'),
+          content: Text('Get 10 more hints for $price?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Not now'),
+            ),
+            TextButton(
+              onPressed: iap.isLoading
+                  ? null
+                  : () {
+                      Navigator.of(context).pop();
+                      iap.buyHintPack();
+                    },
+              child: const Text('Buy'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _dismissHint() {
@@ -268,16 +321,25 @@ class _GameScreenState extends State<GameScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final iap = context.watch<IapService>();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final message = iap.errorMessage;
+      if (message != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+        iap.clearError();
+      }
+    });
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF1A1A2E),
-              Color(0xFF16213E),
-            ],
+            colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
           ),
         ),
         child: SafeArea(
@@ -292,7 +354,7 @@ class _GameScreenState extends State<GameScreen> {
                     children: [
                       // Top bar
                       _buildTopBar(gameState),
-                      
+
                       // Game board
                       Expanded(
                         child: GameBoard(
@@ -305,13 +367,13 @@ class _GameScreenState extends State<GameScreen> {
                       ),
                       
                       // Bottom controls
-                      _buildBottomControls(gameState),
+                      _buildBottomControls(gameState, iap),
                     ],
                   ),
-                  
+
                   // Hint overlay
-                  if (_showingHint && 
-                      _stackKeys.containsKey(_hintSourceIndex) && 
+                  if (_showingHint &&
+                      _stackKeys.containsKey(_hintSourceIndex) &&
                       _stackKeys.containsKey(_hintDestIndex))
                     Positioned.fill(
                       child: HintOverlay(
@@ -322,7 +384,7 @@ class _GameScreenState extends State<GameScreen> {
                         onDismiss: _dismissHint,
                       ),
                     ),
-                  
+
                   // Tutorial overlay
                   if (_showTutorial && _tutorialService.isActive)
                     Positioned.fill(
@@ -332,7 +394,7 @@ class _GameScreenState extends State<GameScreen> {
                         onSkip: _onTutorialSkip,
                       ),
                     ),
-                  
+
                   // Win overlay
                   if (gameState.isComplete)
                     CelebrationOverlay(
@@ -344,9 +406,28 @@ class _GameScreenState extends State<GameScreen> {
                       },
                       onHome: _goHome,
                     ),
+                  if (iap.isLoading) _buildBlockingOverlay(),
                 ],
               );
             },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBlockingOverlay() {
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black54,
+        child: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 12),
+              Text('Processing purchase...'),
+            ],
           ),
         ),
       ),
@@ -359,12 +440,9 @@ class _GameScreenState extends State<GameScreen> {
       child: Row(
         children: [
           // Back button
-          GameIconButton(
-            icon: Icons.arrow_back,
-            onPressed: _goHome,
-          ),
+          GameIconButton(icon: Icons.arrow_back, onPressed: _goHome),
           const Spacer(),
-          
+
           // Level indicator
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -374,14 +452,11 @@ class _GameScreenState extends State<GameScreen> {
             ),
             child: Text(
               'Level $_currentLevel',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
           ),
           const Spacer(),
-          
+
           // Move counter
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -408,19 +483,16 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  Widget _buildBottomControls(GameState gameState) {
+  Widget _buildBottomControls(GameState gameState, IapService iap) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // Restart button
-          GameIconButton(
-            icon: Icons.refresh,
-            onPressed: _restartLevel,
-          ),
+          GameIconButton(icon: Icons.refresh, onPressed: _restartLevel),
           const SizedBox(width: 16),
-          
+
           // Undo button (with key for tutorial)
           GameIconButton(
             key: _undoButtonKey,
@@ -432,10 +504,11 @@ class _GameScreenState extends State<GameScreen> {
             onPressed: gameState.canUndo ? _onUndo : _onUndoWithAd,
           ),
           const SizedBox(width: 16),
-          
+
           // Hint button
           GameIconButton(
             icon: Icons.lightbulb_outline,
+            badge: '${iap.hintCount}',
             onPressed: _showHint,
           ),
         ],

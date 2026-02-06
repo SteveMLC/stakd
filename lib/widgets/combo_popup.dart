@@ -6,11 +6,7 @@ class ComboPopup extends StatefulWidget {
   final int comboMultiplier;
   final VoidCallback? onComplete;
 
-  const ComboPopup({
-    super.key,
-    required this.comboMultiplier,
-    this.onComplete,
-  });
+  const ComboPopup({super.key, required this.comboMultiplier, this.onComplete});
 
   @override
   State<ComboPopup> createState() => _ComboPopupState();
@@ -25,7 +21,7 @@ class _ComboPopupState extends State<ComboPopup>
   @override
   void initState() {
     super.initState();
-    
+
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -34,35 +30,37 @@ class _ComboPopupState extends State<ComboPopup>
     // Scale animation: 0.5 → 1.2 → 1.0 → fade
     _scaleAnimation = TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween<double>(begin: 0.5, end: 1.2)
-            .chain(CurveTween(curve: Curves.easeOut)),
+        tween: Tween<double>(
+          begin: 0.5,
+          end: 1.2,
+        ).chain(CurveTween(curve: Curves.easeOut)),
         weight: 30,
       ),
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.2, end: 1.0)
-            .chain(CurveTween(curve: Curves.elasticOut)),
+        tween: Tween<double>(
+          begin: 1.2,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.elasticOut)),
         weight: 30,
       ),
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 1.0, end: 1.0),
-        weight: 40,
-      ),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 1.0), weight: 40),
     ]).animate(_controller);
 
     // Opacity: fade in quickly, stay, fade out
     _opacityAnimation = TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween<double>(begin: 0.0, end: 1.0)
-            .chain(CurveTween(curve: Curves.easeIn)),
+        tween: Tween<double>(
+          begin: 0.0,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeIn)),
         weight: 20,
       ),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 1.0), weight: 40),
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.0, end: 1.0),
-        weight: 40,
-      ),
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 1.0, end: 0.0)
-            .chain(CurveTween(curve: Curves.easeOut)),
+        tween: Tween<double>(
+          begin: 1.0,
+          end: 0.0,
+        ).chain(CurveTween(curve: Curves.easeOut)),
         weight: 40,
       ),
     ]).animate(_controller);
@@ -107,10 +105,7 @@ class _ComboPopupState extends State<ComboPopup>
               decoration: BoxDecoration(
                 color: Colors.black.withValues(alpha: 0.7),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: _getComboColor(),
-                  width: 3,
-                ),
+                border: Border.all(color: _getComboColor(), width: 3),
                 boxShadow: [
                   BoxShadow(
                     color: _getComboColor().withValues(alpha: 0.5),

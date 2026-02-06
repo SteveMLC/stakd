@@ -28,7 +28,6 @@ class _GameButtonState extends State<GameButton>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
-  bool _isPressed = false;
 
   @override
   void initState() {
@@ -37,9 +36,10 @@ class _GameButtonState extends State<GameButton>
       duration: GameDurations.buttonPress,
       vsync: this,
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.95,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -50,17 +50,14 @@ class _GameButtonState extends State<GameButton>
 
   void _onTapDown(TapDownDetails details) {
     if (widget.isDisabled) return;
-    setState(() => _isPressed = true);
     _controller.forward();
   }
 
   void _onTapUp(TapUpDetails details) {
-    setState(() => _isPressed = false);
     _controller.reverse();
   }
 
   void _onTapCancel() {
-    setState(() => _isPressed = false);
     _controller.reverse();
   }
 
@@ -89,8 +86,8 @@ class _GameButtonState extends State<GameButton>
                 color: widget.isDisabled
                     ? GameColors.surface
                     : widget.isPrimary
-                        ? GameColors.accent
-                        : GameColors.surface,
+                    ? GameColors.accent
+                    : GameColors.surface,
                 borderRadius: BorderRadius.circular(GameSizes.borderRadius),
                 border: widget.isPrimary
                     ? null
@@ -99,10 +96,11 @@ class _GameButtonState extends State<GameButton>
                     ? null
                     : [
                         BoxShadow(
-                          color: (widget.isPrimary
-                                  ? GameColors.accent
-                                  : GameColors.surface)
-                              .withValues(alpha: 0.3),
+                          color:
+                              (widget.isPrimary
+                                      ? GameColors.accent
+                                      : GameColors.surface)
+                                  .withValues(alpha: 0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),
@@ -173,9 +171,10 @@ class _GameIconButtonState extends State<GameIconButton>
       duration: GameDurations.buttonPress,
       vsync: this,
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.9).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.9,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override

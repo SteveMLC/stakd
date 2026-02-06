@@ -20,10 +20,7 @@ class LevelSelectScreen extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF1A1A2E),
-              Color(0xFF16213E),
-            ],
+            colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
           ),
         ),
         child: SafeArea(
@@ -46,17 +43,18 @@ class LevelSelectScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              
+
               // Level grid
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: GridView.builder(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 5,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 5,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                        ),
                     itemCount: 100, // Show first 100 levels
                     itemBuilder: (context, index) {
                       final level = index + 1;
@@ -86,9 +84,7 @@ class LevelSelectScreen extends StatelessWidget {
 
   void _startLevel(BuildContext context, int level) {
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => GameScreen(level: level),
-      ),
+      MaterialPageRoute(builder: (_) => GameScreen(level: level)),
     );
   }
 }
@@ -117,15 +113,15 @@ class _LevelButton extends StatelessWidget {
           color: isCurrent
               ? GameColors.accent
               : isUnlocked
-                  ? GameColors.surface
-                  : GameColors.empty,
+              ? GameColors.surface
+              : GameColors.empty,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isCurrent
                 ? GameColors.accent
                 : isCompleted
-                    ? GameColors.palette[2]
-                    : Colors.transparent,
+                ? GameColors.palette[2]
+                : Colors.transparent,
             width: 2,
           ),
           boxShadow: isCurrent
@@ -153,7 +149,7 @@ class _LevelButton extends StatelessWidget {
                 ),
               ),
             ),
-            
+
             // Completed checkmark
             if (isCompleted)
               const Positioned(
@@ -165,7 +161,7 @@ class _LevelButton extends StatelessWidget {
                   color: GameColors.accent,
                 ),
               ),
-            
+
             // Locked icon
             if (!isUnlocked)
               Center(

@@ -49,7 +49,7 @@ class LayerWidget extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-          colors: [
+            colors: [
               Colors.white.withValues(alpha: 0.3),
               Colors.transparent,
               Colors.black.withValues(alpha: 0.1),

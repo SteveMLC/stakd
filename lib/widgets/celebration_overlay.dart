@@ -29,14 +29,15 @@ class _CelebrationOverlayState extends State<CelebrationOverlay>
   @override
   void initState() {
     super.initState();
-    
+
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _fadeController, curve: Curves.easeOut),
-    );
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeOut));
     _fadeController.forward();
   }
 
@@ -60,7 +61,7 @@ class _CelebrationOverlayState extends State<CelebrationOverlay>
               confettiCount: 50,
             ),
           ),
-          
+
           // Dark overlay and content
           Container(
             color: Colors.black.withValues(alpha: 0.7),
@@ -69,13 +70,9 @@ class _CelebrationOverlayState extends State<CelebrationOverlay>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // Star icon
-                  const Icon(
-                    Icons.star,
-                    size: 80,
-                    color: GameColors.accent,
-                  ),
+                  const Icon(Icons.star, size: 80, color: GameColors.accent),
                   const SizedBox(height: 24),
-                  
+
                   // Title
                   Text(
                     'Level Complete!',
@@ -85,7 +82,7 @@ class _CelebrationOverlayState extends State<CelebrationOverlay>
                     ),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Stats container
                   Column(
                     mainAxisSize: MainAxisSize.min,
@@ -115,7 +112,7 @@ class _CelebrationOverlayState extends State<CelebrationOverlay>
                           ],
                         ),
                       ),
-                      
+
                       // Max combo (if achieved)
                       if (widget.maxCombo > 1) ...[
                         const SizedBox(height: 12),
@@ -142,10 +139,11 @@ class _CelebrationOverlayState extends State<CelebrationOverlay>
                               const SizedBox(width: 8),
                               Text(
                                 'Max Combo: ${widget.maxCombo}x',
-                                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                  color: const Color(0xFFFFD700),
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                style: Theme.of(context).textTheme.titleLarge
+                                    ?.copyWith(
+                                      color: const Color(0xFFFFD700),
+                                      fontWeight: FontWeight.bold,
+                                    ),
                               ),
                             ],
                           ),
@@ -154,7 +152,7 @@ class _CelebrationOverlayState extends State<CelebrationOverlay>
                     ],
                   ),
                   const SizedBox(height: 48),
-                  
+
                   // Next Level button
                   ElevatedButton.icon(
                     onPressed: widget.onNextLevel,
@@ -168,7 +166,7 @@ class _CelebrationOverlayState extends State<CelebrationOverlay>
                     ),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Home button
                   TextButton.icon(
                     onPressed: widget.onHome,

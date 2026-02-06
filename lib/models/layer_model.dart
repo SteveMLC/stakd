@@ -6,18 +6,13 @@ class Layer {
   final int colorIndex;
   final String id;
 
-  Layer({
-    required this.colorIndex,
-    String? id,
-  }) : id = id ?? UniqueKey().toString();
+  Layer({required this.colorIndex, String? id})
+    : id = id ?? UniqueKey().toString();
 
   Color get color => GameColors.getColor(colorIndex);
 
   Layer copyWith({int? colorIndex}) {
-    return Layer(
-      colorIndex: colorIndex ?? this.colorIndex,
-      id: id,
-    );
+    return Layer(colorIndex: colorIndex ?? this.colorIndex, id: id);
   }
 
   @override
@@ -29,10 +24,7 @@ class Layer {
   @override
   int get hashCode => id.hashCode;
 
-  Map<String, Object?> toJson() => {
-        'colorIndex': colorIndex,
-        'id': id,
-      };
+  Map<String, Object?> toJson() => {'colorIndex': colorIndex, 'id': id};
 
   factory Layer.fromJson(Map<String, Object?> json) {
     return Layer(

@@ -42,14 +42,8 @@ class StakdApp extends StatelessWidget {
             fontWeight: FontWeight.w500,
             color: GameColors.text,
           ),
-          bodyLarge: TextStyle(
-            fontSize: 16,
-            color: GameColors.text,
-          ),
-          bodyMedium: TextStyle(
-            fontSize: 14,
-            color: GameColors.textMuted,
-          ),
+          bodyLarge: TextStyle(fontSize: 16, color: GameColors.text),
+          bodyMedium: TextStyle(fontSize: 14, color: GameColors.textMuted),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
@@ -81,10 +75,7 @@ class StakdApp extends StatelessWidget {
             ),
           ),
         ),
-        iconTheme: const IconThemeData(
-          color: GameColors.text,
-          size: 24,
-        ),
+        iconTheme: const IconThemeData(color: GameColors.text, size: 24),
       ),
       home: const HomeScreen(),
     );

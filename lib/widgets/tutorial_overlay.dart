@@ -70,19 +70,15 @@ class _TutorialOverlayState extends State<TutorialOverlay>
             children: [
               // Dark overlay with spotlight cutout
               _buildSpotlightOverlay(targetKey),
-              
+
               // Tooltip
               if (targetKey != null)
                 _buildTooltip(stepData, targetKey)
               else
                 _buildCenterMessage(stepData),
-              
+
               // Skip button in top right
-              Positioned(
-                top: 60,
-                right: 16,
-                child: _buildSkipButton(),
-              ),
+              Positioned(top: 60, right: 16, child: _buildSkipButton()),
             ],
           ),
         );
@@ -103,18 +99,20 @@ class _TutorialOverlayState extends State<TutorialOverlay>
   Widget _buildTooltip(TutorialStepData stepData, GlobalKey targetKey) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final renderBox = targetKey.currentContext?.findRenderObject() as RenderBox?;
+        final renderBox =
+            targetKey.currentContext?.findRenderObject() as RenderBox?;
         if (renderBox == null) {
           return _buildCenterMessage(stepData);
         }
 
         final targetPosition = renderBox.localToGlobal(Offset.zero);
         final targetSize = renderBox.size;
-        
+
         // Position tooltip above or below target
         final isBottomHalf = targetPosition.dy > constraints.maxHeight / 2;
         final tooltipY = isBottomHalf
-            ? targetPosition.dy - 120 // Above
+            ? targetPosition.dy -
+                  120 // Above
             : targetPosition.dy + targetSize.height + 20; // Below
 
         return Positioned(
@@ -154,11 +152,7 @@ class _TutorialOverlayState extends State<TutorialOverlay>
             mainAxisSize: MainAxisSize.min,
             children: [
               if (stepData.icon != null) ...[
-                Icon(
-                  stepData.icon,
-                  color: GameColors.accent,
-                  size: 28,
-                ),
+                Icon(stepData.icon, color: GameColors.accent, size: 28),
                 const SizedBox(width: 12),
               ],
               Flexible(
@@ -215,11 +209,7 @@ class _TutorialOverlayState extends State<TutorialOverlay>
           mainAxisSize: MainAxisSize.min,
           children: [
             if (stepData.icon != null) ...[
-              Icon(
-                stepData.icon,
-                color: GameColors.accent,
-                size: 48,
-              ),
+              Icon(stepData.icon, color: GameColors.accent, size: 48),
               const SizedBox(height: 16),
             ],
             Text(
@@ -248,10 +238,7 @@ class _TutorialOverlayState extends State<TutorialOverlay>
                 ),
                 child: const Text(
                   'Let\'s Play!',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -268,17 +255,12 @@ class _TutorialOverlayState extends State<TutorialOverlay>
         backgroundColor: GameColors.surface.withValues(alpha: 0.8),
         foregroundColor: GameColors.textMuted,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
       child: const Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            'Skip Tutorial',
-            style: TextStyle(fontSize: 14),
-          ),
+          Text('Skip Tutorial', style: TextStyle(fontSize: 14)),
           SizedBox(width: 4),
           Icon(Icons.close, size: 16),
         ],
@@ -292,10 +274,8 @@ class _SpotlightPainter extends CustomPainter {
   final GlobalKey? targetKey;
   final Animation<double> animation;
 
-  _SpotlightPainter({
-    required this.targetKey,
-    required this.animation,
-  }) : super(repaint: animation);
+  _SpotlightPainter({required this.targetKey, required this.animation})
+    : super(repaint: animation);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -308,7 +288,8 @@ class _SpotlightPainter extends CustomPainter {
       return;
     }
 
-    final renderBox = targetKey!.currentContext!.findRenderObject() as RenderBox?;
+    final renderBox =
+        targetKey!.currentContext!.findRenderObject() as RenderBox?;
     if (renderBox == null) {
       canvas.drawRect(Offset.zero & size, paint);
       return;
@@ -365,7 +346,7 @@ class _ArrowPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final path = Path();
-    
+
     if (pointingDown) {
       path.moveTo(0, 0);
       path.lineTo(size.width / 2, size.height);
@@ -375,7 +356,7 @@ class _ArrowPainter extends CustomPainter {
       path.lineTo(size.width / 2, 0);
       path.lineTo(size.width, size.height);
     }
-    
+
     path.close();
 
     // Fill

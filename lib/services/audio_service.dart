@@ -9,7 +9,7 @@ class AudioService {
 
   final AudioPlayer _sfxPlayer = AudioPlayer();
   final AudioPlayer _musicPlayer = AudioPlayer();
-  
+
   bool _soundEnabled = true;
   bool _musicEnabled = true;
   bool _initialized = false;
@@ -20,18 +20,22 @@ class AudioService {
   /// Initialize the audio service
   Future<void> init() async {
     if (_initialized) return;
-    
-    await _sfxPlayer.setReleaseMode(ReleaseMode.stop);
-    await _musicPlayer.setReleaseMode(ReleaseMode.loop);
-    await _musicPlayer.setVolume(0.3);
-    
-    _initialized = true;
+
+    try {
+      await _sfxPlayer.setReleaseMode(ReleaseMode.stop);
+      await _musicPlayer.setReleaseMode(ReleaseMode.loop);
+      await _musicPlayer.setVolume(0.3);
+
+      _initialized = true;
+    } catch (e) {
+      debugPrint('Error initializing audio: $e');
+    }
   }
 
   /// Play a sound effect
   Future<void> playSound(GameSound sound) async {
     if (!_soundEnabled) return;
-    
+
     try {
       await _sfxPlayer.stop();
       await _sfxPlayer.play(AssetSource(sound.path));
@@ -48,19 +52,19 @@ class AudioService {
 
   /// Play stack clear sound
   Future<void> playClear() => playSound(GameSound.clear);
-  
+
   /// Play combo sound with escalating pitch
   Future<void> playCombo(int comboMultiplier) async {
     if (!_soundEnabled) return;
-    
+
     try {
       // Calculate pitch based on combo level (1.0 to 2.0)
       final pitch = 1.0 + (comboMultiplier - 1) * 0.2;
-      
+
       await _sfxPlayer.stop();
       await _sfxPlayer.setPlaybackRate(pitch.clamp(1.0, 2.0));
       await _sfxPlayer.play(AssetSource(GameSound.clear.path));
-      
+
       // Reset playback rate for next sound
       await _sfxPlayer.setPlaybackRate(1.0);
     } catch (e) {
@@ -77,7 +81,7 @@ class AudioService {
   /// Start background music
   Future<void> startMusic() async {
     if (!_musicEnabled) return;
-    
+
     try {
       await _musicPlayer.play(AssetSource('sounds/music.mp3'));
     } catch (e) {
@@ -87,7 +91,11 @@ class AudioService {
 
   /// Stop background music
   Future<void> stopMusic() async {
-    await _musicPlayer.stop();
+    try {
+      await _musicPlayer.stop();
+    } catch (e) {
+      debugPrint('Error stopping music: $e');
+    }
   }
 
   /// Toggle sound effects
@@ -122,8 +130,12 @@ class AudioService {
 
   /// Dispose resources
   Future<void> dispose() async {
-    await _sfxPlayer.dispose();
-    await _musicPlayer.dispose();
+    try {
+      await _sfxPlayer.dispose();
+      await _musicPlayer.dispose();
+    } catch (e) {
+      debugPrint('Error disposing audio players: $e');
+    }
   }
 }
 
