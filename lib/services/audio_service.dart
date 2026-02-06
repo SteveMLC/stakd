@@ -48,6 +48,25 @@ class AudioService {
 
   /// Play stack clear sound
   Future<void> playClear() => playSound(GameSound.clear);
+  
+  /// Play combo sound with escalating pitch
+  Future<void> playCombo(int comboMultiplier) async {
+    if (!_soundEnabled) return;
+    
+    try {
+      // Calculate pitch based on combo level (1.0 to 2.0)
+      final pitch = 1.0 + (comboMultiplier - 1) * 0.2;
+      
+      await _sfxPlayer.stop();
+      await _sfxPlayer.setPlaybackRate(pitch.clamp(1.0, 2.0));
+      await _sfxPlayer.play(AssetSource(GameSound.clear.path));
+      
+      // Reset playback rate for next sound
+      await _sfxPlayer.setPlaybackRate(1.0);
+    } catch (e) {
+      debugPrint('Error playing combo sound: $e');
+    }
+  }
 
   /// Play level win sound
   Future<void> playWin() => playSound(GameSound.win);

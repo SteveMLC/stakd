@@ -335,6 +335,7 @@ class _GameScreenState extends State<GameScreen> {
                   if (gameState.isComplete)
                     CelebrationOverlay(
                       moveCount: gameState.moveCount,
+                      maxCombo: gameState.maxCombo,
                       onNextLevel: () {
                         _onLevelComplete();
                         _nextLevel();

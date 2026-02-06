@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'models/game_state.dart';
 import 'services/audio_service.dart';
 import 'services/storage_service.dart';
 import 'services/ad_service.dart';
+import 'services/review_service.dart';
 import 'app.dart';
 
 void main() async {
@@ -30,6 +32,11 @@ void main() async {
   await StorageService().init();
   await AudioService().init();
   await AdService().init();
+  
+  // Initialize review service and increment session count
+  final prefs = await SharedPreferences.getInstance();
+  await ReviewService().init(prefs);
+  await ReviewService().incrementSessionCount();
   
   // Load saved settings
   final audioService = AudioService();

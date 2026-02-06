@@ -15,6 +15,7 @@ class StorageService {
   static const String _keyMusicEnabled = 'music_enabled';
   static const String _keyTotalMoves = 'total_moves';
   static const String _keyAdsRemoved = 'ads_removed';
+  static const String _keyTutorialCompleted = 'tutorial_completed';
 
   /// Initialize the storage service
   Future<void> init() async {
@@ -103,6 +104,16 @@ class StorageService {
   /// Set ads removed (after IAP purchase)
   Future<void> setAdsRemoved(bool removed) async {
     await _prefs?.setBool(_keyAdsRemoved, removed);
+  }
+
+  /// Check if tutorial has been completed
+  bool getTutorialCompleted() {
+    return _prefs?.getBool(_keyTutorialCompleted) ?? false;
+  }
+
+  /// Set tutorial as completed
+  Future<void> setTutorialCompleted(bool completed) async {
+    await _prefs?.setBool(_keyTutorialCompleted, completed);
   }
 
   /// Clear all data (for testing)

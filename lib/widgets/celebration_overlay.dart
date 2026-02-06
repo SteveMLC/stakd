@@ -5,12 +5,14 @@ import 'particles/confetti_overlay.dart';
 /// Celebration overlay shown when level is complete
 class CelebrationOverlay extends StatefulWidget {
   final int moveCount;
+  final int maxCombo;
   final VoidCallback onNextLevel;
   final VoidCallback onHome;
 
   const CelebrationOverlay({
     super.key,
     required this.moveCount,
+    this.maxCombo = 0,
     required this.onNextLevel,
     required this.onHome,
   });
@@ -84,30 +86,72 @@ class _CelebrationOverlayState extends State<CelebrationOverlay>
                   ),
                   const SizedBox(height: 16),
                   
-                  // Move count
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: GameColors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.touch_app,
-                          color: GameColors.accent,
+                  // Stats container
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Move count
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${widget.moveCount} moves',
-                          style: Theme.of(context).textTheme.titleLarge,
+                        decoration: BoxDecoration(
+                          color: GameColors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.touch_app,
+                              color: GameColors.accent,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${widget.moveCount} moves',
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      // Max combo (if achieved)
+                      if (widget.maxCombo > 1) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: GameColors.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xFFFFD700),
+                              width: 2,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.whatshot,
+                                color: Color(0xFFFFD700),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Max Combo: ${widget.maxCombo}x',
+                                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  color: const Color(0xFFFFD700),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
-                    ),
+                    ],
                   ),
                   const SizedBox(height: 48),
                   

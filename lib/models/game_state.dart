@@ -40,6 +40,11 @@ class GameState extends ChangeNotifier {
   List<Move> _moveHistory = [];
   List<int> _recentlyCleared = [];
   AnimatingLayer? _animatingLayer;
+  
+  // Combo tracking
+  int _comboCount = 0;
+  DateTime? _lastClearTime;
+  int _maxCombo = 0;
 
   // Getters
   List<GameStack> get stacks => _stacks;
@@ -51,6 +56,8 @@ class GameState extends ChangeNotifier {
   bool get canUndo => _moveHistory.isNotEmpty && _undosRemaining > 0;
   List<int> get recentlyCleared => _recentlyCleared;
   AnimatingLayer? get animatingLayer => _animatingLayer;
+  int get currentCombo => _comboCount;
+  int get maxCombo => _maxCombo;
 
   /// Initialize game with stacks
   void initGame(List<GameStack> stacks, int level) {
@@ -62,6 +69,9 @@ class GameState extends ChangeNotifier {
     _isComplete = false;
     _moveHistory = [];
     _recentlyCleared = [];
+    _comboCount = 0;
+    _lastClearTime = null;
+    _maxCombo = 0;
     notifyListeners();
   }
 
@@ -158,6 +168,30 @@ class GameState extends ChangeNotifier {
         _recentlyCleared.add(i);
       }
     }
+    
+    // Update combo if stacks were cleared
+    if (_recentlyCleared.isNotEmpty) {
+      _updateCombo();
+    }
+  }
+  
+  /// Update combo counter based on clear timing
+  void _updateCombo() {
+    final now = DateTime.now();
+    
+    // Check if this clear is within combo window (3 seconds)
+    if (_lastClearTime != null && 
+        now.difference(_lastClearTime!).inMilliseconds <= 3000) {
+      _comboCount = (_comboCount + 1).clamp(0, 5); // Cap at 5x
+      if (_comboCount > _maxCombo) {
+        _maxCombo = _comboCount;
+      }
+    } else {
+      // Start new combo
+      _comboCount = 1;
+    }
+    
+    _lastClearTime = now;
   }
 
   /// Check if all non-empty stacks are complete
@@ -186,6 +220,8 @@ class GameState extends ChangeNotifier {
     _isComplete = false;
     _recentlyCleared = [];
     _animatingLayer = null; // Clear any ongoing animation
+    _comboCount = 0; // Reset combo on undo
+    _lastClearTime = null;
 
     notifyListeners();
   }
