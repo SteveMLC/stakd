@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/game_state.dart';
+import '../models/stack_model.dart';
 import '../utils/constants.dart';
 import 'particles/particle_burst.dart';
 import 'combo_popup.dart';
@@ -27,16 +28,42 @@ class GameBoard extends StatefulWidget {
   State<GameBoard> createState() => _GameBoardState();
 }
 
-class _GameBoardState extends State<GameBoard> {
+class _GameBoardState extends State<GameBoard>
+    with SingleTickerProviderStateMixin {
   late final Map<int, GlobalKey> _stackKeys;
   List<ParticleBurstData> _currentBursts = [];
   int? _showComboMultiplier;
+  late AnimationController _shakeController;
+  late Animation<double> _shakeAnimation;
 
   @override
   void initState() {
     super.initState();
     // Use provided keys or create new ones
     _stackKeys = widget.stackKeys ?? {};
+    
+    // Initialize shake animation
+    _shakeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    
+    _shakeAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 8.0), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 8.0, end: -8.0), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -8.0, end: 6.0), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 6.0, end: -6.0), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -6.0, end: 0.0), weight: 1),
+    ]).animate(CurvedAnimation(
+      parent: _shakeController,
+      curve: Curves.easeInOut,
+    ));
+  }
+  
+  @override
+  void dispose() {
+    _shakeController.dispose();
+    super.dispose();
   }
 
   @override
@@ -59,16 +86,21 @@ class _GameBoardState extends State<GameBoard> {
       _stackKeys.putIfAbsent(i, () => GlobalKey());
     }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          // Calculate optimal layout based on number of stacks
-          final stackCount = stacks.length;
-          final maxStacksPerRow = _getStacksPerRow(stackCount, constraints.maxWidth);
-          final rows = (stackCount / maxStacksPerRow).ceil();
-          
-          return Stack(
+    return AnimatedBuilder(
+      animation: _shakeAnimation,
+      builder: (context, child) {
+        return Transform.translate(
+          offset: Offset(_shakeAnimation.value, 0),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // Calculate optimal layout based on number of stacks
+                final stackCount = stacks.length;
+                final maxStacksPerRow = _getStacksPerRow(stackCount, constraints.maxWidth);
+                final rows = (stackCount / maxStacksPerRow).ceil();
+                
+                return Stack(
             children: [
               // Particle bursts overlay
               if (_currentBursts.isNotEmpty)
@@ -134,6 +166,11 @@ class _GameBoardState extends State<GameBoard> {
                                   setState(() {
                                     _showComboMultiplier = currentCombo;
                                   });
+                                  
+                                  // Trigger screen shake for 4x+ combos
+                                  if (currentCombo >= 4) {
+                                    _shakeController.forward(from: 0);
+                                  }
                                 }
                               }
                             },
@@ -169,6 +206,9 @@ class _GameBoardState extends State<GameBoard> {
           );
         },
       ),
+          ),
+        );
+      },
     );
   }
 
@@ -230,7 +270,7 @@ class _GameBoardState extends State<GameBoard> {
 }
 
 class _StackWidget extends StatefulWidget {
-  final dynamic stack; // GameStack
+  final GameStack stack;
   final int index;
   final bool isSelected;
   final bool isRecentlyCleared;
@@ -287,62 +327,82 @@ class _StackWidgetState extends State<_StackWidget>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Transform.translate(
-          offset: Offset(0, widget.isSelected ? -8 : _bounceAnimation.value),
-          child: GestureDetector(
-            onTap: () {
-              HapticFeedback.lightImpact();
-              widget.onTap();
-            },
-            child: AnimatedContainer(
-              duration: GameDurations.buttonPress,
-              width: GameSizes.stackWidth,
-              height: GameSizes.stackHeight,
-              decoration: BoxDecoration(
-                color: GameColors.empty,
-                borderRadius: BorderRadius.circular(GameSizes.stackBorderRadius),
-                border: Border.all(
-                  color: widget.isSelected
-                      ? GameColors.accent
-                      : widget.isRecentlyCleared
-                          ? GameColors.palette[2]
-                          : GameColors.empty,
-                  width: widget.isSelected ? 3 : 2,
+    final layerCount = widget.stack.layers.length;
+    final isComplete = widget.stack.isComplete;
+    final semanticsLabel = StringBuffer('Stack ${widget.index + 1}, ')
+      ..write('$layerCount layer');
+    if (layerCount != 1) {
+      semanticsLabel.write('s');
+    }
+    if (isComplete) {
+      semanticsLabel.write(', complete');
+    }
+    if (widget.isSelected) {
+      semanticsLabel.write(', selected');
+    }
+
+    return Semantics(
+      button: true,
+      selected: widget.isSelected,
+      label: semanticsLabel.toString(),
+      hint: widget.isSelected ? 'Selected' : 'Double tap to select or move',
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          return Transform.translate(
+            offset: Offset(0, widget.isSelected ? -8 : _bounceAnimation.value),
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                widget.onTap();
+              },
+              child: AnimatedContainer(
+                duration: GameDurations.buttonPress,
+                width: GameSizes.stackWidth,
+                height: GameSizes.stackHeight,
+                decoration: BoxDecoration(
+                  color: GameColors.empty,
+                  borderRadius: BorderRadius.circular(GameSizes.stackBorderRadius),
+                  border: Border.all(
+                    color: widget.isSelected
+                        ? GameColors.accent
+                        : widget.isRecentlyCleared
+                            ? GameColors.palette[2]
+                            : GameColors.empty,
+                    width: widget.isSelected ? 3 : 2,
+                  ),
+                  boxShadow: [
+                    if (widget.isSelected)
+                      BoxShadow(
+                        color: GameColors.accent.withValues(alpha: 0.4),
+                        blurRadius: 12,
+                        spreadRadius: 2,
+                      ),
+                    if (widget.isRecentlyCleared)
+                      BoxShadow(
+                        color: GameColors.palette[2]
+                            .withValues(alpha: 0.4 * _glowAnimation.value),
+                        blurRadius: 16,
+                        spreadRadius: 4,
+                      ),
+                  ],
                 ),
-                boxShadow: [
-                  if (widget.isSelected)
-                    BoxShadow(
-                      color: GameColors.accent.withValues(alpha: 0.4),
-                      blurRadius: 12,
-                      spreadRadius: 2,
-                    ),
-                  if (widget.isRecentlyCleared)
-                    BoxShadow(
-                      color: GameColors.palette[2]
-                          .withValues(alpha: 0.4 * _glowAnimation.value),
-                      blurRadius: 16,
-                      spreadRadius: 4,
-                    ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(
-                  GameSizes.stackBorderRadius - 2,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(
+                    GameSizes.stackBorderRadius - 2,
+                  ),
+                  child: _buildLayers(),
                 ),
-                child: _buildLayers(),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
   Widget _buildLayers() {
-    final layers = widget.stack.layers as List;
+    final layers = widget.stack.layers;
     if (layers.isEmpty) {
       return const SizedBox.expand();
     }
@@ -366,7 +426,7 @@ class _StackWidgetState extends State<_StackWidget>
 
 /// Animated overlay for moving layer
 class _AnimatedLayerOverlay extends StatefulWidget {
-  final dynamic animatingLayer; // AnimatingLayer
+  final AnimatingLayer animatingLayer;
   final GlobalKey fromKey;
   final GlobalKey toKey;
   final VoidCallback onComplete;

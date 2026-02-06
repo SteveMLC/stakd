@@ -5,13 +5,12 @@ import '../services/level_generator.dart';
 import '../services/storage_service.dart';
 import '../services/ad_service.dart';
 import '../services/audio_service.dart';
-import '../services/review_service.dart';
 import '../services/tutorial_service.dart';
 import '../utils/constants.dart';
 import '../widgets/game_board.dart';
 import '../widgets/game_button.dart';
 import '../widgets/celebration_overlay.dart';
-import '../widgets/review_prompt_dialog.dart';
+import '../widgets/hint_overlay.dart';
 import '../widgets/tutorial_overlay.dart';
 
 /// Main gameplay screen
@@ -33,7 +32,6 @@ class _GameScreenState extends State<GameScreen> {
   final TutorialService _tutorialService = TutorialService();
   final Map<int, GlobalKey> _stackKeys = {};
   final GlobalKey _undoButtonKey = GlobalKey();
-  bool _showingAd = false;
   bool _showingHint = false;
   bool _showTutorial = false;
   bool _tutorialInitialized = false;
@@ -100,13 +98,17 @@ class _GameScreenState extends State<GameScreen> {
       }
     } else if (currentStep == TutorialStep.moveLayer) {
       // Highlight valid destination after selection
-      if (gameState.selectedStackIndex != null) {
-        // Find a valid destination
+      final selectedIndex = gameState.selectedStackIndex;
+      if (selectedIndex >= 0) {
+        // Find first valid destination (empty stack or compatible)
         for (int i = 0; i < gameState.stacks.length; i++) {
-          if (i != gameState.selectedStackIndex &&
-              gameState.canMoveTo(gameState.selectedStackIndex!, i)) {
-            _tutorialService.setTarget(i, _stackKeys[i]);
-            break;
+          if (i != selectedIndex) {
+            final fromStack = gameState.stacks[selectedIndex];
+            final toStack = gameState.stacks[i];
+            if (!fromStack.isEmpty && toStack.canAccept(fromStack.topLayer!)) {
+              _tutorialService.setTarget(i, _stackKeys[i]);
+              break;
+            }
           }
         }
       }
@@ -123,10 +125,12 @@ class _GameScreenState extends State<GameScreen> {
     if (!_tutorialService.isActive) return;
 
     // Detect stack selection
-    if (gameState.selectedStackIndex != null &&
-        _previousSelectedStack != gameState.selectedStackIndex) {
-      _tutorialService.onStackSelected(gameState.selectedStackIndex!);
-      _previousSelectedStack = gameState.selectedStackIndex;
+    final currentSelected = gameState.selectedStackIndex >= 0 
+        ? gameState.selectedStackIndex 
+        : null;
+    if (currentSelected != null && _previousSelectedStack != currentSelected) {
+      _tutorialService.onStackSelected(currentSelected);
+      _previousSelectedStack = currentSelected;
       
       // Update targets for next step
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -200,9 +204,7 @@ class _GameScreenState extends State<GameScreen> {
 
     // Show interstitial if needed
     if (adService.shouldShowInterstitial()) {
-      setState(() => _showingAd = true);
       await adService.showInterstitialIfReady();
-      setState(() => _showingAd = false);
     }
 
     setState(() {

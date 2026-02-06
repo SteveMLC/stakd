@@ -29,13 +29,15 @@ class Layer {
   @override
   int get hashCode => id.hashCode;
 
-  Map<String, dynamic> toJson() => {
+  Map<String, Object?> toJson() => {
         'colorIndex': colorIndex,
         'id': id,
       };
 
-  factory Layer.fromJson(Map<String, dynamic> json) => Layer(
-        colorIndex: json['colorIndex'] as int,
-        id: json['id'] as String,
-      );
+  factory Layer.fromJson(Map<String, Object?> json) {
+    return Layer(
+      colorIndex: json['colorIndex'] as int,
+      id: json['id'] as String,
+    );
+  }
 }

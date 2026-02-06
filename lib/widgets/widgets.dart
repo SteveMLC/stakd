@@ -6,3 +6,4 @@ export 'stack_widget.dart';
 export 'game_board.dart';
 export 'celebration_overlay.dart';
 export 'game_button.dart';
+export 'combo_popup.dart';

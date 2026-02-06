@@ -83,17 +83,20 @@ class GameStack {
     );
   }
 
-  Map<String, dynamic> toJson() => {
+  Map<String, Object?> toJson() => {
         'layers': layers.map((l) => l.toJson()).toList(),
         'maxDepth': maxDepth,
         'id': id,
       };
 
-  factory GameStack.fromJson(Map<String, dynamic> json) => GameStack(
-        layers: (json['layers'] as List)
-            .map((l) => Layer.fromJson(l as Map<String, dynamic>))
-            .toList(),
-        maxDepth: json['maxDepth'] as int,
-        id: json['id'] as String,
-      );
+  factory GameStack.fromJson(Map<String, Object?> json) {
+    final layersJson = json['layers'] as List<Object?>;
+    return GameStack(
+      layers: layersJson
+          .map((l) => Layer.fromJson(l as Map<String, Object?>))
+          .toList(),
+      maxDepth: json['maxDepth'] as int,
+      id: json['id'] as String,
+    );
+  }
 }
