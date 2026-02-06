@@ -16,6 +16,19 @@ class Move {
   });
 }
 
+/// Animation state for moving layer
+class AnimatingLayer {
+  final Layer layer;
+  final int fromStackIndex;
+  final int toStackIndex;
+
+  AnimatingLayer({
+    required this.layer,
+    required this.fromStackIndex,
+    required this.toStackIndex,
+  });
+}
+
 /// Main game state - manages all stacks and game logic
 class GameState extends ChangeNotifier {
   List<GameStack> _stacks = [];
@@ -26,6 +39,7 @@ class GameState extends ChangeNotifier {
   bool _isComplete = false;
   List<Move> _moveHistory = [];
   List<int> _recentlyCleared = [];
+  AnimatingLayer? _animatingLayer;
 
   // Getters
   List<GameStack> get stacks => _stacks;
@@ -36,6 +50,7 @@ class GameState extends ChangeNotifier {
   bool get isComplete => _isComplete;
   bool get canUndo => _moveHistory.isNotEmpty && _undosRemaining > 0;
   List<int> get recentlyCleared => _recentlyCleared;
+  AnimatingLayer? get animatingLayer => _animatingLayer;
 
   /// Initialize game with stacks
   void initGame(List<GameStack> stacks, int level) {
@@ -52,12 +67,7 @@ class GameState extends ChangeNotifier {
 
   /// Handle tap on a stack
   void onStackTap(int stackIndex) {
-    if (_isComplete) return;
-
-    // Clear recently cleared list on any tap
-    if (_recentlyCleared.isNotEmpty) {
-      _recentlyCleared = [];
-    }
+    if (_isComplete || _animatingLayer != null) return;
 
     if (_selectedStackIndex == -1) {
       // No stack selected - try to select this one
@@ -89,25 +99,17 @@ class GameState extends ChangeNotifier {
     final layer = fromStack.topLayer!;
 
     if (toStack.canAccept(layer)) {
-      // Valid move - execute it
-      _stacks[fromIndex] = fromStack.withTopLayerRemoved();
-      _stacks[toIndex] = toStack.withLayerAdded(layer);
-      
-      _moveHistory.add(Move(
+      // Valid move - start animation
+      _animatingLayer = AnimatingLayer(
+        layer: layer,
         fromStackIndex: fromIndex,
         toStackIndex: toIndex,
-        layer: layer,
-      ));
+      );
       
-      _moveCount++;
+      // Remove from source stack immediately (will be hidden during animation)
+      _stacks[fromIndex] = fromStack.withTopLayerRemoved();
       _selectedStackIndex = -1;
-
-      // Check for completed stacks
-      _checkForCompletedStacks();
-
-      // Check win condition
-      _checkWinCondition();
-
+      
       notifyListeners();
     } else {
       // Invalid move - if destination has layers, select it instead
@@ -116,6 +118,36 @@ class GameState extends ChangeNotifier {
         notifyListeners();
       }
     }
+  }
+
+  /// Complete the layer move after animation finishes
+  void completeMove() {
+    if (_animatingLayer == null) return;
+
+    final anim = _animatingLayer!;
+    
+    // Clear recently cleared list when completing a new move
+    _recentlyCleared = [];
+    
+    // Add layer to destination stack
+    _stacks[anim.toStackIndex] = _stacks[anim.toStackIndex].withLayerAdded(anim.layer);
+    
+    _moveHistory.add(Move(
+      fromStackIndex: anim.fromStackIndex,
+      toStackIndex: anim.toStackIndex,
+      layer: anim.layer,
+    ));
+    
+    _moveCount++;
+    _animatingLayer = null;
+
+    // Check for completed stacks
+    _checkForCompletedStacks();
+
+    // Check win condition
+    _checkWinCondition();
+
+    notifyListeners();
   }
 
   /// Check and mark completed stacks
@@ -153,6 +185,7 @@ class GameState extends ChangeNotifier {
     _selectedStackIndex = -1;
     _isComplete = false;
     _recentlyCleared = [];
+    _animatingLayer = null; // Clear any ongoing animation
 
     notifyListeners();
   }

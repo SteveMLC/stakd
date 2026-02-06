@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:confetti/confetti.dart';
 import '../utils/constants.dart';
+import 'particles/confetti_overlay.dart';
 
 /// Celebration overlay shown when level is complete
 class CelebrationOverlay extends StatefulWidget {
@@ -23,7 +23,6 @@ class _CelebrationOverlayState extends State<CelebrationOverlay>
     with SingleTickerProviderStateMixin {
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
-  late ConfettiController _confettiController;
 
   @override
   void initState() {
@@ -37,17 +36,11 @@ class _CelebrationOverlayState extends State<CelebrationOverlay>
       CurvedAnimation(parent: _fadeController, curve: Curves.easeOut),
     );
     _fadeController.forward();
-
-    _confettiController = ConfettiController(
-      duration: const Duration(seconds: 2),
-    );
-    _confettiController.play();
   }
 
   @override
   void dispose() {
     _fadeController.dispose();
-    _confettiController.dispose();
     super.dispose();
   }
 
@@ -55,27 +48,21 @@ class _CelebrationOverlayState extends State<CelebrationOverlay>
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: _fadeAnimation,
-      child: Container(
-        color: Colors.black.withValues(alpha: 0.7),
-        child: Stack(
-          children: [
-            // Confetti
-            Align(
-              alignment: Alignment.topCenter,
-              child: ConfettiWidget(
-                confettiController: _confettiController,
-                blastDirectionality: BlastDirectionality.explosive,
-                emissionFrequency: 0.05,
-                numberOfParticles: 20,
-                maxBlastForce: 20,
-                minBlastForce: 10,
-                gravity: 0.2,
-                colors: GameColors.palette,
-              ),
+      child: Stack(
+        children: [
+          // Confetti behind everything
+          const Positioned.fill(
+            child: ConfettiOverlay(
+              duration: Duration(seconds: 3),
+              colors: GameColors.palette,
+              confettiCount: 50,
             ),
-            
-            // Content
-            Center(
+          ),
+          
+          // Dark overlay and content
+          Container(
+            color: Colors.black.withValues(alpha: 0.7),
+            child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -150,8 +137,8 @@ class _CelebrationOverlayState extends State<CelebrationOverlay>
                 ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
