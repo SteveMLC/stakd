@@ -20,7 +20,6 @@ class StakdApp extends StatelessWidget {
           surface: GameColors.surface,
           onSurface: GameColors.text,
         ),
-        fontFamily: 'Poppins',
         textTheme: const TextTheme(
           displayLarge: TextStyle(
             fontSize: 48,
@@ -56,7 +55,6 @@ class StakdApp extends StatelessWidget {
             textStyle: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              fontFamily: 'Poppins',
             ),
           ),
         ),
@@ -71,7 +69,6 @@ class StakdApp extends StatelessWidget {
             textStyle: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              fontFamily: 'Poppins',
             ),
           ),
         ),

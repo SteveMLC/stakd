@@ -120,7 +120,6 @@ class _ComboPopupState extends State<ComboPopup>
                   Text(
                     'COMBO',
                     style: TextStyle(
-                      fontFamily: 'Poppins',
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                       color: GameColors.text,
@@ -131,7 +130,6 @@ class _ComboPopupState extends State<ComboPopup>
                   Text(
                     '${widget.comboMultiplier}x',
                     style: TextStyle(
-                      fontFamily: 'Poppins',
                       fontSize: 48,
                       fontWeight: FontWeight.w900,
                       color: _getComboColor(),

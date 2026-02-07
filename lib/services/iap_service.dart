@@ -181,6 +181,9 @@ class IapService extends ChangeNotifier {
         case PurchaseStatus.error:
           _setError(purchase.error?.message ?? 'Purchase failed.');
           break;
+        case PurchaseStatus.canceled:
+          // User canceled the purchase flow; no action needed.
+          break;
         case PurchaseStatus.purchased:
         case PurchaseStatus.restored:
           final valid = await _verifyPurchase(purchase);

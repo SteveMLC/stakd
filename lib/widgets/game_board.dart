@@ -73,7 +73,7 @@ class _GameBoardState extends State<GameBoard>
       return const Center(
         child: Text(
           'Loading...',
-          style: TextStyle(fontFamily: 'Poppins', color: GameColors.textMuted),
+          style: const TextStyle(color: GameColors.textMuted),
         ),
       );
     }
