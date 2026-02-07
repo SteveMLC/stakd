@@ -88,10 +88,21 @@ class StackWidget extends StatelessWidget {
               if (stack.isEmpty)
                 Expanded(
                   child: Center(
-                    child: Icon(
-                      Icons.add_circle_outline,
-                      color: GameColors.textMuted.withValues(alpha: 0.3),
-                      size: 32,
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: GameColors.textMuted.withValues(alpha: 0.15),
+                          width: 2,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.add,
+                        color: GameColors.textMuted.withValues(alpha: 0.2),
+                        size: 24,
+                      ),
                     ),
                   ),
                 ),

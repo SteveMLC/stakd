@@ -10,7 +10,7 @@ import '../services/tutorial_service.dart';
 import '../utils/constants.dart';
 import '../widgets/game_board.dart';
 import '../widgets/game_button.dart';
-import '../widgets/celebration_overlay.dart';
+import '../widgets/completion_overlay.dart';
 import '../widgets/hint_overlay.dart';
 import '../widgets/multi_grab_hint_overlay.dart';
 import '../widgets/tutorial_overlay.dart';
@@ -40,6 +40,8 @@ class _GameScreenState extends State<GameScreen> {
   int _previousMoveCount = 0;
   bool _showMultiGrabHint = false;
   bool _multiGrabHintScheduled = false;
+  DateTime? _levelStartTime;
+  Duration? _completionDuration;
 
   IapService? _iapService;
 
@@ -189,6 +191,18 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
+  void _captureCompletionTime(GameState gameState) {
+    if (!gameState.isComplete || _completionDuration != null) return;
+    final startTime = _levelStartTime;
+    if (startTime == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _completionDuration != null) return;
+      setState(() {
+        _completionDuration = DateTime.now().difference(startTime);
+      });
+    });
+  }
+
   void _onTutorialComplete() async {
     final storage = StorageService();
     await storage.setTutorialCompleted(true);
@@ -204,6 +218,8 @@ class _GameScreenState extends State<GameScreen> {
   void _loadLevel() {
     final (stacks, par) = _levelGenerator.generateLevelWithPar(_currentLevel);
     context.read<GameState>().initGame(stacks, _currentLevel, par: par);
+    _levelStartTime = DateTime.now();
+    _completionDuration = null;
 
     // Reset hint state
     setState(() {
@@ -401,6 +417,7 @@ class _GameScreenState extends State<GameScreen> {
               // Handle game state changes for tutorial
               _handleGameStateChange(gameState);
               _maybeShowMultiGrabHint(gameState);
+              _captureCompletionTime(gameState);
 
               return Stack(
                 children: [
@@ -453,10 +470,10 @@ class _GameScreenState extends State<GameScreen> {
 
                   // Win overlay
                   if (gameState.isComplete)
-                    CelebrationOverlay(
-                      moveCount: gameState.moveCount,
-                      maxCombo: gameState.maxCombo,
-                      onNextLevel: () {
+                    CompletionOverlay(
+                      moves: gameState.moveCount,
+                      time: _completionDuration ?? Duration.zero,
+                      onNextPuzzle: () {
                         _onLevelComplete();
                         _nextLevel();
                       },
@@ -514,40 +531,65 @@ class _GameScreenState extends State<GameScreen> {
           const Spacer(),
 
           // Move counter with par
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: GameColors.surface,
-              borderRadius: BorderRadius.circular(20),
-              border: gameState.par != null
-                  ? Border.all(
-                      color: gameState.isUnderPar
-                          ? Colors.green.withValues(alpha: 0.6)
-                          : gameState.moveCount > (gameState.par! + 5)
-                              ? Colors.red.withValues(alpha: 0.4)
-                              : Colors.transparent,
-                      width: 2,
-                    )
-                  : null,
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.touch_app, size: 18),
-                const SizedBox(width: 4),
-                Text(
-                  gameState.par != null
-                      ? '${gameState.moveCount}/${gameState.par}'
-                      : '${gameState.moveCount}',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: gameState.par != null && gameState.isUnderPar
-                        ? Colors.green
-                        : null,
-                  ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: GameColors.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: gameState.par != null
+                      ? Border.all(
+                          color: gameState.isUnderPar
+                              ? Colors.green.withValues(alpha: 0.6)
+                              : gameState.moveCount > (gameState.par! + 5)
+                                  ? Colors.red.withValues(alpha: 0.4)
+                                  : Colors.transparent,
+                          width: 2,
+                        )
+                      : null,
                 ),
-              ],
-            ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.touch_app, size: 18),
+                    const SizedBox(width: 4),
+                    Text(
+                      gameState.par != null
+                          ? '${gameState.moveCount}/${gameState.par}'
+                          : '${gameState.moveCount}',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: gameState.par != null && gameState.isUnderPar
+                            ? Colors.green
+                            : null,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${gameState.completedStackCount}/${gameState.totalStacks}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: GameColors.textMuted,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.check_circle,
+                    size: 16,
+                    color: GameColors.palette[2].withValues(alpha: 0.7),
+                  ),
+                ],
+              ),
+            ],
           ),
         ],
       ),

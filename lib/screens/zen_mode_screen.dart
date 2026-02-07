@@ -4,13 +4,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/game_state.dart';
-import '../models/stack_model.dart';
 import '../services/level_generator.dart';
 import '../services/zen_puzzle_isolate.dart';
 import '../services/audio_service.dart';
 import '../services/storage_service.dart';
 import '../utils/constants.dart';
 import '../widgets/game_board.dart';
+import '../widgets/loading_text.dart';
 
 /// Zen Mode difficulty levels
 enum ZenDifficulty {
@@ -312,16 +312,13 @@ class _ZenModeScreenState extends State<ZenModeScreen>
               Positioned.fill(
                 child: Container(
                   color: Colors.black54,
-                  child: const Center(
+                  child: Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         CircularProgressIndicator(color: GameColors.zen),
                         SizedBox(height: 16),
-                        Text(
-                          'Generating puzzle…',
-                          style: TextStyle(color: GameColors.textMuted),
-                        ),
+                        LoadingText(),
                       ],
                     ),
                   ),

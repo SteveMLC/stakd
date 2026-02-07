@@ -42,6 +42,7 @@ class AnimatingLayer {
 
 /// Main game state - manages all stacks and game logic
 class GameState extends ChangeNotifier {
+  static const int maxHistorySize = 10;
   List<GameStack> _stacks = [];
   int _selectedStackIndex = -1;
   int _currentLevel = 1;
@@ -82,6 +83,8 @@ class GameState extends ChangeNotifier {
   List<Layer>? get multiGrabLayers => _multiGrabLayers;
   int get multiGrabCount => _multiGrabLayers?.length ?? 0;
   bool get isZenMode => _isZenMode;
+  int get completedStackCount => _stacks.where((s) => s.isComplete).length;
+  int get totalStacks => _stacks.length;
 
   /// Initialize game with stacks
   void initGame(List<GameStack> stacks, int level, {int? par}) {
@@ -290,6 +293,9 @@ class GameState extends ChangeNotifier {
         multiLayers: anim.multiLayers,
       ),
     );
+    if (_moveHistory.length > maxHistorySize) {
+      _moveHistory.removeAt(0);
+    }
 
     _moveCount++; // Still counts as 1 move!
     _animatingLayer = null;
