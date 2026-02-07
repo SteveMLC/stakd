@@ -3,6 +3,22 @@ import '../models/stack_model.dart';
 import '../models/layer_model.dart';
 import '../utils/constants.dart';
 
+/// Encode LevelParams + optional seed for isolate. [colors, stacks, emptySlots, depth, shuffleMoves, minDifficultyScore, seed].
+List<int> encodeParamsForIsolate(LevelParams params, {int seed = 0}) =>
+    [params.colors, params.stacks, params.emptySlots, params.depth, params.shuffleMoves, params.minDifficultyScore, seed];
+
+/// Decode isolate result + maxDepth into List<GameStack>.
+List<GameStack> decodeStacksFromIsolate(List<List<int>> encoded, int maxDepth) {
+  return encoded
+      .map((layerIndices) => GameStack(
+            layers: layerIndices
+                .map((i) => Layer(colorIndex: i))
+                .toList(),
+            maxDepth: maxDepth,
+          ))
+      .toList();
+}
+
 /// Generates solvable puzzle levels
 class LevelGenerator {
   final int _seedOffset;
@@ -336,16 +352,21 @@ class LevelGenerator {
     return generatePuzzleWithParams(params);
   }
 
-  List<GameStack> generatePuzzleWithParams(LevelParams params) {
+  /// [maxAttempts] and [maxSolvableStates] can be lowered for Zen for faster generation.
+  List<GameStack> generatePuzzleWithParams(
+    LevelParams params, {
+    int maxAttempts = 15,
+    int maxSolvableStates = 5000,
+  }) {
     List<GameStack>? bestLevel;
     int bestScore = -1;
 
-    for (int attempt = 0; attempt < 15; attempt++) {
+    for (int attempt = 0; attempt < maxAttempts; attempt++) {
       final random = Random(DateTime.now().millisecondsSinceEpoch + attempt);
       var level = _createSolvedState(params, random);
       level = _shuffleLevel(level, params.shuffleMoves, random);
 
-      if (!isSolvable(level, maxStates: 5000)) continue;
+      if (!isSolvable(level, maxStates: maxSolvableStates)) continue;
 
       final score = difficultyScore(level);
       if (score >= params.minDifficultyScore) {
@@ -391,6 +412,7 @@ class LevelGenerator {
     final minDifficulty = params.minDifficultyScore;
 
     List<GameStack>? bestLevel;
+    List<GameStack>? bestSolvable;
     int bestScore = -1;
 
     for (int attempt = 0; attempt < 10; attempt++) {

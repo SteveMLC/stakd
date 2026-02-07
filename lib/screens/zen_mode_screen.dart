@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/game_state.dart';
 import '../models/stack_model.dart';
 import '../services/level_generator.dart';
+import '../services/zen_puzzle_isolate.dart';
 import '../services/audio_service.dart';
 import '../services/storage_service.dart';
 import '../utils/constants.dart';
@@ -47,6 +49,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   Duration _sessionDuration = Duration.zero;
   bool _showMoveCounter = false;
   bool _isTransitioning = false;
+  bool _isLoading = false;
   int _puzzleSeed = 0;
 
   // Fade animation for puzzle transitions
@@ -102,18 +105,23 @@ class _ZenModeScreenState extends State<ZenModeScreen>
 
   void _loadNewPuzzle() {
     _puzzleStart = DateTime.now();
-    final stacks = _generateZenPuzzle();
-    context.read<GameState>().initGame(stacks, 0); // Level 0 = zen mode
-    setState(() {
-      _stackKeys.clear();
-      _puzzleSeed++;
-    });
-  }
-
-  List<GameStack> _generateZenPuzzle() {
-    final generator = LevelGenerator(seed: _puzzleSeed);
     final params = _getAdaptiveDifficulty();
-    return generator.generatePuzzleWithParams(params);
+    final seed = _puzzleSeed;
+    setState(() => _isLoading = true);
+    final encoded = encodeParamsForIsolate(params, seed: seed);
+    compute<List<int>, List<List<int>>>(generateZenPuzzleInIsolate, encoded)
+        .then((encodedStacks) {
+      if (!mounted) return;
+      final stacks = decodeStacksFromIsolate(encodedStacks, params.depth);
+      context.read<GameState>().initGame(stacks, 0); // Level 0 = zen mode
+      setState(() {
+        _isLoading = false;
+        _stackKeys.clear();
+        _puzzleSeed++;
+      });
+    }).catchError((e, st) {
+      if (mounted) setState(() => _isLoading = false);
+    });
   }
 
   void _onPuzzleComplete() async {
@@ -300,6 +308,25 @@ class _ZenModeScreenState extends State<ZenModeScreen>
               right: 16,
               child: _buildSessionStats(),
             ),
+            if (_isLoading)
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black54,
+                  child: const Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(color: GameColors.zen),
+                        SizedBox(height: 16),
+                        Text(
+                          'Generating puzzle…',
+                          style: TextStyle(color: GameColors.textMuted),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
