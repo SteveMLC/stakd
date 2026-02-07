@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../models/game_state.dart';
 import '../models/stack_model.dart';
+import '../services/haptic_service.dart';
 import '../utils/constants.dart';
 import 'particles/particle_burst.dart';
 import 'combo_popup.dart';
@@ -174,6 +174,9 @@ class _GameBoardState extends State<GameBoard>
                                       widget.onClear?.call();
                                       _triggerParticleBursts(currentCleared);
 
+                                      // Haptic success pattern for stack complete
+                                      haptics.successPattern();
+
                                       // Show combo popup if combo > 1
                                       final currentCombo =
                                           widget.gameState.currentCombo;
@@ -181,6 +184,9 @@ class _GameBoardState extends State<GameBoard>
                                         setState(() {
                                           _showComboMultiplier = currentCombo;
                                         });
+
+                                        // Haptic combo burst
+                                        haptics.comboBurst(currentCombo);
 
                                         // Trigger screen shake for 4x+ combos
                                         if (currentCombo >= 4) {
@@ -378,7 +384,7 @@ class _StackWidgetState extends State<_StackWidget>
             offset: Offset(0, widget.isSelected ? -8 : _bounceAnimation.value),
             child: GestureDetector(
               onTap: () {
-                HapticFeedback.lightImpact();
+                haptics.lightTap();
                 widget.onTap();
               },
               child: AnimatedContainer(
@@ -523,6 +529,8 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _calculatePositions();
       _controller.forward().then((_) {
+        // Medium impact haptic when layer lands
+        haptics.mediumImpact();
         widget.onComplete();
       });
     });

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/haptic_service.dart';
 import '../utils/constants.dart';
 import 'particles/confetti_overlay.dart';
 
@@ -39,6 +40,9 @@ class _CelebrationOverlayState extends State<CelebrationOverlay>
       end: 1.0,
     ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeOut));
     _fadeController.forward();
+
+    // Trigger level win haptic pattern
+    haptics.levelWinPattern();
   }
 
   @override

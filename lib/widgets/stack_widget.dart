@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/stack_model.dart';
+import '../services/haptic_service.dart';
 import '../utils/constants.dart';
 import 'layer_widget.dart';
 
@@ -21,7 +22,10 @@ class StackWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        haptics.lightTap();
+        onTap?.call();
+      },
       child: AnimatedContainer(
         duration: GameDurations.buttonPress,
         curve: Curves.easeOutCubic,
