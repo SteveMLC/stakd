@@ -73,7 +73,7 @@ class _GameBoardState extends State<GameBoard>
       return const Center(
         child: Text(
           'Loading...',
-          style: const TextStyle(color: GameColors.textMuted),
+          style: TextStyle(color: GameColors.textMuted),
         ),
       );
     }
@@ -323,10 +323,12 @@ class _StackWidget extends StatefulWidget {
 }
 
 class _StackWidgetState extends State<_StackWidget>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _bounceAnimation;
   late Animation<double> _glowAnimation;
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
 
   @override
   void initState() {
@@ -340,6 +342,15 @@ class _StackWidgetState extends State<_StackWidget>
       end: -8,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
     _glowAnimation = Tween<double>(begin: 0, end: 1).animate(_controller);
+
+    // Pulse animation for nearing completion glow
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    _pulseAnimation = Tween<double>(begin: 0.3, end: 0.7).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
   }
 
   @override
@@ -348,11 +359,40 @@ class _StackWidgetState extends State<_StackWidget>
     if (widget.isRecentlyCleared && !oldWidget.isRecentlyCleared) {
       _controller.forward().then((_) => _controller.reverse());
     }
+
+    // Start/stop pulsing based on nearing completion
+    final nearingCompletion = _isNearingCompletion();
+    if (nearingCompletion && !_pulseController.isAnimating) {
+      _pulseController.repeat(reverse: true);
+    } else if (!nearingCompletion && _pulseController.isAnimating) {
+      _pulseController.stop();
+      _pulseController.reset();
+    }
+  }
+
+  /// Check if stack is nearing completion (3+ matching layers)
+  bool _isNearingCompletion() {
+    final layers = widget.stack.layers;
+    if (layers.length < 3) return false;
+    // Check if all layers have the same color
+    final firstColor = layers.first.colorIndex;
+    return layers.every((l) => l.colorIndex == firstColor);
+  }
+
+  /// Get the completion progress (0.0 to 1.0)
+  double _getCompletionProgress() {
+    final layers = widget.stack.layers;
+    if (layers.isEmpty) return 0.0;
+    final firstColor = layers.first.colorIndex;
+    if (!layers.every((l) => l.colorIndex == firstColor)) return 0.0;
+    // 3 layers = 0.6, 4 layers = 0.8, 5 layers = 1.0
+    return (layers.length / 5.0).clamp(0.0, 1.0);
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
@@ -360,6 +400,8 @@ class _StackWidgetState extends State<_StackWidget>
   Widget build(BuildContext context) {
     final layerCount = widget.stack.layers.length;
     final isComplete = widget.stack.isComplete;
+    final nearingCompletion = _isNearingCompletion();
+    final completionProgress = _getCompletionProgress();
     final semanticsLabel = StringBuffer('Stack ${widget.index + 1}, ')
       ..write('$layerCount layer');
     if (layerCount != 1) {
@@ -372,14 +414,21 @@ class _StackWidgetState extends State<_StackWidget>
       semanticsLabel.write(', selected');
     }
 
+    // Get the stack's dominant color for glow effect
+    final glowColor = widget.stack.layers.isNotEmpty
+        ? GameColors.getColor(widget.stack.layers.first.colorIndex)
+        : GameColors.accent;
+
     return Semantics(
       button: true,
       selected: widget.isSelected,
       label: semanticsLabel.toString(),
       hint: widget.isSelected ? 'Selected' : 'Double tap to select or move',
       child: AnimatedBuilder(
-        animation: _controller,
+        animation: Listenable.merge([_controller, _pulseController]),
         builder: (context, child) {
+          final pulseValue = nearingCompletion ? _pulseAnimation.value : 0.0;
+
           return Transform.translate(
             offset: Offset(0, widget.isSelected ? -8 : _bounceAnimation.value),
             child: GestureDetector(
@@ -400,9 +449,11 @@ class _StackWidgetState extends State<_StackWidget>
                     color: widget.isSelected
                         ? GameColors.accent
                         : widget.isRecentlyCleared
-                        ? GameColors.palette[2]
-                        : GameColors.empty,
-                    width: widget.isSelected ? 3 : 2,
+                            ? GameColors.palette[2]
+                            : nearingCompletion
+                                ? glowColor.withValues(alpha: 0.6 + pulseValue * 0.4)
+                                : GameColors.empty,
+                    width: widget.isSelected ? 3 : nearingCompletion ? 2.5 : 2,
                   ),
                   boxShadow: [
                     if (widget.isSelected)
@@ -418,6 +469,15 @@ class _StackWidgetState extends State<_StackWidget>
                         ),
                         blurRadius: 16,
                         spreadRadius: 4,
+                      ),
+                    // Glow effect for nearing completion (3+ matching layers)
+                    if (nearingCompletion && !widget.isSelected && !widget.isRecentlyCleared)
+                      BoxShadow(
+                        color: glowColor.withValues(
+                          alpha: (0.2 + pulseValue * 0.3) * completionProgress,
+                        ),
+                        blurRadius: 8 + completionProgress * 8,
+                        spreadRadius: completionProgress * 3,
                       ),
                   ],
                 ),
@@ -480,7 +540,8 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _curveAnimation;
-  late Animation<double> _scaleAnimation;
+  late Animation<double> _scaleXAnimation;
+  late Animation<double> _scaleYAnimation;
   Offset _startPos = Offset.zero;
   Offset _endPos = Offset.zero;
   double _arcHeight = 60.0;
@@ -491,36 +552,67 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 250),
+      duration: const Duration(milliseconds: 280),
     );
 
-    // Main curve for position
+    // Main curve for position - ease out for natural arc
     _curveAnimation = CurvedAnimation(
       parent: _controller,
-      curve: Curves.easeInOut,
+      curve: Curves.easeOutQuad,
     );
 
-    // Squash/stretch effect - compress slightly at end
-    _scaleAnimation = TweenSequence<double>([
+    // Horizontal scale: squash wide on pickup (1.1), stretch narrow on drop (0.85)
+    _scaleXAnimation = TweenSequence<double>([
+      // Pickup: squash wide (1.0 → 1.1)
       TweenSequenceItem(
-        tween: Tween<double>(
-          begin: 1.0,
-          end: 1.05,
-        ).chain(CurveTween(curve: Curves.easeOut)),
+        tween: Tween<double>(begin: 1.0, end: 1.1)
+            .chain(CurveTween(curve: Curves.easeOut)),
+        weight: 15,
+      ),
+      // Travel: back to normal (1.1 → 1.0)
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.1, end: 1.0)
+            .chain(CurveTween(curve: Curves.linear)),
         weight: 50,
       ),
+      // Drop: stretch narrow (1.0 → 0.85)
       TweenSequenceItem(
-        tween: Tween<double>(
-          begin: 1.05,
-          end: 0.95,
-        ).chain(CurveTween(curve: Curves.easeIn)),
-        weight: 30,
+        tween: Tween<double>(begin: 1.0, end: 0.85)
+            .chain(CurveTween(curve: Curves.easeIn)),
+        weight: 15,
       ),
+      // Bounce back: elasticOut (0.85 → 1.0)
       TweenSequenceItem(
-        tween: Tween<double>(
-          begin: 0.95,
-          end: 1.0,
-        ).chain(CurveTween(curve: Curves.easeOutBack)),
+        tween: Tween<double>(begin: 0.85, end: 1.0)
+            .chain(CurveTween(curve: Curves.elasticOut)),
+        weight: 20,
+      ),
+    ]).animate(_controller);
+
+    // Vertical scale: squash short on pickup (0.85), stretch tall on drop (1.1)
+    _scaleYAnimation = TweenSequence<double>([
+      // Pickup: squash short (1.0 → 0.85)
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: 0.85)
+            .chain(CurveTween(curve: Curves.easeOut)),
+        weight: 15,
+      ),
+      // Travel: back to normal (0.85 → 1.0)
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 0.85, end: 1.0)
+            .chain(CurveTween(curve: Curves.linear)),
+        weight: 50,
+      ),
+      // Drop: stretch tall (1.0 → 1.15)
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: 1.15)
+            .chain(CurveTween(curve: Curves.easeIn)),
+        weight: 15,
+      ),
+      // Bounce back: elasticOut (1.15 → 1.0)
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.15, end: 1.0)
+            .chain(CurveTween(curve: Curves.elasticOut)),
         weight: 20,
       ),
     ]).animate(_controller);
@@ -574,40 +666,63 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
     super.dispose();
   }
 
+  /// Calculate quadratic bezier point for arc trajectory
+  Offset _quadraticBezier(Offset p0, Offset p1, Offset p2, double t) {
+    final u = 1 - t;
+    return Offset(
+      u * u * p0.dx + 2 * u * t * p1.dx + t * t * p2.dx,
+      u * u * p0.dy + 2 * u * t * p1.dy + t * t * p2.dy,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
-        // Calculate arc trajectory
         final t = _curveAnimation.value;
-        final x = _startPos.dx + (_endPos.dx - _startPos.dx) * t;
 
-        // Parabolic arc: goes up then down
-        final arcProgress = 4 * t * (1 - t); // Peaks at t=0.5
-        final y =
-            _startPos.dy +
-            (_endPos.dy - _startPos.dy) * t -
-            _arcHeight * arcProgress;
+        // Quadratic bezier arc trajectory
+        // Control point is above the midpoint for a nice arc
+        final midX = (_startPos.dx + _endPos.dx) / 2;
+        final minY = _startPos.dy < _endPos.dy ? _startPos.dy : _endPos.dy;
+        final controlPoint = Offset(midX, minY - _arcHeight);
+
+        final pos = _quadraticBezier(_startPos, controlPoint, _endPos, t);
+
+        // Get the layer color for glow effect
+        final layerColor = GameColors.getColor(
+          widget.animatingLayer.layer.colorIndex,
+        );
 
         return Positioned(
-          left: x,
-          top: y,
-          child: Transform.scale(
-            scale: _scaleAnimation.value,
+          left: pos.dx,
+          top: pos.dy,
+          child: Transform(
+            alignment: Alignment.center,
+            transform: Matrix4.diagonal3Values(
+              _scaleXAnimation.value,
+              _scaleYAnimation.value,
+              1.0,
+            ),
             child: Container(
               width: GameSizes.stackWidth,
               height: GameSizes.layerHeight,
               decoration: BoxDecoration(
-                color: GameColors.getColor(
-                  widget.animatingLayer.layer.colorIndex,
-                ),
+                color: layerColor,
                 borderRadius: BorderRadius.circular(4),
                 boxShadow: [
+                  // Drop shadow
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 4),
+                  ),
+                  // Color glow while moving
+                  BoxShadow(
+                    color: layerColor.withValues(alpha: 0.4 * (1 - t)),
+                    blurRadius: 12,
+                    spreadRadius: 2,
                   ),
                 ],
               ),
