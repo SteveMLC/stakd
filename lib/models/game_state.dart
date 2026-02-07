@@ -3,17 +3,22 @@ import 'stack_model.dart';
 import 'layer_model.dart';
 import '../utils/constants.dart';
 
-/// Move record for undo functionality
+/// Move record for undo functionality (supports single or multi-layer)
 class Move {
   final int fromStackIndex;
   final int toStackIndex;
   final Layer layer;
+  final List<Layer>? multiLayers; // For multi-grab moves
 
   Move({
     required this.fromStackIndex,
     required this.toStackIndex,
     required this.layer,
+    this.multiLayers,
   });
+
+  bool get isMultiGrab => multiLayers != null && multiLayers!.length > 1;
+  List<Layer> get allLayers => multiLayers ?? [layer];
 }
 
 /// Animation state for moving layer
@@ -21,12 +26,18 @@ class AnimatingLayer {
   final Layer layer;
   final int fromStackIndex;
   final int toStackIndex;
+  final List<Layer>? multiLayers; // For multi-grab animation
 
   AnimatingLayer({
     required this.layer,
     required this.fromStackIndex,
     required this.toStackIndex,
+    this.multiLayers,
   });
+
+  bool get isMultiGrab => multiLayers != null && multiLayers!.length > 1;
+  List<Layer> get allLayers => multiLayers ?? [layer];
+  int get layerCount => multiLayers?.length ?? 1;
 }
 
 /// Main game state - manages all stacks and game logic
@@ -47,6 +58,10 @@ class GameState extends ChangeNotifier {
   DateTime? _lastClearTime;
   int _maxCombo = 0;
 
+  // Multi-grab state
+  bool _isMultiGrabMode = false;
+  List<Layer>? _multiGrabLayers;
+
   // Getters
   List<GameStack> get stacks => _stacks;
   int get selectedStackIndex => _selectedStackIndex;
@@ -62,6 +77,9 @@ class GameState extends ChangeNotifier {
   int? get par => _par;
   bool get isUnderPar => _par != null && _moveCount <= _par!;
   bool get isAtPar => _par != null && _moveCount == _par!;
+  bool get isMultiGrabMode => _isMultiGrabMode;
+  List<Layer>? get multiGrabLayers => _multiGrabLayers;
+  int get multiGrabCount => _multiGrabLayers?.length ?? 0;
 
   /// Initialize game with stacks
   void initGame(List<GameStack> stacks, int level, {int? par}) {
@@ -77,6 +95,8 @@ class GameState extends ChangeNotifier {
     _lastClearTime = null;
     _maxCombo = 0;
     _par = par;
+    _isMultiGrabMode = false;
+    _multiGrabLayers = null;
     notifyListeners();
   }
 
@@ -88,15 +108,52 @@ class GameState extends ChangeNotifier {
       // No stack selected - try to select this one
       if (!_stacks[stackIndex].isEmpty) {
         _selectedStackIndex = stackIndex;
+        _isMultiGrabMode = false;
+        _multiGrabLayers = null;
         notifyListeners();
       }
     } else if (_selectedStackIndex == stackIndex) {
       // Tapped same stack - deselect
       _selectedStackIndex = -1;
+      _isMultiGrabMode = false;
+      _multiGrabLayers = null;
       notifyListeners();
     } else {
-      // Try to move layer from selected to tapped stack
-      _tryMove(_selectedStackIndex, stackIndex);
+      // Try to move layer(s) from selected to tapped stack
+      if (_isMultiGrabMode && _multiGrabLayers != null) {
+        _tryMultiMove(_selectedStackIndex, stackIndex);
+      } else {
+        _tryMove(_selectedStackIndex, stackIndex);
+      }
+    }
+  }
+
+  /// Activate multi-grab mode on a stack (called after long press)
+  void activateMultiGrab(int stackIndex) {
+    if (_isComplete || _animatingLayer != null) return;
+    if (_stacks[stackIndex].isEmpty) return;
+
+    final topGroup = _stacks[stackIndex].getTopGroup();
+    if (topGroup.length > 1) {
+      _selectedStackIndex = stackIndex;
+      _isMultiGrabMode = true;
+      _multiGrabLayers = topGroup;
+      notifyListeners();
+    } else {
+      // Only one layer of this color, fall back to normal select
+      _selectedStackIndex = stackIndex;
+      _isMultiGrabMode = false;
+      _multiGrabLayers = null;
+      notifyListeners();
+    }
+  }
+
+  /// Cancel multi-grab mode without deselecting
+  void cancelMultiGrab() {
+    if (_isMultiGrabMode) {
+      _isMultiGrabMode = false;
+      _multiGrabLayers = null;
+      notifyListeners();
     }
   }
 
@@ -107,6 +164,8 @@ class GameState extends ChangeNotifier {
 
     if (fromStack.isEmpty) {
       _selectedStackIndex = -1;
+      _isMultiGrabMode = false;
+      _multiGrabLayers = null;
       notifyListeners();
       return;
     }
@@ -124,12 +183,58 @@ class GameState extends ChangeNotifier {
       // Remove from source stack immediately (will be hidden during animation)
       _stacks[fromIndex] = fromStack.withTopLayerRemoved();
       _selectedStackIndex = -1;
+      _isMultiGrabMode = false;
+      _multiGrabLayers = null;
 
       notifyListeners();
     } else {
       // Invalid move - if destination has layers, select it instead
       if (!toStack.isEmpty) {
         _selectedStackIndex = toIndex;
+        _isMultiGrabMode = false;
+        _multiGrabLayers = null;
+        notifyListeners();
+      }
+    }
+  }
+
+  /// Attempt to move multiple layers between stacks (multi-grab)
+  void _tryMultiMove(int fromIndex, int toIndex) {
+    final fromStack = _stacks[fromIndex];
+    final toStack = _stacks[toIndex];
+
+    if (fromStack.isEmpty || _multiGrabLayers == null) {
+      _selectedStackIndex = -1;
+      _isMultiGrabMode = false;
+      _multiGrabLayers = null;
+      notifyListeners();
+      return;
+    }
+
+    final layersToMove = _multiGrabLayers!;
+
+    if (toStack.canAcceptMultiple(layersToMove)) {
+      // Valid multi-move - start animation
+      _animatingLayer = AnimatingLayer(
+        layer: layersToMove.last, // Top layer for positioning
+        fromStackIndex: fromIndex,
+        toStackIndex: toIndex,
+        multiLayers: layersToMove,
+      );
+
+      // Remove all grabbed layers from source stack
+      _stacks[fromIndex] = fromStack.withTopGroupRemoved(layersToMove.length);
+      _selectedStackIndex = -1;
+      _isMultiGrabMode = false;
+      _multiGrabLayers = null;
+
+      notifyListeners();
+    } else {
+      // Invalid move - check if we can select the destination instead
+      if (!toStack.isEmpty) {
+        _selectedStackIndex = toIndex;
+        _isMultiGrabMode = false;
+        _multiGrabLayers = null;
         notifyListeners();
       }
     }
@@ -144,20 +249,27 @@ class GameState extends ChangeNotifier {
     // Clear recently cleared list when completing a new move
     _recentlyCleared = [];
 
-    // Add layer to destination stack
-    _stacks[anim.toStackIndex] = _stacks[anim.toStackIndex].withLayerAdded(
-      anim.layer,
-    );
+    // Add layer(s) to destination stack
+    if (anim.isMultiGrab) {
+      _stacks[anim.toStackIndex] = _stacks[anim.toStackIndex].withLayersAdded(
+        anim.multiLayers!,
+      );
+    } else {
+      _stacks[anim.toStackIndex] = _stacks[anim.toStackIndex].withLayerAdded(
+        anim.layer,
+      );
+    }
 
     _moveHistory.add(
       Move(
         fromStackIndex: anim.fromStackIndex,
         toStackIndex: anim.toStackIndex,
         layer: anim.layer,
+        multiLayers: anim.multiLayers,
       ),
     );
 
-    _moveCount++;
+    _moveCount++; // Still counts as 1 move!
     _animatingLayer = null;
 
     // Check for completed stacks
@@ -219,11 +331,18 @@ class GameState extends ChangeNotifier {
 
     final lastMove = _moveHistory.removeLast();
 
-    // Reverse the move
-    _stacks[lastMove.toStackIndex] = _stacks[lastMove.toStackIndex]
-        .withTopLayerRemoved();
-    _stacks[lastMove.fromStackIndex] = _stacks[lastMove.fromStackIndex]
-        .withLayerAdded(lastMove.layer);
+    // Reverse the move (supports multi-layer)
+    if (lastMove.isMultiGrab) {
+      _stacks[lastMove.toStackIndex] = _stacks[lastMove.toStackIndex]
+          .withTopGroupRemoved(lastMove.multiLayers!.length);
+      _stacks[lastMove.fromStackIndex] = _stacks[lastMove.fromStackIndex]
+          .withLayersAdded(lastMove.multiLayers!);
+    } else {
+      _stacks[lastMove.toStackIndex] = _stacks[lastMove.toStackIndex]
+          .withTopLayerRemoved();
+      _stacks[lastMove.fromStackIndex] = _stacks[lastMove.fromStackIndex]
+          .withLayerAdded(lastMove.layer);
+    }
 
     _undosRemaining--;
     _moveCount--;
@@ -233,6 +352,8 @@ class GameState extends ChangeNotifier {
     _animatingLayer = null; // Clear any ongoing animation
     _comboCount = 0; // Reset combo on undo
     _lastClearTime = null;
+    _isMultiGrabMode = false;
+    _multiGrabLayers = null;
 
     notifyListeners();
   }
@@ -247,6 +368,8 @@ class GameState extends ChangeNotifier {
   void deselect() {
     if (_selectedStackIndex != -1) {
       _selectedStackIndex = -1;
+      _isMultiGrabMode = false;
+      _multiGrabLayers = null;
       notifyListeners();
     }
   }
@@ -258,6 +381,16 @@ class GameState extends ChangeNotifier {
     final toStack = _stacks[toIndex];
     if (fromStack.isEmpty) return false;
     return toStack.canAccept(fromStack.topLayer!);
+  }
+
+  /// Check if a multi-grab move is valid (for hints/validation)
+  bool isValidMultiMove(int fromIndex, int toIndex) {
+    if (fromIndex == toIndex) return false;
+    final fromStack = _stacks[fromIndex];
+    final toStack = _stacks[toIndex];
+    if (fromStack.isEmpty) return false;
+    final topGroup = fromStack.getTopGroup();
+    return toStack.canAcceptMultiple(topGroup);
   }
 
   /// Get hint for next move (simple implementation)

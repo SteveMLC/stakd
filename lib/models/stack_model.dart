@@ -67,6 +67,50 @@ class GameStack {
     );
   }
 
+  /// Get all consecutive same-color layers from top (for multi-grab)
+  List<Layer> getTopGroup() {
+    if (isEmpty) return [];
+    final topColor = topColorIndex!;
+    final group = <Layer>[];
+    for (int i = layers.length - 1; i >= 0; i--) {
+      if (layers[i].colorIndex == topColor) {
+        group.insert(0, layers[i]);
+      } else {
+        break;
+      }
+    }
+    return group;
+  }
+
+  /// Check if this stack can accept multiple layers (multi-grab drop validation)
+  bool canAcceptMultiple(List<Layer> layersToAdd) {
+    if (layersToAdd.isEmpty) return false;
+    final spaceAvailable = maxDepth - layers.length;
+    if (layersToAdd.length > spaceAvailable) return false;
+    if (isEmpty) return true;
+    // All layers in the group should be same color (enforced by getTopGroup)
+    return topColorIndex == layersToAdd.first.colorIndex;
+  }
+
+  /// Create a copy with multiple layers removed from top
+  GameStack withTopGroupRemoved(int count) {
+    if (count <= 0 || count > layers.length) return this;
+    return GameStack(
+      layers: layers.sublist(0, layers.length - count),
+      maxDepth: maxDepth,
+      id: id,
+    );
+  }
+
+  /// Create a copy with multiple layers added
+  GameStack withLayersAdded(List<Layer> newLayers) {
+    return GameStack(
+      layers: [...layers, ...newLayers],
+      maxDepth: maxDepth,
+      id: id,
+    );
+  }
+
   /// Create a deep copy
   GameStack copy() {
     return GameStack(

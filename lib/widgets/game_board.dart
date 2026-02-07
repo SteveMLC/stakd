@@ -149,6 +149,8 @@ class _GameBoardState extends State<GameBoard>
                                   index: actualIndex,
                                   isSelected: isSelected,
                                   isRecentlyCleared: isRecentlyCleared,
+                                  isMultiGrabMode: widget.gameState.isMultiGrabMode,
+                                  multiGrabCount: widget.gameState.multiGrabCount,
                                   onTap: () {
                                     final previousMoveCount =
                                         widget.gameState.moveCount;
@@ -194,6 +196,10 @@ class _GameBoardState extends State<GameBoard>
                                         }
                                       }
                                     }
+                                  },
+                                  onMultiGrab: () {
+                                    widget.gameState.activateMultiGrab(actualIndex);
+                                    widget.onTap?.call();
                                   },
                                 ),
                               );
@@ -307,7 +313,10 @@ class _StackWidget extends StatefulWidget {
   final int index;
   final bool isSelected;
   final bool isRecentlyCleared;
+  final bool isMultiGrabMode;
+  final int multiGrabCount;
   final VoidCallback onTap;
+  final VoidCallback onMultiGrab;
 
   const _StackWidget({
     super.key,
@@ -315,7 +324,10 @@ class _StackWidget extends StatefulWidget {
     required this.index,
     required this.isSelected,
     required this.isRecentlyCleared,
+    required this.isMultiGrabMode,
+    required this.multiGrabCount,
     required this.onTap,
+    required this.onMultiGrab,
   });
 
   @override
@@ -329,6 +341,8 @@ class _StackWidgetState extends State<_StackWidget>
   late Animation<double> _glowAnimation;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+  late AnimationController _multiGrabPulseController;
+  late Animation<double> _multiGrabPulseAnimation;
 
   @override
   void initState() {
@@ -351,6 +365,15 @@ class _StackWidgetState extends State<_StackWidget>
     _pulseAnimation = Tween<double>(begin: 0.3, end: 0.7).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+
+    // Multi-grab pulse animation
+    _multiGrabPulseController = AnimationController(
+      vsync: this,
+      duration: GameDurations.multiGrabPulse,
+    );
+    _multiGrabPulseAnimation = Tween<double>(begin: 0.6, end: 1.0).animate(
+      CurvedAnimation(parent: _multiGrabPulseController, curve: Curves.easeInOut),
+    );
   }
 
   @override
@@ -367,6 +390,18 @@ class _StackWidgetState extends State<_StackWidget>
     } else if (!nearingCompletion && _pulseController.isAnimating) {
       _pulseController.stop();
       _pulseController.reset();
+    }
+
+    // Multi-grab pulse animation
+    if (widget.isMultiGrabMode && widget.isSelected) {
+      if (!_multiGrabPulseController.isAnimating) {
+        _multiGrabPulseController.repeat(reverse: true);
+      }
+    } else {
+      if (_multiGrabPulseController.isAnimating) {
+        _multiGrabPulseController.stop();
+        _multiGrabPulseController.reset();
+      }
     }
   }
 
@@ -393,7 +428,34 @@ class _StackWidgetState extends State<_StackWidget>
   void dispose() {
     _controller.dispose();
     _pulseController.dispose();
+    _multiGrabPulseController.dispose();
     super.dispose();
+  }
+
+  void _onLongPressStart(LongPressStartDetails details) {
+    if (widget.stack.isEmpty) return;
+    haptics.mediumImpact();
+  }
+
+  void _onLongPress() {
+    if (widget.stack.isEmpty) return;
+    final topGroup = widget.stack.getTopGroup();
+    if (topGroup.length > 1) {
+      // Multi-grab activated!
+      haptics.successPattern();
+      widget.onMultiGrab();
+    } else {
+      // Only one layer, treat as normal tap
+      widget.onTap();
+    }
+  }
+
+  void _onLongPressEnd(LongPressEndDetails details) {
+    // Long press completed
+  }
+
+  void _onLongPressCancel() {
+    // Long press cancelled
   }
 
   @override
@@ -402,6 +464,7 @@ class _StackWidgetState extends State<_StackWidget>
     final isComplete = widget.stack.isComplete;
     final nearingCompletion = _isNearingCompletion();
     final completionProgress = _getCompletionProgress();
+    final isMultiGrabActive = widget.isMultiGrabMode && widget.isSelected;
     final semanticsLabel = StringBuffer('Stack ${widget.index + 1}, ')
       ..write('$layerCount layer');
     if (layerCount != 1) {
@@ -413,6 +476,9 @@ class _StackWidgetState extends State<_StackWidget>
     if (widget.isSelected) {
       semanticsLabel.write(', selected');
     }
+    if (isMultiGrabActive) {
+      semanticsLabel.write(', multi-grab ${widget.multiGrabCount} layers');
+    }
 
     // Get the stack's dominant color for glow effect
     final glowColor = widget.stack.layers.isNotEmpty
@@ -423,19 +489,31 @@ class _StackWidgetState extends State<_StackWidget>
       button: true,
       selected: widget.isSelected,
       label: semanticsLabel.toString(),
-      hint: widget.isSelected ? 'Selected' : 'Double tap to select or move',
+      hint: widget.isSelected 
+          ? (isMultiGrabActive ? 'Multi-grab active' : 'Selected')
+          : 'Tap to select, hold for multi-grab',
       child: AnimatedBuilder(
-        animation: Listenable.merge([_controller, _pulseController]),
+        animation: Listenable.merge([_controller, _pulseController, _multiGrabPulseController]),
         builder: (context, child) {
           final pulseValue = nearingCompletion ? _pulseAnimation.value : 0.0;
+          final multiGrabPulse = isMultiGrabActive ? _multiGrabPulseAnimation.value : 0.0;
+
+          // Enhanced lift effect for multi-grab
+          final liftOffset = isMultiGrabActive 
+              ? -12.0 - (multiGrabPulse * 4) 
+              : (widget.isSelected ? -8.0 : _bounceAnimation.value);
 
           return Transform.translate(
-            offset: Offset(0, widget.isSelected ? -8 : _bounceAnimation.value),
+            offset: Offset(0, liftOffset),
             child: GestureDetector(
               onTap: () {
                 haptics.lightTap();
                 widget.onTap();
               },
+              onLongPressStart: _onLongPressStart,
+              onLongPress: _onLongPress,
+              onLongPressEnd: _onLongPressEnd,
+              onLongPressCancel: _onLongPressCancel,
               child: AnimatedContainer(
                 duration: GameDurations.buttonPress,
                 width: GameSizes.stackWidth,
@@ -446,17 +524,26 @@ class _StackWidgetState extends State<_StackWidget>
                     GameSizes.stackBorderRadius,
                   ),
                   border: Border.all(
-                    color: widget.isSelected
-                        ? GameColors.accent
-                        : widget.isRecentlyCleared
-                            ? GameColors.palette[2]
-                            : nearingCompletion
-                                ? glowColor.withValues(alpha: 0.6 + pulseValue * 0.4)
-                                : GameColors.empty,
-                    width: widget.isSelected ? 3 : nearingCompletion ? 2.5 : 2,
+                    color: isMultiGrabActive
+                        ? glowColor.withValues(alpha: 0.8 + multiGrabPulse * 0.2)
+                        : widget.isSelected
+                            ? GameColors.accent
+                            : widget.isRecentlyCleared
+                                ? GameColors.palette[2]
+                                : nearingCompletion
+                                    ? glowColor.withValues(alpha: 0.6 + pulseValue * 0.4)
+                                    : GameColors.empty,
+                    width: isMultiGrabActive ? 4 : (widget.isSelected ? 3 : nearingCompletion ? 2.5 : 2),
                   ),
                   boxShadow: [
-                    if (widget.isSelected)
+                    // Multi-grab glow effect (strongest)
+                    if (isMultiGrabActive)
+                      BoxShadow(
+                        color: glowColor.withValues(alpha: 0.5 + multiGrabPulse * 0.3),
+                        blurRadius: 16 + multiGrabPulse * 8,
+                        spreadRadius: 4 + multiGrabPulse * 2,
+                      ),
+                    if (widget.isSelected && !isMultiGrabActive)
                       BoxShadow(
                         color: GameColors.accent.withValues(alpha: 0.4),
                         blurRadius: 12,
@@ -471,7 +558,7 @@ class _StackWidgetState extends State<_StackWidget>
                         spreadRadius: 4,
                       ),
                     // Glow effect for nearing completion (3+ matching layers)
-                    if (nearingCompletion && !widget.isSelected && !widget.isRecentlyCleared)
+                    if (nearingCompletion && !widget.isSelected && !widget.isRecentlyCleared && !isMultiGrabActive)
                       BoxShadow(
                         color: glowColor.withValues(
                           alpha: (0.2 + pulseValue * 0.3) * completionProgress,
@@ -501,16 +588,51 @@ class _StackWidgetState extends State<_StackWidget>
       return const SizedBox.expand();
     }
 
+    final isMultiGrabActive = widget.isMultiGrabMode && widget.isSelected;
+    final topGroupSize = widget.stack.topGroupSize;
+    final multiGrabPulse = isMultiGrabActive ? _multiGrabPulseAnimation.value : 0.0;
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
-      children: layers.map<Widget>((layer) {
-        return Container(
-          width: double.infinity,
-          height: GameSizes.layerHeight,
-          margin: const EdgeInsets.only(bottom: 2),
-          decoration: BoxDecoration(
-            color: GameColors.getColor(layer.colorIndex),
-            borderRadius: BorderRadius.circular(4),
+      children: layers.asMap().entries.map<Widget>((entry) {
+        final index = entry.key;
+        final layer = entry.value;
+        final layerColor = GameColors.getColor(layer.colorIndex);
+        
+        // Check if this layer is part of the grab zone (top N layers)
+        final isInGrabZone = isMultiGrabActive && 
+            index >= layers.length - topGroupSize;
+        
+        // Visual indicator for layers being grabbed
+        final grabZoneDecoration = isInGrabZone
+            ? BoxDecoration(
+                color: layerColor,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.6 + multiGrabPulse * 0.4),
+                  width: 2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.white.withValues(alpha: 0.3 + multiGrabPulse * 0.2),
+                    blurRadius: 4,
+                    spreadRadius: 1,
+                  ),
+                ],
+              )
+            : BoxDecoration(
+                color: layerColor,
+                borderRadius: BorderRadius.circular(4),
+              );
+
+        return Transform.translate(
+          offset: isInGrabZone ? Offset(0, -2.0 * multiGrabPulse) : Offset.zero,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: double.infinity,
+            height: GameSizes.layerHeight,
+            margin: const EdgeInsets.only(bottom: 2),
+            decoration: grabZoneDecoration,
           ),
         );
       }).toList(),
@@ -550,9 +672,14 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
   void initState() {
     super.initState();
 
+    // Slightly longer animation for multi-grab
+    final duration = widget.animatingLayer.isMultiGrab 
+        ? const Duration(milliseconds: 320)
+        : const Duration(milliseconds: 280);
+
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 280),
+      duration: duration,
     );
 
     // Main curve for position - ease out for natural arc
@@ -621,8 +748,12 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _calculatePositions();
       _controller.forward().then((_) {
-        // Medium impact haptic when layer lands
-        haptics.mediumImpact();
+        // Haptic feedback - stronger for multi-grab
+        if (widget.animatingLayer.isMultiGrab) {
+          haptics.successPattern();
+        } else {
+          haptics.mediumImpact();
+        }
         widget.onComplete();
       });
     });
@@ -642,21 +773,26 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
     final fromGlobal = fromBox.localToGlobal(Offset.zero);
     final toGlobal = toBox.localToGlobal(Offset.zero);
 
+    // For multi-grab, account for multiple layers height
+    final layerCount = widget.animatingLayer.layerCount;
+    final totalHeight = GameSizes.layerHeight * layerCount + (2 * (layerCount - 1));
+
     // Calculate position of top layer on source stack
     final fromLayerY =
-        fromGlobal.dy + GameSizes.stackHeight - GameSizes.layerHeight - 2;
+        fromGlobal.dy + GameSizes.stackHeight - totalHeight - 2;
 
-    // Calculate position where layer should land on destination stack (top of stack)
+    // Calculate position where layers should land on destination stack
     final toLayerY =
-        toGlobal.dy + GameSizes.stackHeight - GameSizes.layerHeight - 2;
+        toGlobal.dy + GameSizes.stackHeight - totalHeight - 2;
 
     setState(() {
       _startPos = Offset(fromGlobal.dx, fromLayerY);
       _endPos = Offset(toGlobal.dx, toLayerY);
 
-      // Arc height based on distance
+      // Arc height based on distance - higher for multi-grab
       final distance = (_endPos - _startPos).distance;
-      _arcHeight = (distance * 0.3).clamp(40.0, 80.0);
+      final baseArc = (distance * 0.3).clamp(40.0, 80.0);
+      _arcHeight = widget.animatingLayer.isMultiGrab ? baseArc * 1.3 : baseArc;
     });
   }
 
@@ -677,6 +813,9 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
 
   @override
   Widget build(BuildContext context) {
+    final isMultiGrab = widget.animatingLayer.isMultiGrab;
+    final allLayers = widget.animatingLayer.allLayers;
+
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
@@ -690,10 +829,50 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
 
         final pos = _quadraticBezier(_startPos, controlPoint, _endPos, t);
 
-        // Get the layer color for glow effect
+        // Get the layer color for glow effect (use top layer color)
         final layerColor = GameColors.getColor(
           widget.animatingLayer.layer.colorIndex,
         );
+
+        // Build the layer(s) widget
+        Widget layerWidget;
+        if (isMultiGrab) {
+          // Multi-layer animation - stack them together
+          final layerCount = allLayers.length;
+          final totalHeight = GameSizes.layerHeight * layerCount + (2 * (layerCount - 1));
+          
+          layerWidget = SizedBox(
+            width: GameSizes.stackWidth,
+            height: totalHeight,
+            child: Column(
+              children: allLayers.map((layer) {
+                return Container(
+                  width: GameSizes.stackWidth,
+                  height: GameSizes.layerHeight,
+                  margin: const EdgeInsets.only(bottom: 2),
+                  decoration: BoxDecoration(
+                    color: GameColors.getColor(layer.colorIndex),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.3 * (1 - t)),
+                      width: 1,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          );
+        } else {
+          // Single layer animation
+          layerWidget = Container(
+            width: GameSizes.stackWidth,
+            height: GameSizes.layerHeight,
+            decoration: BoxDecoration(
+              color: layerColor,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          );
+        }
 
         return Positioned(
           left: pos.dx,
@@ -706,26 +885,24 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
               1.0,
             ),
             child: Container(
-              width: GameSizes.stackWidth,
-              height: GameSizes.layerHeight,
               decoration: BoxDecoration(
-                color: layerColor,
                 borderRadius: BorderRadius.circular(4),
                 boxShadow: [
-                  // Drop shadow
+                  // Drop shadow - bigger for multi-grab
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
+                    color: Colors.black.withValues(alpha: isMultiGrab ? 0.4 : 0.3),
+                    blurRadius: isMultiGrab ? 12 : 8,
+                    offset: Offset(0, isMultiGrab ? 6 : 4),
                   ),
-                  // Color glow while moving
+                  // Color glow while moving - stronger for multi-grab
                   BoxShadow(
-                    color: layerColor.withValues(alpha: 0.4 * (1 - t)),
-                    blurRadius: 12,
-                    spreadRadius: 2,
+                    color: layerColor.withValues(alpha: (isMultiGrab ? 0.6 : 0.4) * (1 - t)),
+                    blurRadius: isMultiGrab ? 16 : 12,
+                    spreadRadius: isMultiGrab ? 4 : 2,
                   ),
                 ],
               ),
+              child: layerWidget,
             ),
           ),
         );

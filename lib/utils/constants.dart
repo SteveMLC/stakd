@@ -39,6 +39,8 @@ class GameDurations {
   static const Duration stackClear = Duration(milliseconds: 400);
   static const Duration levelComplete = Duration(milliseconds: 800);
   static const Duration buttonPress = Duration(milliseconds: 100);
+  static const Duration multiGrabHold = Duration(milliseconds: 300);
+  static const Duration multiGrabPulse = Duration(milliseconds: 600);
 }
 
 /// Game configuration
