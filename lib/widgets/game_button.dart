@@ -9,6 +9,8 @@ class GameButton extends StatefulWidget {
   final bool isPrimary;
   final bool isSmall;
   final bool isDisabled;
+  final Color? backgroundColor;
+  final Color? borderColor;
 
   const GameButton({
     super.key,
@@ -18,6 +20,8 @@ class GameButton extends StatefulWidget {
     this.isPrimary = true,
     this.isSmall = false,
     this.isDisabled = false,
+    this.backgroundColor,
+    this.borderColor,
   });
 
   @override
@@ -70,6 +74,19 @@ class _GameButtonState extends State<GameButton>
     final fontSize = widget.isSmall ? 14.0 : 18.0;
     final iconSize = widget.isSmall ? 18.0 : 24.0;
 
+    final baseColor = widget.backgroundColor ??
+        (widget.isPrimary ? GameColors.accent : GameColors.surface);
+    final outlineColor = widget.borderColor ?? GameColors.accent;
+    final gradientColors = widget.isPrimary
+        ? [
+            baseColor,
+            baseColor.withValues(alpha: 0.8),
+          ]
+        : [
+            GameColors.surface.withValues(alpha: 0.95),
+            GameColors.background.withValues(alpha: 0.9),
+          ];
+
     return GestureDetector(
       onTapDown: _onTapDown,
       onTapUp: _onTapUp,
@@ -83,26 +100,34 @@ class _GameButtonState extends State<GameButton>
             child: Container(
               padding: padding,
               decoration: BoxDecoration(
-                color: widget.isDisabled
-                    ? GameColors.surface
-                    : widget.isPrimary
-                    ? GameColors.accent
-                    : GameColors.surface,
-                borderRadius: BorderRadius.circular(GameSizes.borderRadius),
-                border: widget.isPrimary
+                gradient: widget.isDisabled
                     ? null
-                    : Border.all(color: GameColors.accent, width: 2),
+                    : LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: gradientColors,
+                      ),
+                color: widget.isDisabled ? GameColors.surface : null,
+                borderRadius: BorderRadius.circular(GameSizes.borderRadius),
+                border: Border.all(
+                  color: widget.isPrimary
+                      ? baseColor.withValues(alpha: 0.5)
+                      : outlineColor.withValues(alpha: 0.4),
+                  width: widget.isPrimary ? 2 : 1,
+                ),
                 boxShadow: widget.isDisabled
                     ? null
                     : [
+                        if (widget.isPrimary)
+                          BoxShadow(
+                            color: baseColor.withValues(alpha: 0.45),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
                         BoxShadow(
-                          color:
-                              (widget.isPrimary
-                                      ? GameColors.accent
-                                      : GameColors.surface)
-                                  .withValues(alpha: 0.3),
+                          color: Colors.black.withValues(alpha: 0.22),
                           blurRadius: 8,
-                          offset: const Offset(0, 4),
+                          offset: const Offset(0, 2),
                         ),
                       ],
               ),
@@ -201,13 +226,32 @@ class _GameIconButtonState extends State<GameIconButton>
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: GameColors.surface,
+                    gradient: widget.isDisabled
+                        ? null
+                        : LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              GameColors.surface.withValues(alpha: 0.95),
+                              GameColors.background.withValues(alpha: 0.9),
+                            ],
+                          ),
+                    color: widget.isDisabled ? GameColors.surface : null,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: widget.isDisabled
                           ? GameColors.empty
                           : GameColors.accent.withValues(alpha: 0.5),
                     ),
+                    boxShadow: widget.isDisabled
+                        ? null
+                        : [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                   ),
                   child: Icon(
                     widget.icon,

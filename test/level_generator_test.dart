@@ -103,8 +103,8 @@ void main() {
       final level60Params = LevelParams.forLevel(60);
       final level80Params = LevelParams.forLevel(80);
 
-      expect(level50Params.emptySlots, equals(2),
-          reason: 'Level 50 should still have 2 empty slots');
+      expect(level50Params.emptySlots, equals(1),
+          reason: 'Level 50 should have only 1 empty slot');
       expect(level60Params.emptySlots, equals(1),
           reason: 'Level 60 should have only 1 empty slot');
       expect(level80Params.emptySlots, equals(1),

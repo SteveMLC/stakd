@@ -37,7 +37,7 @@ class LevelSelectScreen extends StatelessWidget {
                     ),
                     const SizedBox(width: 16),
                     Text(
-                      'Select Level',
+                      'Level Challenge',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                   ],

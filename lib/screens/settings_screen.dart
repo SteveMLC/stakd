@@ -18,6 +18,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _soundEnabled = true;
   bool _musicEnabled = true;
+  bool _multiGrabHintsEnabled = true;
 
   @override
   void initState() {
@@ -30,6 +31,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _soundEnabled = storage.getSoundEnabled();
       _musicEnabled = storage.getMusicEnabled();
+      _multiGrabHintsEnabled = storage.getMultiGrabHintsEnabled();
     });
   }
 
@@ -53,6 +55,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _musicEnabled = !_musicEnabled);
     await storage.setMusicEnabled(_musicEnabled);
     audio.setMusicEnabled(_musicEnabled);
+  }
+
+  void _toggleMultiGrabHints() async {
+    final storage = StorageService();
+    setState(() => _multiGrabHintsEnabled = !_multiGrabHintsEnabled);
+    await storage.setMultiGrabHintsEnabled(_multiGrabHintsEnabled);
   }
 
   Future<void> _removeAds(IapService iap) async {
@@ -175,6 +183,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                         // Hints section
                         _buildSectionTitle('Hints'),
+                        _buildToggleTile(
+                          icon: Icons.touch_app,
+                          title: 'Multi-Grab Hints',
+                          value: _multiGrabHintsEnabled,
+                          onToggle: _toggleMultiGrabHints,
+                        ),
                         _buildActionTile(
                           icon: Icons.lightbulb_outline,
                           title: 'Hint Pack (10)',

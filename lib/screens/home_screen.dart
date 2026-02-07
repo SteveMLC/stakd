@@ -1,13 +1,13 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../utils/constants.dart';
 import '../services/storage_service.dart';
 import '../widgets/game_button.dart';
 import '../widgets/daily_streak_badge.dart';
 import 'daily_challenge_screen.dart';
-import 'game_screen.dart';
 import 'level_select_screen.dart';
 import 'settings_screen.dart';
-import 'zen_mode_screen.dart';
+import 'zen_screen.dart';
 
 /// Main menu screen
 class HomeScreen extends StatefulWidget {
@@ -95,14 +95,7 @@ class _HomeScreenState extends State<HomeScreen>
     final highestLevel = storage.getHighestLevel();
 
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF1A1A2E), Color(0xFF16213E), Color(0xFF0F3460)],
-          ),
-        ),
+      body: AnimatedBackground(
         child: SafeArea(
           child: Center(
             child: Column(
@@ -119,26 +112,22 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ),
                 const Spacer(flex: 2),
-                GameButton(
-                  text: 'Play',
-                  icon: Icons.play_arrow,
-                  onPressed: () => _startGame(context, highestLevel),
-                ),
-                const SizedBox(height: 16),
-                _buildDailyChallengeSection(context),
-                const SizedBox(height: 16),
-                GameButton(
-                  text: 'Select Level',
-                  icon: Icons.grid_view,
-                  isPrimary: false,
-                  onPressed: () => _openLevelSelect(context),
-                ),
-                const SizedBox(height: 16),
-                GameButton(
-                  text: 'Zen Mode',
-                  icon: Icons.spa,
-                  isPrimary: false,
-                  onPressed: () => _openZenMode(context),
+                _buildZenModeButton(),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Expanded(child: _buildDailyChallengeSection(context)),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildSecondaryButton(
+                        text: 'Level Challenge',
+                        icon: Icons.flag,
+                        badge: 'Lv $highestLevel',
+                        onPressed: () => _openLevelSelect(context),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
                 GameButton(
@@ -217,16 +206,64 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             );
           },
-          child: GameButton(
-            text: 'Daily Challenge',
-            icon: Icons.today,
-            onPressed: () => _openDailyChallenge(context),
+          child: SizedBox(
+            width: double.infinity,
+            child: GameButton(
+              text: 'Daily Challenge',
+              icon: Icons.calendar_today,
+              isPrimary: false,
+              isSmall: true,
+              onPressed: () => _openDailyChallenge(context),
+            ),
           ),
         ),
         const SizedBox(height: 10),
         if (_dailyStreak > 0)
           DailyStreakBadge(streak: _dailyStreak, highlight: _highlightStreak),
       ],
+    );
+  }
+
+  Widget _buildZenModeButton() {
+    return GestureDetector(
+      onTap: _showZenDifficultyPicker,
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.symmetric(horizontal: 32),
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              GameColors.accent,
+              GameColors.accent.withValues(alpha: 0.7),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: GameColors.accent.withValues(alpha: 0.5),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            Icon(Icons.spa, size: 32, color: Colors.white),
+            SizedBox(width: 12),
+            Text(
+              'ZEN MODE',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                letterSpacing: 2,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -289,22 +326,19 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  void _startGame(BuildContext context, int level) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => GameScreen(level: level)));
-  }
-
   void _openLevelSelect(BuildContext context) {
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const LevelSelectScreen()));
   }
 
-  void _openZenMode(BuildContext context) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const ZenModeScreen()));
+  void _startZen(String difficulty) {
+    Navigator.of(context).pop();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ZenScreen(difficulty: difficulty),
+      ),
+    );
   }
 
   void _openSettings(BuildContext context) {
@@ -313,10 +347,290 @@ class _HomeScreenState extends State<HomeScreen>
     ).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
   }
 
+  void _showZenDifficultyPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: GameColors.surface,
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(24),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: GameColors.textMuted,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Choose Your Vibe',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Zen mode adapts to your pace',
+                style: TextStyle(color: GameColors.textMuted),
+              ),
+              const SizedBox(height: 24),
+              _buildDifficultyOption(
+                title: 'Easy',
+                subtitle: '4 colors • Relaxed',
+                icon: Icons.wb_sunny,
+                onTap: () => _startZen('easy'),
+              ),
+              _buildDifficultyOption(
+                title: 'Medium',
+                subtitle: '5 colors • Focused',
+                icon: Icons.cloud,
+                onTap: () => _startZen('medium'),
+              ),
+              _buildDifficultyOption(
+                title: 'Hard',
+                subtitle: '6 colors • Challenge',
+                icon: Icons.bolt,
+                onTap: () => _startZen('hard'),
+              ),
+              _buildDifficultyOption(
+                title: 'Ultra',
+                subtitle: '7 colors • For masters',
+                icon: Icons.whatshot,
+                onTap: () => _startZen('ultra'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDifficultyOption({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: GameColors.background.withValues(alpha: 0.4),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: GameColors.accent.withValues(alpha: 0.25),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: GameColors.textMuted),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: GameColors.text,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: GameColors.textMuted,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios,
+                size: 14,
+                color: GameColors.textMuted.withValues(alpha: 0.6),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSecondaryButton({
+    required String text,
+    required IconData icon,
+    required VoidCallback onPressed,
+    String? badge,
+  }) {
+    return Stack(
+      fit: StackFit.passthrough,
+      clipBehavior: Clip.none,
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: GameButton(
+            text: text,
+            icon: icon,
+            isPrimary: false,
+            isSmall: true,
+            onPressed: onPressed,
+          ),
+        ),
+        if (badge != null)
+          Positioned(
+            top: -8,
+            right: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: GameColors.accent,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                badge,
+                style: const TextStyle(
+                  color: GameColors.text,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   String _formatDateKey(DateTime date) {
     final year = date.year.toString().padLeft(4, '0');
     final month = date.month.toString().padLeft(2, '0');
     final day = date.day.toString().padLeft(2, '0');
     return '$year$month$day';
+  }
+}
+
+class AnimatedBackground extends StatefulWidget {
+  final Widget child;
+
+  const AnimatedBackground({super.key, required this.child});
+
+  @override
+  State<AnimatedBackground> createState() => _AnimatedBackgroundState();
+}
+
+class _AnimatedBackgroundState extends State<AnimatedBackground>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final List<_Star> _stars;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 20),
+    )..repeat();
+
+    final random = Random();
+    _stars = List.generate(
+      30,
+      (index) => _Star(
+        x: random.nextDouble(),
+        y: random.nextDouble(),
+        size: random.nextDouble() * 2 + 1,
+        speed: random.nextDouble() * 0.02 + 0.01,
+        opacity: random.nextDouble() * 0.3 + 0.1,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                GameColors.backgroundDark,
+                GameColors.backgroundMid,
+                GameColors.backgroundLight,
+              ],
+            ),
+          ),
+        ),
+        AnimatedBuilder(
+          animation: _controller,
+          builder: (context, _) {
+            return CustomPaint(
+              painter: _StarFieldPainter(_stars, _controller.value),
+              size: Size.infinite,
+            );
+          },
+        ),
+        widget.child,
+      ],
+    );
+  }
+}
+
+class _Star {
+  final double x;
+  final double y;
+  final double size;
+  final double speed;
+  final double opacity;
+
+  const _Star({
+    required this.x,
+    required this.y,
+    required this.size,
+    required this.speed,
+    required this.opacity,
+  });
+}
+
+class _StarFieldPainter extends CustomPainter {
+  final List<_Star> stars;
+  final double progress;
+
+  const _StarFieldPainter(this.stars, this.progress);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (final star in stars) {
+      final dy = (star.y + progress * star.speed) % 1.0;
+      final offset = Offset(star.x * size.width, dy * size.height);
+      final paint = Paint()
+        ..color = Colors.white.withValues(alpha: star.opacity)
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(offset, star.size, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _StarFieldPainter oldDelegate) {
+    return oldDelegate.progress != progress || oldDelegate.stars != stars;
   }
 }

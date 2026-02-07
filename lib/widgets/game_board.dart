@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/game_state.dart';
 import '../models/stack_model.dart';
 import '../services/haptic_service.dart';
+import '../services/storage_service.dart';
 import '../utils/constants.dart';
 import 'particles/particle_burst.dart';
 import 'combo_popup.dart';
@@ -343,6 +344,9 @@ class _StackWidgetState extends State<_StackWidget>
   late Animation<double> _pulseAnimation;
   late AnimationController _multiGrabPulseController;
   late Animation<double> _multiGrabPulseAnimation;
+  late AnimationController _multiGrabIndicatorController;
+  late Animation<double> _multiGrabIndicatorAnimation;
+  bool _isLongPressing = false;
 
   @override
   void initState() {
@@ -374,6 +378,15 @@ class _StackWidgetState extends State<_StackWidget>
     _multiGrabPulseAnimation = Tween<double>(begin: 0.6, end: 1.0).animate(
       CurvedAnimation(parent: _multiGrabPulseController, curve: Curves.easeInOut),
     );
+
+    _multiGrabIndicatorController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    );
+    _multiGrabIndicatorAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _multiGrabIndicatorController, curve: Curves.easeInOut),
+    );
+    _syncMultiGrabIndicator();
   }
 
   @override
@@ -403,6 +416,10 @@ class _StackWidgetState extends State<_StackWidget>
         _multiGrabPulseController.reset();
       }
     }
+    _syncMultiGrabIndicator();
+    if (widget.stack.isEmpty && _isLongPressing) {
+      _isLongPressing = false;
+    }
   }
 
   /// Check if stack is nearing completion (3+ matching layers)
@@ -429,11 +446,40 @@ class _StackWidgetState extends State<_StackWidget>
     _controller.dispose();
     _pulseController.dispose();
     _multiGrabPulseController.dispose();
+    _multiGrabIndicatorController.dispose();
     super.dispose();
+  }
+
+  bool get _hasMultiGrabOpportunity => widget.stack.topGroupSize >= 2;
+
+  bool get _shouldShowMultiGrabIndicator {
+    final isMultiGrabActive = widget.isMultiGrabMode && widget.isSelected;
+    return _hasMultiGrabOpportunity && !isMultiGrabActive;
+  }
+
+  void _syncMultiGrabIndicator() {
+    if (_shouldShowMultiGrabIndicator) {
+      if (!_multiGrabIndicatorController.isAnimating) {
+        _multiGrabIndicatorController.repeat(reverse: true);
+      }
+    } else {
+      if (_multiGrabIndicatorController.isAnimating) {
+        _multiGrabIndicatorController.stop();
+        _multiGrabIndicatorController.reset();
+      }
+    }
+  }
+
+  void _setLongPressing(bool value) {
+    if (_isLongPressing == value) return;
+    setState(() {
+      _isLongPressing = value;
+    });
   }
 
   void _onLongPressStart(LongPressStartDetails details) {
     if (widget.stack.isEmpty) return;
+    _setLongPressing(true);
     haptics.mediumImpact();
   }
 
@@ -444,18 +490,23 @@ class _StackWidgetState extends State<_StackWidget>
       // Multi-grab activated!
       haptics.successPattern();
       widget.onMultiGrab();
+      StorageService().setMultiGrabUsed();
+      StorageService().incrementMultiGrabUsage();
     } else {
       // Only one layer, treat as normal tap
       widget.onTap();
     }
+    _setLongPressing(false);
   }
 
   void _onLongPressEnd(LongPressEndDetails details) {
     // Long press completed
+    _setLongPressing(false);
   }
 
   void _onLongPressCancel() {
     // Long press cancelled
+    _setLongPressing(false);
   }
 
   @override
@@ -503,76 +554,124 @@ class _StackWidgetState extends State<_StackWidget>
               ? -12.0 - (multiGrabPulse * 4) 
               : (widget.isSelected ? -8.0 : _bounceAnimation.value);
 
+          final scale = isMultiGrabActive
+              ? 1.04 + (multiGrabPulse * 0.01)
+              : (widget.isSelected ? 1.02 : 1.0);
+
           return Transform.translate(
             offset: Offset(0, liftOffset),
-            child: GestureDetector(
-              onTap: () {
-                haptics.lightTap();
-                widget.onTap();
-              },
-              onLongPressStart: _onLongPressStart,
-              onLongPress: _onLongPress,
-              onLongPressEnd: _onLongPressEnd,
-              onLongPressCancel: _onLongPressCancel,
-              child: AnimatedContainer(
-                duration: GameDurations.buttonPress,
-                width: GameSizes.stackWidth,
-                height: GameSizes.stackHeight,
-                decoration: BoxDecoration(
-                  color: GameColors.empty,
-                  borderRadius: BorderRadius.circular(
-                    GameSizes.stackBorderRadius,
-                  ),
-                  border: Border.all(
-                    color: isMultiGrabActive
-                        ? glowColor.withValues(alpha: 0.8 + multiGrabPulse * 0.2)
-                        : widget.isSelected
-                            ? GameColors.accent
-                            : widget.isRecentlyCleared
-                                ? GameColors.palette[2]
-                                : nearingCompletion
-                                    ? glowColor.withValues(alpha: 0.6 + pulseValue * 0.4)
-                                    : GameColors.empty,
-                    width: isMultiGrabActive ? 4 : (widget.isSelected ? 3 : nearingCompletion ? 2.5 : 2),
-                  ),
-                  boxShadow: [
-                    // Multi-grab glow effect (strongest)
-                    if (isMultiGrabActive)
-                      BoxShadow(
-                        color: glowColor.withValues(alpha: 0.5 + multiGrabPulse * 0.3),
-                        blurRadius: 16 + multiGrabPulse * 8,
-                        spreadRadius: 4 + multiGrabPulse * 2,
-                      ),
-                    if (widget.isSelected && !isMultiGrabActive)
-                      BoxShadow(
-                        color: GameColors.accent.withValues(alpha: 0.4),
-                        blurRadius: 12,
-                        spreadRadius: 2,
-                      ),
-                    if (widget.isRecentlyCleared)
-                      BoxShadow(
-                        color: GameColors.palette[2].withValues(
-                          alpha: 0.4 * _glowAnimation.value,
+            child: AnimatedScale(
+              scale: scale,
+              duration: GameDurations.buttonPress,
+              curve: Curves.easeOutCubic,
+              child: GestureDetector(
+                onTap: () {
+                  haptics.lightTap();
+                  widget.onTap();
+                },
+                onLongPressStart: _onLongPressStart,
+                onLongPress: _onLongPress,
+                onLongPressEnd: _onLongPressEnd,
+                onLongPressCancel: _onLongPressCancel,
+                child: SizedBox(
+                  width: GameSizes.stackWidth,
+                  height: GameSizes.stackHeight,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      AnimatedContainer(
+                        duration: GameDurations.buttonPress,
+                        width: double.infinity,
+                        height: double.infinity,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              GameColors.empty.withValues(alpha: 0.85),
+                              GameColors.empty,
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(
+                            GameSizes.stackBorderRadius,
+                          ),
+                          border: Border.all(
+                            color: isMultiGrabActive
+                                ? glowColor.withValues(alpha: 0.8 + multiGrabPulse * 0.2)
+                                : widget.isSelected
+                                    ? GameColors.accent
+                                    : widget.isRecentlyCleared
+                                        ? GameColors.palette[2]
+                                        : nearingCompletion
+                                            ? glowColor.withValues(alpha: 0.6 + pulseValue * 0.4)
+                                            : GameColors.empty,
+                            width: isMultiGrabActive ? 4 : (widget.isSelected ? 3 : nearingCompletion ? 2.5 : 2),
+                          ),
+                          boxShadow: [
+                            // Multi-grab glow effect (strongest)
+                            if (isMultiGrabActive)
+                              BoxShadow(
+                                color: glowColor.withValues(alpha: 0.5 + multiGrabPulse * 0.3),
+                                blurRadius: 16 + multiGrabPulse * 8,
+                                spreadRadius: 4 + multiGrabPulse * 2,
+                              ),
+                            if (widget.isSelected && !isMultiGrabActive)
+                              BoxShadow(
+                                color: GameColors.accent.withValues(alpha: 0.4),
+                                blurRadius: 12,
+                                spreadRadius: 2,
+                              ),
+                            if (widget.isRecentlyCleared)
+                              BoxShadow(
+                                color: GameColors.palette[2].withValues(
+                                  alpha: 0.4 * _glowAnimation.value,
+                                ),
+                                blurRadius: 16,
+                                spreadRadius: 4,
+                              ),
+                            // Glow effect for nearing completion (3+ matching layers)
+                            if (nearingCompletion && !widget.isSelected && !widget.isRecentlyCleared && !isMultiGrabActive)
+                              BoxShadow(
+                                color: glowColor.withValues(
+                                  alpha: (0.2 + pulseValue * 0.3) * completionProgress,
+                                ),
+                                blurRadius: 8 + completionProgress * 8,
+                                spreadRadius: completionProgress * 3,
+                              ),
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.35),
+                              blurRadius: 12,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
                         ),
-                        blurRadius: 16,
-                        spreadRadius: 4,
-                      ),
-                    // Glow effect for nearing completion (3+ matching layers)
-                    if (nearingCompletion && !widget.isSelected && !widget.isRecentlyCleared && !isMultiGrabActive)
-                      BoxShadow(
-                        color: glowColor.withValues(
-                          alpha: (0.2 + pulseValue * 0.3) * completionProgress,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(
+                            GameSizes.stackBorderRadius - 2,
+                          ),
+                          child: _buildLayers(),
                         ),
-                        blurRadius: 8 + completionProgress * 8,
-                        spreadRadius: completionProgress * 3,
                       ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(
-                    GameSizes.stackBorderRadius - 2,
+                      if (_isLongPressing)
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: _LongPressRing(
+                              color: glowColor,
+                              borderRadius: GameSizes.stackBorderRadius + 6,
+                            ),
+                          ),
+                        ),
+                      if (_shouldShowMultiGrabIndicator)
+                        Positioned(
+                          top: -6,
+                          right: -6,
+                          child: _MultiGrabIndicator(
+                            count: widget.stack.topGroupSize,
+                            animation: _multiGrabIndicatorAnimation,
+                          ),
+                        ),
+                    ],
                   ),
-                  child: _buildLayers(),
                 ),
               ),
             ),
@@ -597,33 +696,40 @@ class _StackWidgetState extends State<_StackWidget>
       children: layers.asMap().entries.map<Widget>((entry) {
         final index = entry.key;
         final layer = entry.value;
-        final layerColor = GameColors.getColor(layer.colorIndex);
+        final gradientColors = GameColors.getGradient(layer.colorIndex);
         
         // Check if this layer is part of the grab zone (top N layers)
         final isInGrabZone = isMultiGrabActive && 
             index >= layers.length - topGroupSize;
         
         // Visual indicator for layers being grabbed
-        final grabZoneDecoration = isInGrabZone
-            ? BoxDecoration(
-                color: layerColor,
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.6 + multiGrabPulse * 0.4),
+        final grabZoneDecoration = BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: gradientColors,
+          ),
+          borderRadius: BorderRadius.circular(4),
+          border: isInGrabZone
+              ? Border.all(
+                  color: Colors.white.withValues(
+                    alpha: 0.6 + multiGrabPulse * 0.4,
+                  ),
                   width: 2,
-                ),
-                boxShadow: [
+                )
+              : null,
+          boxShadow: isInGrabZone
+              ? [
                   BoxShadow(
-                    color: Colors.white.withValues(alpha: 0.3 + multiGrabPulse * 0.2),
+                    color: Colors.white.withValues(
+                      alpha: 0.3 + multiGrabPulse * 0.2,
+                    ),
                     blurRadius: 4,
                     spreadRadius: 1,
                   ),
-                ],
-              )
-            : BoxDecoration(
-                color: layerColor,
-                borderRadius: BorderRadius.circular(4),
-              );
+                ]
+              : null,
+        );
 
         return Transform.translate(
           offset: isInGrabZone ? Offset(0, -2.0 * multiGrabPulse) : Offset.zero,
@@ -633,9 +739,145 @@ class _StackWidgetState extends State<_StackWidget>
             height: GameSizes.layerHeight,
             margin: const EdgeInsets.only(bottom: 2),
             decoration: grabZoneDecoration,
+            child: Stack(
+              children: [
+                Positioned(
+                  top: 2,
+                  left: 4,
+                  right: 4,
+                  height: 3,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.22),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 1,
+                  left: 3,
+                  right: 3,
+                  height: 2,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.16),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       }).toList(),
+    );
+  }
+}
+
+class _LongPressRing extends StatefulWidget {
+  final Color color;
+  final double borderRadius;
+
+  const _LongPressRing({
+    required this.color,
+    required this.borderRadius,
+  });
+
+  @override
+  State<_LongPressRing> createState() => _LongPressRingState();
+}
+
+class _LongPressRingState extends State<_LongPressRing>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    )..repeat(reverse: true);
+    _scale = Tween<double>(begin: 0.95, end: 1.08).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _scale,
+      builder: (context, child) {
+        final opacity = 0.5 - (_scale.value - 0.95) * 1.2;
+        return Transform.scale(
+          scale: _scale.value,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(widget.borderRadius),
+              border: Border.all(
+                color: widget.color.withValues(alpha: opacity.clamp(0.15, 0.5)),
+                width: 3,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _MultiGrabIndicator extends StatelessWidget {
+  final int count;
+  final Animation<double> animation;
+
+  const _MultiGrabIndicator({
+    required this.count,
+    required this.animation,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) {
+        final pulse = animation.value;
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.3 + pulse * 0.2),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.3 + pulse * 0.3),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.layers,
+                size: 12,
+                color: Colors.white.withValues(alpha: 0.8),
+              ),
+              const SizedBox(width: 2),
+              Text(
+                'x$count',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white.withValues(alpha: 0.9),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -830,7 +1072,7 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
         final pos = _quadraticBezier(_startPos, controlPoint, _endPos, t);
 
         // Get the layer color for glow effect (use top layer color)
-        final layerColor = GameColors.getColor(
+          final layerColor = GameColors.getColor(
           widget.animatingLayer.layer.colorIndex,
         );
 
@@ -846,17 +1088,50 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
             height: totalHeight,
             child: Column(
               children: allLayers.map((layer) {
+                final gradientColors = GameColors.getGradient(layer.colorIndex);
                 return Container(
                   width: GameSizes.stackWidth,
                   height: GameSizes.layerHeight,
                   margin: const EdgeInsets.only(bottom: 2),
                   decoration: BoxDecoration(
-                    color: GameColors.getColor(layer.colorIndex),
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: gradientColors,
+                    ),
                     borderRadius: BorderRadius.circular(4),
                     border: Border.all(
                       color: Colors.white.withValues(alpha: 0.3 * (1 - t)),
                       width: 1,
                     ),
+                  ),
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        top: 2,
+                        left: 4,
+                        right: 4,
+                        height: 3,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 1,
+                        left: 3,
+                        right: 3,
+                        height: 2,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 );
               }).toList(),
@@ -868,8 +1143,42 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
             width: GameSizes.stackWidth,
             height: GameSizes.layerHeight,
             decoration: BoxDecoration(
-              color: layerColor,
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: GameColors.getGradient(
+                  widget.animatingLayer.layer.colorIndex,
+                ),
+              ),
               borderRadius: BorderRadius.circular(4),
+            ),
+            child: Stack(
+              children: [
+                Positioned(
+                  top: 2,
+                  left: 4,
+                  right: 4,
+                  height: 3,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 1,
+                  left: 3,
+                  right: 3,
+                  height: 2,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+              ],
             ),
           );
         }

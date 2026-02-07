@@ -34,7 +34,14 @@ class StackWidget extends StatelessWidget {
           width: GameSizes.stackWidth,
           height: GameSizes.stackHeight,
           decoration: BoxDecoration(
-            color: GameColors.empty,
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                GameColors.empty.withValues(alpha: 0.85),
+                GameColors.empty,
+              ],
+            ),
             borderRadius: BorderRadius.circular(GameSizes.stackBorderRadius),
             border: Border.all(
               color: isSelected
@@ -44,15 +51,19 @@ class StackWidget extends StatelessWidget {
                   : GameColors.surface,
               width: isSelected ? 3 : 2,
             ),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: GameColors.accent.withValues(alpha: 0.4),
-                      blurRadius: 12,
-                      spreadRadius: 2,
-                    ),
-                  ]
-                : null,
+            boxShadow: [
+              if (isSelected)
+                BoxShadow(
+                  color: GameColors.accent.withValues(alpha: 0.5),
+                  blurRadius: 16,
+                  spreadRadius: 2,
+                ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.3),
+                offset: const Offset(0, 4),
+                blurRadius: 8,
+              ),
+            ],
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.end,

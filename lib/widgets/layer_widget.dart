@@ -19,43 +19,70 @@ class LayerWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final gradientColors = GameColors.getGradient(layer.colorIndex);
     return Container(
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: layer.color,
-        borderRadius: BorderRadius.circular(GameSizes.stackBorderRadius),
-        boxShadow: [
-          BoxShadow(
-            color: layer.color.withValues(alpha: 0.4),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            layer.color.withValues(alpha: 0.9),
-            layer.color,
-            layer.color.withValues(alpha: 0.8),
-          ],
+          colors: gradientColors,
         ),
-      ),
-      child: Container(
-        margin: const EdgeInsets.all(2),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(GameSizes.stackBorderRadius - 2),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.white.withValues(alpha: 0.3),
-              Colors.transparent,
-              Colors.black.withValues(alpha: 0.1),
-            ],
+        borderRadius: BorderRadius.circular(GameSizes.stackBorderRadius),
+        boxShadow: [
+          BoxShadow(
+            color: gradientColors.last.withValues(alpha: 0.45),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
-        ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // Subtle bevel highlight
+          Positioned(
+            top: 3,
+            left: 6,
+            right: 6,
+            height: 4,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.25),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          // Bottom shadow line for depth
+          Positioned(
+            bottom: 2,
+            left: 4,
+            right: 4,
+            height: 3,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          // Soft sheen overlay
+          Container(
+            margin: const EdgeInsets.all(2),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(GameSizes.stackBorderRadius - 2),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withValues(alpha: 0.25),
+                  Colors.transparent,
+                  Colors.black.withValues(alpha: 0.12),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

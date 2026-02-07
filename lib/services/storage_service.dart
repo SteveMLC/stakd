@@ -21,6 +21,10 @@ class StorageService {
   static const String _keyLastDailyChallengeDate = 'last_daily_challenge_date';
   static const String _keyDailyChallengeStreak = 'daily_challenge_streak';
   static const String _keyTutorialCompleted = 'tutorial_completed';
+  static const String _keyMultiGrabHintSeen = 'multi_grab_hint_seen';
+  static const String _keyMultiGrabUsed = 'multi_grab_used';
+  static const String _keyMultiGrabUsageCount = 'multi_grab_usage_count';
+  static const String _keyMultiGrabHintsEnabled = 'multi_grab_hints_enabled';
 
   /// Initialize the storage service
   Future<void> init() async {
@@ -293,6 +297,83 @@ class StorageService {
     }
   }
 
+  /// Check if multi-grab hint has been seen
+  bool hasSeenMultiGrabHint() {
+    try {
+      return _prefs?.getBool(_keyMultiGrabHintSeen) ?? false;
+    } catch (e) {
+      debugPrint('StorageService hasSeenMultiGrabHint failed: $e');
+      return false;
+    }
+  }
+
+  /// Mark multi-grab hint as seen
+  Future<void> setMultiGrabHintSeen() async {
+    try {
+      await _prefs?.setBool(_keyMultiGrabHintSeen, true);
+    } catch (e) {
+      debugPrint('StorageService setMultiGrabHintSeen failed: $e');
+    }
+  }
+
+  /// Check if multi-grab has been used
+  bool hasUsedMultiGrab() {
+    try {
+      return _prefs?.getBool(_keyMultiGrabUsed) ?? false;
+    } catch (e) {
+      debugPrint('StorageService hasUsedMultiGrab failed: $e');
+      return false;
+    }
+  }
+
+  /// Mark multi-grab as used
+  Future<void> setMultiGrabUsed() async {
+    try {
+      await _prefs?.setBool(_keyMultiGrabUsed, true);
+    } catch (e) {
+      debugPrint('StorageService setMultiGrabUsed failed: $e');
+    }
+  }
+
+  /// Get total multi-grab usage count
+  int getMultiGrabUsageCount() {
+    try {
+      return _prefs?.getInt(_keyMultiGrabUsageCount) ?? 0;
+    } catch (e) {
+      debugPrint('StorageService getMultiGrabUsageCount failed: $e');
+      return 0;
+    }
+  }
+
+  /// Increment multi-grab usage count
+  Future<void> incrementMultiGrabUsage() async {
+    try {
+      final count = getMultiGrabUsageCount() + 1;
+      await _prefs?.setInt(_keyMultiGrabUsageCount, count);
+    } catch (e) {
+      debugPrint('StorageService incrementMultiGrabUsage failed: $e');
+    }
+  }
+
+  /// Get multi-grab hint visibility setting
+  bool getMultiGrabHintsEnabled() {
+    try {
+      return _prefs?.getBool(_keyMultiGrabHintsEnabled) ?? true;
+    } catch (e) {
+      debugPrint('StorageService getMultiGrabHintsEnabled failed: $e');
+      return true;
+    }
+  }
+
+  /// Set multi-grab hint visibility setting
+  Future<void> setMultiGrabHintsEnabled(bool enabled) async {
+    try {
+      await _prefs?.setBool(_keyMultiGrabHintsEnabled, enabled);
+    } catch (e) {
+      debugPrint('StorageService setMultiGrabHintsEnabled failed: $e');
+    }
+  }
+
   /// Clear all data (for testing)
   Future<void> clearAll() async {
     try {
@@ -309,6 +390,7 @@ class StorageService {
       'completedCount': getCompletedLevels().length,
       'totalMoves': getTotalMoves(),
       'dailyStreak': getDailyChallengeStreak(),
+      'multiGrabUses': getMultiGrabUsageCount(),
     };
   }
 }

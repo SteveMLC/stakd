@@ -3,68 +3,49 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/game_state.dart';
-import '../models/stack_model.dart';
 import '../services/level_generator.dart';
 import '../services/audio_service.dart';
-import '../services/storage_service.dart';
 import '../utils/constants.dart';
 import '../widgets/game_board.dart';
 
-/// Zen Mode difficulty levels
-enum ZenDifficulty {
-  easy(3, 2, 3, 'Easy'),
-  medium(4, 2, 4, 'Medium'),
-  hard(5, 1, 4, 'Hard'),
-  ultra(6, 1, 5, 'Ultra');
+class ZenScreen extends StatefulWidget {
+  final String difficulty; // 'easy' | 'medium' | 'hard'
 
-  final int colors;
-  final int emptySlots;
-  final int depth;
-  final String label;
-
-  const ZenDifficulty(this.colors, this.emptySlots, this.depth, this.label);
-}
-
-/// Zen Mode - Infinite relaxing puzzle experience
-class ZenModeScreen extends StatefulWidget {
-  const ZenModeScreen({super.key});
+  const ZenScreen({super.key, required this.difficulty});
 
   @override
-  State<ZenModeScreen> createState() => _ZenModeScreenState();
+  State<ZenScreen> createState() => _ZenScreenState();
 }
 
-class _ZenModeScreenState extends State<ZenModeScreen>
+class _ZenScreenState extends State<ZenScreen>
     with TickerProviderStateMixin {
+  final LevelGenerator _generator = LevelGenerator();
   final Map<int, GlobalKey> _stackKeys = {};
 
-  ZenDifficulty _difficulty = ZenDifficulty.medium;
   int _puzzlesSolved = 0;
+  int _totalMoves = 0;
   int _consecutiveFastSolves = 0;
   int _consecutiveSlowSolves = 0;
   DateTime? _puzzleStart;
-  DateTime? _sessionStart;
-  Timer? _sessionTimer;
-  Duration _sessionDuration = Duration.zero;
-  bool _showMoveCounter = false;
+  bool _showStats = false;
   bool _isTransitioning = false;
-  int _puzzleSeed = 0;
+  int _particleSeed = 0;
 
-  // Fade animation for puzzle transitions
+  late Stopwatch _sessionTimer;
+  Timer? _sessionTicker;
+  Duration _sessionDuration = Duration.zero;
+
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
-
-  // Particle animation controller
   late AnimationController _particleController;
 
   @override
   void initState() {
     super.initState();
-    _sessionStart = DateTime.now();
-    _puzzleSeed = DateTime.now().millisecondsSinceEpoch;
+    _sessionTimer = Stopwatch()..start();
 
-    // Setup fade animation
     _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 450),
       vsync: this,
     );
     _fadeAnimation = CurvedAnimation(
@@ -73,28 +54,24 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     );
     _fadeController.value = 1.0;
 
-    // Setup particle animation
     _particleController = AnimationController(
-      duration: const Duration(seconds: 20),
+      duration: const Duration(seconds: 18),
       vsync: this,
     )..repeat();
 
-    // Start session timer
-    _sessionTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (_sessionStart != null) {
-        setState(() {
-          _sessionDuration = DateTime.now().difference(_sessionStart!);
-        });
-      }
+    _sessionTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() {
+        _sessionDuration = _sessionTimer.elapsed;
+      });
     });
 
-    // Load first puzzle after build
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadNewPuzzle());
   }
 
   @override
   void dispose() {
-    _sessionTimer?.cancel();
+    _sessionTicker?.cancel();
     _fadeController.dispose();
     _particleController.dispose();
     super.dispose();
@@ -102,57 +79,40 @@ class _ZenModeScreenState extends State<ZenModeScreen>
 
   void _loadNewPuzzle() {
     _puzzleStart = DateTime.now();
-    final stacks = _generateZenPuzzle();
-    context.read<GameState>().initGame(stacks, 0); // Level 0 = zen mode
+    final params = _getAdaptiveDifficulty();
+    final stacks = _generator.generatePuzzleWithParams(params);
+    context.read<GameState>().initZenGame(stacks);
     setState(() {
       _stackKeys.clear();
-      _puzzleSeed++;
+      _particleSeed++;
     });
   }
 
-  List<GameStack> _generateZenPuzzle() {
-    final generator = LevelGenerator(seed: _puzzleSeed);
-    final params = _getAdaptiveDifficulty();
-    return generator.generatePuzzleWithParams(params);
-  }
-
-  void _onPuzzleComplete() async {
+  Future<void> _onPuzzleSolved() async {
     if (_isTransitioning) return;
     _isTransitioning = true;
 
     setState(() {
       _puzzlesSolved++;
+      _totalMoves += context.read<GameState>().moveCount;
     });
     _recordSolveTime();
 
-    // Save progress
-    final storage = StorageService();
-    await storage.addZenPuzzle();
+    await Future.delayed(const Duration(milliseconds: 800));
+    if (!mounted) return;
 
-    // Fade out current puzzle
     await _fadeController.animateTo(0.0);
+    if (!mounted) return;
 
-    // Load new puzzle
     _loadNewPuzzle();
-
-    // Fade in new puzzle
     await _fadeController.animateTo(1.0);
 
     _isTransitioning = false;
   }
 
-  void _setDifficulty(ZenDifficulty difficulty) {
-    if (_difficulty == difficulty) return;
+  void _toggleStats() {
     setState(() {
-      _difficulty = difficulty;
-    });
-    // Load new puzzle with new difficulty
-    _loadNewPuzzle();
-  }
-
-  void _toggleMoveCounter() {
-    setState(() {
-      _showMoveCounter = !_showMoveCounter;
+      _showStats = !_showStats;
     });
   }
 
@@ -174,11 +134,12 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   }
 
   LevelParams _getBaseDifficulty() {
-    return switch (_difficulty) {
-      ZenDifficulty.easy => ZenParams.easy,
-      ZenDifficulty.medium => ZenParams.medium,
-      ZenDifficulty.hard => ZenParams.hard,
-      ZenDifficulty.ultra => ZenParams.ultra,
+    return switch (widget.difficulty) {
+      'easy' => ZenParams.easy,
+      'medium' => ZenParams.medium,
+      'hard' => ZenParams.hard,
+      'ultra' => ZenParams.ultra,
+      _ => ZenParams.medium,
     };
   }
 
@@ -230,7 +191,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF0D1117), // Darker, more zen
+              Color(0xFF0D1117),
               Color(0xFF161B22),
               Color(0xFF1A1F26),
             ],
@@ -238,39 +199,29 @@ class _ZenModeScreenState extends State<ZenModeScreen>
         ),
         child: Stack(
           children: [
-            // Ambient particles background
             Positioned.fill(
               child: AnimatedBuilder(
                 animation: _particleController,
                 builder: (context, _) => CustomPaint(
                   painter: AmbientParticlesPainter(
                     progress: _particleController.value,
-                    seed: _puzzleSeed,
+                    seed: _particleSeed,
                   ),
                 ),
               ),
             ),
-
-            // Main content
             SafeArea(
               child: Column(
                 children: [
-                  // Top bar
                   _buildTopBar(),
-
-                  // Difficulty slider
-                  _buildDifficultySlider(),
-
-                  // Game board (with fade animation)
                   Expanded(
                     child: FadeTransition(
                       opacity: _fadeAnimation,
                       child: Consumer<GameState>(
-                        builder: (context, gameState, child) {
-                          // Check for puzzle completion
+                        builder: (context, gameState, _) {
                           if (gameState.isComplete && !_isTransitioning) {
                             WidgetsBinding.instance.addPostFrameCallback((_) {
-                              _onPuzzleComplete();
+                              _onPuzzleSolved();
                             });
                           }
 
@@ -285,21 +236,16 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                       ),
                     ),
                   ),
-
-                  // Optional move counter
-                  if (_showMoveCounter) _buildMoveCounter(),
-
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                 ],
               ),
             ),
-
-            // Session stats overlay (bottom right)
-            Positioned(
-              bottom: 32,
-              right: 16,
-              child: _buildSessionStats(),
-            ),
+            if (_showStats)
+              Positioned(
+                bottom: 28,
+                right: 16,
+                child: _buildSessionStats(),
+              ),
           ],
         ),
       ),
@@ -311,16 +257,12 @@ class _ZenModeScreenState extends State<ZenModeScreen>
       padding: const EdgeInsets.all(16),
       child: Row(
         children: [
-          // Exit Zen button (subtle)
           _ZenIconButton(
             icon: Icons.close,
             onPressed: () => Navigator.of(context).pop(),
             tooltip: 'Exit Zen',
           ),
-
           const Spacer(),
-
-          // Zen Mode title (subtle)
           Text(
             'ZEN MODE',
             style: TextStyle(
@@ -330,109 +272,24 @@ class _ZenModeScreenState extends State<ZenModeScreen>
               fontWeight: FontWeight.w300,
             ),
           ),
-
           const Spacer(),
-
-          // Toggle move counter
           _ZenIconButton(
-            icon: _showMoveCounter ? Icons.visibility : Icons.visibility_off,
-            onPressed: _toggleMoveCounter,
-            tooltip: 'Toggle moves',
-            isActive: _showMoveCounter,
+            icon: _showStats ? Icons.settings : Icons.settings_outlined,
+            onPressed: _toggleStats,
+            tooltip: 'Toggle session stats',
+            isActive: _showStats,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDifficultySlider() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        decoration: BoxDecoration(
-          color: GameColors.surface.withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: ZenDifficulty.values.map((diff) {
-            final isSelected = _difficulty == diff;
-            return Expanded(
-              child: GestureDetector(
-                onTap: () => _setDifficulty(diff),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? GameColors.accent.withValues(alpha: 0.3)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    diff.label,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: isSelected
-                          ? GameColors.text
-                          : GameColors.textMuted.withValues(alpha: 0.6),
-                      fontSize: 13,
-                      fontWeight:
-                          isSelected ? FontWeight.w600 : FontWeight.w400,
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMoveCounter() {
-    return Consumer<GameState>(
-      builder: (context, gameState, _) {
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: GameColors.surface.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.touch_app,
-                  size: 16,
-                  color: GameColors.textMuted.withValues(alpha: 0.6),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  '${gameState.moveCount}',
-                  style: TextStyle(
-                    color: GameColors.textMuted.withValues(alpha: 0.6),
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   Widget _buildSessionStats() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: GameColors.surface.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(12),
+        color: GameColors.surface.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -444,24 +301,32 @@ class _ZenModeScreenState extends State<ZenModeScreen>
               Icon(
                 Icons.spa_outlined,
                 size: 14,
-                color: GameColors.textMuted.withValues(alpha: 0.5),
+                color: GameColors.textMuted.withValues(alpha: 0.6),
               ),
               const SizedBox(width: 6),
               Text(
                 '$_puzzlesSolved',
                 style: TextStyle(
-                  color: GameColors.textMuted.withValues(alpha: 0.7),
+                  color: GameColors.textMuted.withValues(alpha: 0.8),
                   fontSize: 14,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Moves: $_totalMoves',
+            style: TextStyle(
+              color: GameColors.textMuted.withValues(alpha: 0.6),
+              fontSize: 12,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             _formatDuration(_sessionDuration),
             style: TextStyle(
-              color: GameColors.textMuted.withValues(alpha: 0.5),
+              color: GameColors.textMuted.withValues(alpha: 0.6),
               fontSize: 12,
             ),
           ),
@@ -471,7 +336,6 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   }
 }
 
-/// Subtle icon button for Zen mode UI
 class _ZenIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onPressed;
@@ -510,7 +374,6 @@ class _ZenIconButton extends StatelessWidget {
   }
 }
 
-/// Ambient floating particles for zen atmosphere
 class AmbientParticlesPainter extends CustomPainter {
   final double progress;
   final int seed;
@@ -520,17 +383,15 @@ class AmbientParticlesPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final random = Random(seed);
-    final particleCount = 30;
+    const particleCount = 30;
 
     for (int i = 0; i < particleCount; i++) {
-      // Each particle has its own parameters
       final baseX = random.nextDouble() * size.width;
       final baseY = random.nextDouble() * size.height;
       final radius = 1.5 + random.nextDouble() * 2.5;
       final speed = 0.3 + random.nextDouble() * 0.7;
       final phase = random.nextDouble() * 2 * pi;
 
-      // Gentle floating motion
       final animPhase = progress * 2 * pi * speed + phase;
       final xOffset = sin(animPhase) * 20;
       final yOffset = cos(animPhase * 0.7) * 15;
@@ -538,14 +399,10 @@ class AmbientParticlesPainter extends CustomPainter {
       final x = (baseX + xOffset) % size.width;
       final y = (baseY + yOffset + progress * size.height * 0.1) % size.height;
 
-      // Subtle opacity pulsing
       final opacity = 0.15 + sin(animPhase * 2) * 0.1;
-
-      // Pick a color from the palette with low saturation
       final colorIndex = i % GameColors.palette.length;
       final baseColor = GameColors.palette[colorIndex];
 
-      // Desaturate and dim the color for ambient effect
       final color = Color.lerp(
         baseColor.withValues(alpha: opacity),
         Colors.white.withValues(alpha: opacity * 0.5),
@@ -563,18 +420,5 @@ class AmbientParticlesPainter extends CustomPainter {
   @override
   bool shouldRepaint(AmbientParticlesPainter oldDelegate) {
     return oldDelegate.progress != progress || oldDelegate.seed != seed;
-  }
-}
-
-// Extension to storage service for zen mode stats
-extension ZenStorageExtension on StorageService {
-  Future<void> addZenPuzzle() async {
-    // Zen puzzles are tracked in session only for now
-    // Could be persisted via SharedPreferences if needed
-  }
-
-  int getZenPuzzlesSolved() {
-    // Session tracking only
-    return 0;
   }
 }

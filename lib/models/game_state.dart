@@ -52,6 +52,7 @@ class GameState extends ChangeNotifier {
   List<int> _recentlyCleared = [];
   AnimatingLayer? _animatingLayer;
   int? _par; // Minimum moves to solve (null if unknown)
+  bool _isZenMode = false;
 
   // Combo tracking
   int _comboCount = 0;
@@ -80,6 +81,7 @@ class GameState extends ChangeNotifier {
   bool get isMultiGrabMode => _isMultiGrabMode;
   List<Layer>? get multiGrabLayers => _multiGrabLayers;
   int get multiGrabCount => _multiGrabLayers?.length ?? 0;
+  bool get isZenMode => _isZenMode;
 
   /// Initialize game with stacks
   void initGame(List<GameStack> stacks, int level, {int? par}) {
@@ -97,6 +99,26 @@ class GameState extends ChangeNotifier {
     _par = par;
     _isMultiGrabMode = false;
     _multiGrabLayers = null;
+    _isZenMode = false;
+    notifyListeners();
+  }
+
+  void initZenGame(List<GameStack> stacks) {
+    _stacks = stacks;
+    _currentLevel = 0;
+    _selectedStackIndex = -1;
+    _moveCount = 0;
+    _undosRemaining = GameConfig.maxUndos;
+    _isComplete = false;
+    _moveHistory = [];
+    _recentlyCleared = [];
+    _comboCount = 0;
+    _lastClearTime = null;
+    _maxCombo = 0;
+    _par = null;
+    _isMultiGrabMode = false;
+    _multiGrabLayers = null;
+    _isZenMode = true;
     notifyListeners();
   }
 

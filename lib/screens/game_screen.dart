@@ -12,6 +12,7 @@ import '../widgets/game_board.dart';
 import '../widgets/game_button.dart';
 import '../widgets/celebration_overlay.dart';
 import '../widgets/hint_overlay.dart';
+import '../widgets/multi_grab_hint_overlay.dart';
 import '../widgets/tutorial_overlay.dart';
 
 /// Main gameplay screen
@@ -37,6 +38,8 @@ class _GameScreenState extends State<GameScreen> {
   int _hintDestIndex = -1;
   int? _previousSelectedStack;
   int _previousMoveCount = 0;
+  bool _showMultiGrabHint = false;
+  bool _multiGrabHintScheduled = false;
 
   IapService? _iapService;
 
@@ -348,6 +351,37 @@ class _GameScreenState extends State<GameScreen> {
     });
   }
 
+  void _dismissMultiGrabHint() {
+    setState(() {
+      _showMultiGrabHint = false;
+    });
+  }
+
+  void _maybeShowMultiGrabHint(GameState gameState) {
+    if (_showMultiGrabHint || _multiGrabHintScheduled) return;
+    final storage = StorageService();
+    if (!storage.getMultiGrabHintsEnabled()) return;
+    if (storage.hasSeenMultiGrabHint() || storage.hasUsedMultiGrab()) return;
+
+    final hasOpportunity =
+        gameState.stacks.any((stack) => stack.topGroupSize >= 2);
+    if (!hasOpportunity) return;
+
+    _multiGrabHintScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        _multiGrabHintScheduled = false;
+        return;
+      }
+      if (_showMultiGrabHint) return;
+      setState(() {
+        _showMultiGrabHint = true;
+        _multiGrabHintScheduled = false;
+      });
+      storage.setMultiGrabHintSeen();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final iap = context.watch<IapService>();
@@ -366,6 +400,7 @@ class _GameScreenState extends State<GameScreen> {
             builder: (context, gameState, child) {
               // Handle game state changes for tutorial
               _handleGameStateChange(gameState);
+              _maybeShowMultiGrabHint(gameState);
 
               return Stack(
                 children: [
@@ -413,6 +448,8 @@ class _GameScreenState extends State<GameScreen> {
                         onSkip: _onTutorialSkip,
                       ),
                     ),
+                  if (_showMultiGrabHint)
+                    MultiGrabHintOverlay(onDismiss: _dismissMultiGrabHint),
 
                   // Win overlay
                   if (gameState.isComplete)

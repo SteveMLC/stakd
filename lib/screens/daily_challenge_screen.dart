@@ -43,10 +43,10 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
   }
 
   void _loadLevel() {
-    final stacks = _levelGenerator.generateDailyChallenge(
+    final (stacks, par) = _levelGenerator.generateDailyChallengeWithPar(
       date: _challengeDateUtc,
     );
-    context.read<GameState>().initGame(stacks, 0);
+    context.read<GameState>().initGame(stacks, 0, par: par);
   }
 
   Future<void> _onDailyComplete() async {
@@ -161,16 +161,31 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
             decoration: BoxDecoration(
               color: GameColors.surface,
               borderRadius: BorderRadius.circular(20),
+              border: gameState.par != null
+                  ? Border.all(
+                      color: gameState.isUnderPar
+                          ? Colors.green.withValues(alpha: 0.6)
+                          : gameState.moveCount > (gameState.par! + 5)
+                              ? Colors.red.withValues(alpha: 0.4)
+                              : Colors.transparent,
+                      width: 2,
+                    )
+                  : null,
             ),
             child: Row(
               children: [
                 const Icon(Icons.touch_app, size: 18),
                 const SizedBox(width: 4),
                 Text(
-                  '${gameState.moveCount}',
-                  style: const TextStyle(
+                  gameState.par != null
+                      ? '${gameState.moveCount}/${gameState.par}'
+                      : '${gameState.moveCount}',
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
+                    color: gameState.par != null && gameState.isUnderPar
+                        ? Colors.green
+                        : null,
                   ),
                 ),
               ],
