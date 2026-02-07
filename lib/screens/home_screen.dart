@@ -7,6 +7,7 @@ import 'daily_challenge_screen.dart';
 import 'game_screen.dart';
 import 'level_select_screen.dart';
 import 'settings_screen.dart';
+import 'zen_mode_screen.dart';
 
 /// Main menu screen
 class HomeScreen extends StatefulWidget {
@@ -131,6 +132,13 @@ class _HomeScreenState extends State<HomeScreen>
                   icon: Icons.grid_view,
                   isPrimary: false,
                   onPressed: () => _openLevelSelect(context),
+                ),
+                const SizedBox(height: 16),
+                GameButton(
+                  text: 'Zen Mode',
+                  icon: Icons.spa,
+                  isPrimary: false,
+                  onPressed: () => _openZenMode(context),
                 ),
                 const SizedBox(height: 16),
                 GameButton(
@@ -291,6 +299,12 @@ class _HomeScreenState extends State<HomeScreen>
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const LevelSelectScreen()));
+  }
+
+  void _openZenMode(BuildContext context) {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const ZenModeScreen()));
   }
 
   void _openSettings(BuildContext context) {
