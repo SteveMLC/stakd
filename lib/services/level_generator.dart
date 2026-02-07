@@ -105,6 +105,94 @@ class LevelGenerator {
     return true;
   }
 
+  /// Calculate difficulty score based on color transitions and mixing
+  /// Higher score = more difficult puzzle
+  int difficultyScore(List<GameStack> stacks) {
+    int score = 0;
+
+    for (final stack in stacks) {
+      if (stack.isEmpty || stack.layers.length <= 1) continue;
+
+      // Count color transitions within each stack
+      int transitions = 0;
+      Set<int> uniqueColors = {};
+
+      for (int i = 0; i < stack.layers.length; i++) {
+        uniqueColors.add(stack.layers[i].colorIndex);
+        if (i > 0 &&
+            stack.layers[i].colorIndex != stack.layers[i - 1].colorIndex) {
+          transitions++;
+        }
+      }
+
+      // More transitions = harder
+      score += transitions;
+
+      // Stacks with many unique colors are harder to solve
+      if (uniqueColors.length >= 3) {
+        score += uniqueColors.length - 2;
+      }
+    }
+
+    // Penalize "almost solved" states where stacks are mostly sorted
+    int completedStacks = stacks.where((s) => s.isComplete).length;
+    if (completedStacks > 0) {
+      score -= completedStacks * 2;
+    }
+
+    return score;
+  }
+
+  /// Calculate minimum moves to solve (Par) using BFS
+  /// Returns null if unsolvable within maxStates
+  int? calculatePar(List<GameStack> stacks, {int maxStates = 15000}) {
+    if (_isSolved(stacks)) return 0;
+
+    final visited = <String, int>{};
+    final queue = <(List<GameStack>, int)>[
+      (stacks.map((s) => s.copy()).toList(), 0)
+    ];
+
+    while (queue.isNotEmpty && visited.length < maxStates) {
+      final (current, moves) = queue.removeAt(0);
+      final stateKey = _stateToKey(current);
+
+      if (visited.containsKey(stateKey)) continue;
+      visited[stateKey] = moves;
+
+      if (_isSolved(current)) return moves;
+
+      // Generate all valid next states
+      for (int from = 0; from < current.length; from++) {
+        if (current[from].isEmpty) continue;
+        for (int to = 0; to < current.length; to++) {
+          if (from == to) continue;
+          if (current[to].canAccept(current[from].topLayer!)) {
+            final next = current.map((s) => s.copy()).toList();
+            final layer = next[from].topLayer!;
+            next[from] = next[from].withTopLayerRemoved();
+            next[to] = next[to].withLayerAdded(layer);
+
+            final nextKey = _stateToKey(next);
+            if (!visited.containsKey(nextKey)) {
+              queue.add((next, moves + 1));
+            }
+          }
+        }
+      }
+    }
+
+    // If we found a solution during traversal
+    for (final entry in visited.entries) {
+      if (entry.value > 0) {
+        // Check if any visited state is solved
+        // (optimization: we return early on solve, so this shouldn't be needed)
+      }
+    }
+
+    return null; // Unsolvable within limit
+  }
+
   /// Verify that a level is solvable using BFS
   bool isSolvable(List<GameStack> stacks, {int maxStates = 10000}) {
     final visited = <String>{};
@@ -149,25 +237,47 @@ class LevelGenerator {
         .join('|');
   }
 
-  /// Generate a level and verify it's solvable
+  /// Generate a level and verify it's solvable and sufficiently difficult
   List<GameStack> generateSolvableLevel(int levelNumber) {
-    var level = generateLevel(levelNumber);
+    final params = LevelParams.forLevel(levelNumber);
+    final minDifficulty = params.minDifficultyScore;
 
-    // Quick solvability check (limited states for performance)
-    if (!isSolvable(level, maxStates: 5000)) {
-      // Try regenerating with different seed
-      for (int attempt = 1; attempt <= 5; attempt++) {
-        final altRandom =
-            Random(levelNumber * 12345 + _seedOffset + attempt * 67890);
-        final params = LevelParams.forLevel(levelNumber);
-        level = _createSolvedState(params, altRandom);
-        level = _shuffleLevel(level, params.shuffleMoves, altRandom);
+    List<GameStack>? bestLevel;
+    int bestScore = -1;
 
-        if (isSolvable(level, maxStates: 5000)) break;
+    // Try multiple seeds to find a level that's both solvable and difficult enough
+    for (int attempt = 0; attempt < 10; attempt++) {
+      final seedMultiplier = attempt == 0 ? 12345 : 12345 + attempt * 67890;
+      final altRandom = Random(levelNumber * seedMultiplier + _seedOffset);
+      var level = _createSolvedState(params, altRandom);
+      level = _shuffleLevel(level, params.shuffleMoves, altRandom);
+
+      // Check solvability first
+      if (!isSolvable(level, maxStates: 5000)) continue;
+
+      // Check difficulty score
+      final score = difficultyScore(level);
+      if (score >= minDifficulty) {
+        // Good enough - use this level
+        return level;
+      }
+
+      // Track best attempt in case we can't meet threshold
+      if (score > bestScore) {
+        bestScore = score;
+        bestLevel = level;
       }
     }
 
-    return level;
+    // Return best attempt if no level met the threshold
+    return bestLevel ?? generateLevel(levelNumber);
+  }
+
+  /// Generate a level with par information
+  (List<GameStack>, int?) generateLevelWithPar(int levelNumber) {
+    final level = generateSolvableLevel(levelNumber);
+    final par = calculatePar(level);
+    return (level, par);
   }
 
   /// Generate the daily challenge level (deterministic by date)

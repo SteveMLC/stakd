@@ -170,8 +170,8 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _loadLevel() {
-    final stacks = _levelGenerator.generateSolvableLevel(_currentLevel);
-    context.read<GameState>().initGame(stacks, _currentLevel);
+    final (stacks, par) = _levelGenerator.generateLevelWithPar(_currentLevel);
+    context.read<GameState>().initGame(stacks, _currentLevel, par: par);
 
     // Reset hint state
     setState(() {
@@ -457,22 +457,37 @@ class _GameScreenState extends State<GameScreen> {
           ),
           const Spacer(),
 
-          // Move counter
+          // Move counter with par
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
               color: GameColors.surface,
               borderRadius: BorderRadius.circular(20),
+              border: gameState.par != null
+                  ? Border.all(
+                      color: gameState.isUnderPar
+                          ? Colors.green.withValues(alpha: 0.6)
+                          : gameState.moveCount > (gameState.par! + 5)
+                              ? Colors.red.withValues(alpha: 0.4)
+                              : Colors.transparent,
+                      width: 2,
+                    )
+                  : null,
             ),
             child: Row(
               children: [
                 const Icon(Icons.touch_app, size: 18),
                 const SizedBox(width: 4),
                 Text(
-                  '${gameState.moveCount}',
-                  style: const TextStyle(
+                  gameState.par != null
+                      ? '${gameState.moveCount}/${gameState.par}'
+                      : '${gameState.moveCount}',
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
+                    color: gameState.par != null && gameState.isUnderPar
+                        ? Colors.green
+                        : null,
                   ),
                 ),
               ],

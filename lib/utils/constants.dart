@@ -68,45 +68,70 @@ class LevelParams {
   /// Get parameters for a given level number
   static LevelParams forLevel(int level) {
     if (level <= 10) {
+      // Tutorial: 3 colors, 2 empty slots, easy
       return LevelParams(
         colors: 3,
-        stacks: 4 + 2, // 4 color stacks + 2 empty
+        stacks: 3 + 2, // 3 color stacks + 2 empty
         emptySlots: 2,
         depth: 3,
         shuffleMoves: 15 + level,
       );
     } else if (level <= 30) {
+      // Early game: 4 colors, still 2 empty slots
       return LevelParams(
         colors: 4,
-        stacks: 5 + 2,
+        stacks: 4 + 2,
         emptySlots: 2,
         depth: 4,
         shuffleMoves: 20 + level,
       );
-    } else if (level <= 60) {
+    } else if (level <= 50) {
+      // Mid game: 5 colors, 2 empty slots
       return LevelParams(
         colors: 5,
-        stacks: 6 + 2,
+        stacks: 5 + 2,
         emptySlots: 2,
         depth: 4,
         shuffleMoves: 30 + level,
       );
-    } else if (level <= 100) {
+    } else if (level <= 75) {
+      // Difficulty ramp: 5 colors, reduce to 1 empty slot
       return LevelParams(
         colors: 5,
-        stacks: 7 + 2,
-        emptySlots: 2,
-        depth: 5,
+        stacks: 5 + 1,
+        emptySlots: 1,
+        depth: 4,
         shuffleMoves: 40 + level,
       );
-    } else {
+    } else if (level <= 100) {
+      // Hard: 6 colors, 1 empty slot
       return LevelParams(
         colors: 6,
-        stacks: 7 + 1,
+        stacks: 6 + 1,
         emptySlots: 1,
         depth: 5,
         shuffleMoves: 50 + level,
       );
+    } else {
+      // Expert: 6 colors, 1 empty slot, max depth
+      return LevelParams(
+        colors: 6,
+        stacks: 6 + 1,
+        emptySlots: 1,
+        depth: 5,
+        shuffleMoves: 60 + level,
+      );
+    }
+  }
+
+  /// Minimum difficulty score required for this level
+  int get minDifficultyScore {
+    if (emptySlots >= 2) {
+      return 3; // Low bar for easy levels
+    } else if (colors <= 5) {
+      return 5; // Medium bar
+    } else {
+      return 7; // Higher bar for hard levels
     }
   }
 }

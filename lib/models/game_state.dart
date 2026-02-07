@@ -40,6 +40,7 @@ class GameState extends ChangeNotifier {
   List<Move> _moveHistory = [];
   List<int> _recentlyCleared = [];
   AnimatingLayer? _animatingLayer;
+  int? _par; // Minimum moves to solve (null if unknown)
 
   // Combo tracking
   int _comboCount = 0;
@@ -58,9 +59,12 @@ class GameState extends ChangeNotifier {
   AnimatingLayer? get animatingLayer => _animatingLayer;
   int get currentCombo => _comboCount;
   int get maxCombo => _maxCombo;
+  int? get par => _par;
+  bool get isUnderPar => _par != null && _moveCount <= _par!;
+  bool get isAtPar => _par != null && _moveCount == _par!;
 
   /// Initialize game with stacks
-  void initGame(List<GameStack> stacks, int level) {
+  void initGame(List<GameStack> stacks, int level, {int? par}) {
     _stacks = stacks;
     _currentLevel = level;
     _selectedStackIndex = -1;
@@ -72,6 +76,7 @@ class GameState extends ChangeNotifier {
     _comboCount = 0;
     _lastClearTime = null;
     _maxCombo = 0;
+    _par = par;
     notifyListeners();
   }
 
