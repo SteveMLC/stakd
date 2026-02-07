@@ -38,12 +38,41 @@ class _GameScreenState extends State<GameScreen> {
   int? _previousSelectedStack;
   int _previousMoveCount = 0;
 
+  IapService? _iapService;
+
   @override
   void initState() {
     super.initState();
     _currentLevel = widget.level;
     _checkTutorial();
     _loadLevel();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_iapService == null) {
+      _iapService = context.read<IapService>();
+      _iapService!.addListener(_onIapChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    _iapService?.removeListener(_onIapChanged);
+    super.dispose();
+  }
+
+  void _onIapChanged() {
+    final iap = _iapService;
+    if (iap == null) return;
+    final message = iap.errorMessage;
+    if (message != null && mounted) {
+      iap.clearError();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    }
   }
 
   void _checkTutorial() {
@@ -322,16 +351,6 @@ class _GameScreenState extends State<GameScreen> {
   @override
   Widget build(BuildContext context) {
     final iap = context.watch<IapService>();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final message = iap.errorMessage;
-      if (message != null && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
-        );
-        iap.clearError();
-      }
-    });
 
     return Scaffold(
       body: Container(

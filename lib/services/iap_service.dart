@@ -31,7 +31,7 @@ class IapService extends ChangeNotifier {
   static const Set<String> _testProductIds = {'android.test.purchased'};
 
   final InAppPurchase _iap = InAppPurchase.instance;
-  StreamSubscription<List<PurchaseDetails>>? _subscription;
+  StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
 
   bool _initialized = false;
   bool _isAvailable = false;
@@ -66,7 +66,7 @@ class IapService extends ChangeNotifier {
       return;
     }
 
-    _subscription = _iap.purchaseStream.listen(
+    _purchaseSubscription = _iap.purchaseStream.listen(
       _onPurchaseUpdated,
       onError: (error) {
         _setError('Purchase stream error: $error');
@@ -244,5 +244,13 @@ class IapService extends ChangeNotifier {
     _errorMessage = message;
     _isLoading = false;
     notifyListeners();
+  }
+
+  /// Cancel purchase stream subscription
+  @override
+  void dispose() {
+    _purchaseSubscription?.cancel();
+    _purchaseSubscription = null;
+    super.dispose();
   }
 }

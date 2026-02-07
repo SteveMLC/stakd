@@ -55,7 +55,10 @@ class StorageService {
   List<int> getCompletedLevels() {
     try {
       final data = _prefs?.getStringList(_keyCompletedLevels) ?? [];
-      return data.map((s) => int.parse(s)).toList();
+      return data
+          .map((s) => int.tryParse(s))
+          .whereType<int>()
+          .toList();
     } catch (e) {
       debugPrint('StorageService getCompletedLevels failed: $e');
       return [];
