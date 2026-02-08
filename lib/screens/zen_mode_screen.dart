@@ -8,9 +8,11 @@ import '../services/level_generator.dart';
 import '../services/zen_puzzle_isolate.dart';
 import '../services/audio_service.dart';
 import '../services/storage_service.dart';
+import '../services/garden_service.dart';
 import '../utils/constants.dart';
 import '../widgets/game_board.dart';
 import '../widgets/loading_text.dart';
+import '../widgets/themes/zen_garden_scene.dart';
 
 /// Zen Mode difficulty levels
 enum ZenDifficulty {
@@ -51,6 +53,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   bool _isTransitioning = false;
   bool _isLoading = false;
   int _puzzleSeed = 0;
+  int _gardenRebuildKey = 0;
 
   // Fade animation for puzzle transitions
   late AnimationController _fadeController;
@@ -62,6 +65,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   @override
   void initState() {
     super.initState();
+    GardenService.startFreshSession();
     _sessionStart = DateTime.now();
     _puzzleSeed = DateTime.now().millisecondsSinceEpoch;
 
@@ -136,6 +140,8 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     // Save progress
     final storage = StorageService();
     await storage.addZenPuzzle();
+    GardenService.recordPuzzleSolved();
+    setState(() => _gardenRebuildKey++);
 
     // Fade out current puzzle
     await _fadeController.animateTo(0.0);
@@ -232,100 +238,110 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF0D1117), // Darker, more zen
-              Color(0xFF161B22),
-              Color(0xFF1A1F26),
-            ],
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          KeyedSubtree(
+            key: ValueKey(_gardenRebuildKey),
+            child: const ZenGardenScene(showStats: false, interactive: false),
           ),
-        ),
-        child: Stack(
-          children: [
-            // Ambient particles background
+
+          // Ambient particles background
+          Positioned.fill(
+            child: AnimatedBuilder(
+              animation: _particleController,
+              builder: (context, _) => CustomPaint(
+                painter: AmbientParticlesPainter(
+                  progress: _particleController.value,
+                  seed: _puzzleSeed,
+                ),
+              ),
+            ),
+          ),
+
+          // Dark overlay for readability
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    const Color(0xFF0B0F14).withValues(alpha: 0.55),
+                    const Color(0xFF0B0F14).withValues(alpha: 0.25),
+                    Colors.black.withValues(alpha: 0.55),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Main content
+          SafeArea(
+            child: Column(
+              children: [
+                // Top bar
+                _buildTopBar(),
+
+                // Difficulty slider
+                _buildDifficultySlider(),
+
+                // Game board (with fade animation)
+                Expanded(
+                  child: FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: Consumer<GameState>(
+                      builder: (context, gameState, child) {
+                        // Check for puzzle completion
+                        if (gameState.isComplete && !_isTransitioning) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            _onPuzzleComplete();
+                          });
+                        }
+
+                        return GameBoard(
+                          gameState: gameState,
+                          stackKeys: _stackKeys,
+                          onTap: () => AudioService().playTap(),
+                          onMove: () => AudioService().playSlide(),
+                          onClear: () => AudioService().playClear(),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+
+                // Optional move counter
+                if (_showMoveCounter) _buildMoveCounter(),
+
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+
+          // Session stats overlay (bottom right)
+          Positioned(
+            bottom: 32,
+            right: 16,
+            child: _buildSessionStats(),
+          ),
+          if (_isLoading)
             Positioned.fill(
-              child: AnimatedBuilder(
-                animation: _particleController,
-                builder: (context, _) => CustomPaint(
-                  painter: AmbientParticlesPainter(
-                    progress: _particleController.value,
-                    seed: _puzzleSeed,
+              child: Container(
+                color: Colors.black54,
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(color: GameColors.zen),
+                      SizedBox(height: 16),
+                      LoadingText(),
+                    ],
                   ),
                 ),
               ),
             ),
-
-            // Main content
-            SafeArea(
-              child: Column(
-                children: [
-                  // Top bar
-                  _buildTopBar(),
-
-                  // Difficulty slider
-                  _buildDifficultySlider(),
-
-                  // Game board (with fade animation)
-                  Expanded(
-                    child: FadeTransition(
-                      opacity: _fadeAnimation,
-                      child: Consumer<GameState>(
-                        builder: (context, gameState, child) {
-                          // Check for puzzle completion
-                          if (gameState.isComplete && !_isTransitioning) {
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              _onPuzzleComplete();
-                            });
-                          }
-
-                          return GameBoard(
-                            gameState: gameState,
-                            stackKeys: _stackKeys,
-                            onTap: () => AudioService().playTap(),
-                            onMove: () => AudioService().playSlide(),
-                            onClear: () => AudioService().playClear(),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-
-                  // Optional move counter
-                  if (_showMoveCounter) _buildMoveCounter(),
-
-                  const SizedBox(height: 16),
-                ],
-              ),
-            ),
-
-            // Session stats overlay (bottom right)
-            Positioned(
-              bottom: 32,
-              right: 16,
-              child: _buildSessionStats(),
-            ),
-            if (_isLoading)
-              Positioned.fill(
-                child: Container(
-                  color: Colors.black54,
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CircularProgressIndicator(color: GameColors.zen),
-                        SizedBox(height: 16),
-                        LoadingText(),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
+        ],
       ),
     );
   }
