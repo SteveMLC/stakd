@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
-import '../utils/constants.dart';
-import '../services/storage_service.dart';
 import '../services/audio_service.dart';
-import '../services/iap_service.dart';
+import '../services/haptic_service.dart';
+import '../services/storage_service.dart';
+import '../utils/constants.dart';
 import '../widgets/game_button.dart';
 
 /// Settings screen
@@ -17,8 +15,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _soundEnabled = true;
-  bool _musicEnabled = true;
-  bool _multiGrabHintsEnabled = true;
+  bool _hapticsEnabled = true;
 
   @override
   void initState() {
@@ -30,12 +27,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final storage = StorageService();
     setState(() {
       _soundEnabled = storage.getSoundEnabled();
-      _musicEnabled = storage.getMusicEnabled();
-      _multiGrabHintsEnabled = storage.getMultiGrabHintsEnabled();
+      _hapticsEnabled = storage.getHapticsEnabled();
     });
   }
 
-  void _toggleSound() async {
+  Future<void> _toggleSound() async {
     final storage = StorageService();
     final audio = AudioService();
 
@@ -48,225 +44,91 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  void _toggleMusic() async {
+  Future<void> _toggleHaptics() async {
     final storage = StorageService();
-    final audio = AudioService();
+    final nextValue = !_hapticsEnabled;
 
-    setState(() => _musicEnabled = !_musicEnabled);
-    await storage.setMusicEnabled(_musicEnabled);
-    audio.setMusicEnabled(_musicEnabled);
-  }
+    setState(() => _hapticsEnabled = nextValue);
+    await storage.setHapticsEnabled(nextValue);
 
-  void _toggleMultiGrabHints() async {
-    final storage = StorageService();
-    setState(() => _multiGrabHintsEnabled = !_multiGrabHintsEnabled);
-    await storage.setMultiGrabHintsEnabled(_multiGrabHintsEnabled);
-  }
-
-  Future<void> _removeAds(IapService iap) async {
-    await iap.buyRemoveAds();
-  }
-
-  Future<void> _buyHints(IapService iap) async {
-    await iap.buyHintPack();
-  }
-
-  Future<void> _restorePurchases(IapService iap) async {
-    await iap.restorePurchases();
-  }
-
-  void _rateApp() async {
-    const url =
-        'https://play.google.com/store/apps/details?id=com.go7studio.stakd';
-    if (await canLaunchUrl(Uri.parse(url))) {
-      await launchUrl(Uri.parse(url));
+    if (nextValue) {
+      haptics.lightTap();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final stats = StorageService().getStats();
-    final iap = context.watch<IapService>();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final message = iap.errorMessage;
-      if (message != null && mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(message)));
-        iap.clearError();
-      }
-    });
-
-    final removeAdsSubtitle = iap.isAvailable
-        ? (iap.adsRemoved ? 'Purchased' : (iap.removeAdsPrice ?? '\$3.99'))
-        : 'Store unavailable';
-
-    final hintPackSubtitle = iap.isAvailable
-        ? '${iap.hintPackPrice ?? '\$1.99'} - ${iap.hintCount} available'
-        : 'Store unavailable';
-
     return Scaffold(
-      body: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
-              ),
-            ),
-            child: SafeArea(
-              child: Column(
-                children: [
-                  // Header
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        GameIconButton(
-                          icon: Icons.arrow_back,
-                          onPressed: () => Navigator.of(context).pop(),
-                        ),
-                        const SizedBox(width: 16),
-                        Text(
-                          'Settings',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  Expanded(
-                    child: ListView(
-                      padding: const EdgeInsets.all(16),
-                      children: [
-                        // Audio section
-                        _buildSectionTitle('Audio'),
-                        _buildToggleTile(
-                          icon: Icons.volume_up,
-                          title: 'Sound Effects',
-                          value: _soundEnabled,
-                          onToggle: _toggleSound,
-                        ),
-                        _buildToggleTile(
-                          icon: Icons.music_note,
-                          title: 'Music',
-                          value: _musicEnabled,
-                          onToggle: _toggleMusic,
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Ads section
-                        _buildSectionTitle('Ads'),
-                        _buildActionTile(
-                          icon: Icons.remove_circle_outline,
-                          title: 'Remove Ads',
-                          subtitle: removeAdsSubtitle,
-                          onTap:
-                              (iap.adsRemoved ||
-                                  !iap.isAvailable ||
-                                  iap.isLoading)
-                              ? null
-                              : () => _removeAds(iap),
-                        ),
-                        _buildActionTile(
-                          icon: Icons.restore,
-                          title: 'Restore Purchases',
-                          subtitle: 'Sync with the store',
-                          onTap: (!iap.isAvailable || iap.isLoading)
-                              ? null
-                              : () => _restorePurchases(iap),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Hints section
-                        _buildSectionTitle('Hints'),
-                        _buildToggleTile(
-                          icon: Icons.touch_app,
-                          title: 'Multi-Grab Hints',
-                          value: _multiGrabHintsEnabled,
-                          onToggle: _toggleMultiGrabHints,
-                        ),
-                        _buildActionTile(
-                          icon: Icons.lightbulb_outline,
-                          title: 'Hint Pack (10)',
-                          subtitle: hintPackSubtitle,
-                          onTap: (!iap.isAvailable || iap.isLoading)
-                              ? null
-                              : () => _buyHints(iap),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Stats section
-                        _buildSectionTitle('Stats'),
-                        _buildStatTile(
-                          icon: Icons.emoji_events,
-                          title: 'Highest Level',
-                          value: '${stats['highestLevel']}',
-                        ),
-                        _buildStatTile(
-                          icon: Icons.check_circle,
-                          title: 'Levels Completed',
-                          value: '${stats['completedCount']}',
-                        ),
-                        _buildStatTile(
-                          icon: Icons.touch_app,
-                          title: 'Total Moves',
-                          value: '${stats['totalMoves']}',
-                        ),
-                        const SizedBox(height: 24),
-
-                        // About section
-                        _buildSectionTitle('About'),
-                        _buildActionTile(
-                          icon: Icons.star,
-                          title: 'Rate App',
-                          subtitle: 'Love Stakd? Leave a review!',
-                          onTap: _rateApp,
-                        ),
-                        _buildStatTile(
-                          icon: Icons.info_outline,
-                          title: 'Version',
-                          value: '1.0.0',
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Credits
-                        Center(
-                          child: Text(
-                            'Made with ❤️ by Go7Studio',
-                            style: TextStyle(
-                              color: GameColors.textMuted,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
           ),
-          if (iap.isLoading) _buildLoadingOverlay(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLoadingOverlay() {
-    return Container(
-      color: Colors.black54,
-      child: const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 12),
-            Text('Processing purchase...'),
-          ],
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    GameIconButton(
+                      icon: Icons.arrow_back,
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                    const SizedBox(width: 16),
+                    Text(
+                      'Settings',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    _buildSectionTitle('Audio'),
+                    _buildToggleTile(
+                      icon: Icons.volume_up,
+                      title: 'Sound',
+                      value: _soundEnabled,
+                      onToggle: _toggleSound,
+                    ),
+                    const SizedBox(height: 24),
+                    _buildSectionTitle('Feedback'),
+                    _buildToggleTile(
+                      icon: Icons.vibration,
+                      title: 'Haptics',
+                      value: _hapticsEnabled,
+                      onToggle: _toggleHaptics,
+                    ),
+                    const SizedBox(height: 24),
+                    _buildSectionTitle('Ads'),
+                    Center(
+                      child: GameButton(
+                        text: 'Remove Ads',
+                        icon: Icons.block,
+                        isDisabled: true,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Center(
+                      child: Text(
+                        'Coming soon',
+                        style: TextStyle(
+                          color: GameColors.textMuted,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -310,75 +172,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onChanged: (_) => onToggle(),
             activeThumbColor: GameColors.accent,
             activeTrackColor: GameColors.accent.withValues(alpha: 0.4),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionTile({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    VoidCallback? onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: GameColors.surface,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: GameColors.accent),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: const TextStyle(fontSize: 16)),
-                  Text(
-                    subtitle,
-                    style: TextStyle(fontSize: 12, color: GameColors.textMuted),
-                  ),
-                ],
-              ),
-            ),
-            if (onTap != null)
-              const Icon(Icons.chevron_right, color: GameColors.textMuted),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatTile({
-    required IconData icon,
-    required String title,
-    required String value,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: GameColors.surface,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: GameColors.accent),
-          const SizedBox(width: 16),
-          Expanded(child: Text(title, style: const TextStyle(fontSize: 16))),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: GameColors.accent,
-            ),
           ),
         ],
       ),

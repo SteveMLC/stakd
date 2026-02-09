@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../models/game_state.dart';
@@ -205,7 +204,7 @@ class _GameScreenState extends State<GameScreen> {
         _completionDuration = DateTime.now().difference(startTime);
       });
       // Heavy haptic impact on level complete
-      HapticFeedback.heavyImpact();
+      haptics.heavyImpact();
       // Follow with success pattern for extra juice
       Future.delayed(const Duration(milliseconds: 100), () {
         haptics.levelWinPattern();

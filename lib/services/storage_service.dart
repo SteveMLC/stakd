@@ -14,6 +14,7 @@ class StorageService {
   static const String _keyCompletedLevels = 'completed_levels';
   static const String _keySoundEnabled = 'sound_enabled';
   static const String _keyMusicEnabled = 'music_enabled';
+  static const String _keyHapticsEnabled = 'haptics_enabled';
   static const String _keyTotalMoves = 'total_moves';
   static const String _keyAdsRemoved = 'ads_removed';
   static const String _keyHintCount = 'hint_count';
@@ -145,6 +146,25 @@ class StorageService {
       await _prefs?.setBool(_keyMusicEnabled, enabled);
     } catch (e) {
       debugPrint('StorageService setMusicEnabled failed: $e');
+    }
+  }
+
+  /// Get haptics enabled setting
+  bool getHapticsEnabled() {
+    try {
+      return _prefs?.getBool(_keyHapticsEnabled) ?? true;
+    } catch (e) {
+      debugPrint('StorageService getHapticsEnabled failed: $e');
+      return true;
+    }
+  }
+
+  /// Set haptics enabled setting
+  Future<void> setHapticsEnabled(bool enabled) async {
+    try {
+      await _prefs?.setBool(_keyHapticsEnabled, enabled);
+    } catch (e) {
+      debugPrint('StorageService setHapticsEnabled failed: $e');
     }
   }
 

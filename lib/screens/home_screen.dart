@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../utils/constants.dart';
 import '../services/storage_service.dart';
+import '../services/daily_challenge_service.dart';
 import '../widgets/game_button.dart';
 import '../widgets/daily_streak_badge.dart';
 import 'daily_challenge_screen.dart';
@@ -44,11 +45,10 @@ class _HomeScreenState extends State<HomeScreen>
     super.dispose();
   }
 
-  void _loadDailyData() {
-    final storage = StorageService();
-    final todayKey = _formatDateKey(DateTime.now().toUtc());
-    final completed = storage.isDailyChallengeCompleted(todayKey);
-    final streak = storage.getDailyChallengeStreak();
+  Future<void> _loadDailyData() async {
+    final service = DailyChallengeService();
+    final completed = await service.isTodayCompleted();
+    final streak = await service.getStreak();
 
     setState(() {
       _isDailyCompleted = completed;
@@ -178,44 +178,67 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildDailyChallengeSection(BuildContext context) {
     return Column(
       children: [
-        AnimatedBuilder(
-          animation: _pulseAnimation,
-          builder: (context, child) {
-            final scale = _isDailyCompleted ? 1.0 : _pulseAnimation.value;
-            final glowOpacity = _isDailyCompleted
-                ? 0.0
-                : (_pulseAnimation.value - 1.0) * 3.0;
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            AnimatedBuilder(
+              animation: _pulseAnimation,
+              builder: (context, child) {
+                final scale = _isDailyCompleted ? 1.0 : _pulseAnimation.value;
+                final glowOpacity = _isDailyCompleted
+                    ? 0.0
+                    : (_pulseAnimation.value - 1.0) * 3.0;
 
-            return Transform.scale(
-              scale: scale,
-              child: Container(
-                decoration: BoxDecoration(
-                  boxShadow: glowOpacity <= 0
-                      ? null
-                      : [
-                          BoxShadow(
-                            color: GameColors.accent.withValues(
-                              alpha: glowOpacity,
-                            ),
-                            blurRadius: 16,
-                            spreadRadius: 2,
-                          ),
-                        ],
+                return Transform.scale(
+                  scale: scale,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      boxShadow: glowOpacity <= 0
+                          ? null
+                          : [
+                              BoxShadow(
+                                color: GameColors.accent.withValues(
+                                  alpha: glowOpacity,
+                                ),
+                                blurRadius: 16,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                    ),
+                    child: child,
+                  ),
+                );
+              },
+              child: SizedBox(
+                width: double.infinity,
+                child: GameButton(
+                  text: 'Daily Challenge',
+                  icon: Icons.calendar_today,
+                  isPrimary: false,
+                  isSmall: true,
+                  onPressed: () => _openDailyChallenge(context),
                 ),
-                child: child,
               ),
-            );
-          },
-          child: SizedBox(
-            width: double.infinity,
-            child: GameButton(
-              text: 'Daily Challenge',
-              icon: Icons.calendar_today,
-              isPrimary: false,
-              isSmall: true,
-              onPressed: () => _openDailyChallenge(context),
             ),
-          ),
+            // Notification dot if not completed
+            if (!_isDailyCompleted)
+              Positioned(
+                top: -4,
+                right: -4,
+                child: Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: GameColors.background,
+                      width: 2,
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
         const SizedBox(height: 10),
         if (_dailyStreak > 0)

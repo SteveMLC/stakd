@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
+import '../models/daily_challenge.dart';
 import '../models/game_state.dart';
-import '../services/audio_service.dart';
-import '../services/level_generator.dart';
-import '../services/storage_service.dart';
-import '../utils/constants.dart';
+import '../models/stack_model.dart';
+import '../models/layer_model.dart';
+import '../services/daily_challenge_service.dart';
 import '../widgets/game_board.dart';
 import '../widgets/game_button.dart';
-import '../widgets/particles/confetti_overlay.dart';
+import '../utils/constants.dart';
+import 'dart:async';
 
-/// Daily Challenge gameplay screen
 class DailyChallengeScreen extends StatefulWidget {
   const DailyChallengeScreen({super.key});
 
@@ -19,439 +19,426 @@ class DailyChallengeScreen extends StatefulWidget {
 }
 
 class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
-  final LevelGenerator _levelGenerator = LevelGenerator();
-  late DateTime _challengeDateUtc;
-  late String _dateKey;
-  bool _isCompletedToday = false;
-  int _currentStreak = 0;
-  bool _milestoneReached = false;
-  bool _completionScheduled = false;
+  final DailyChallengeService _service = DailyChallengeService();
+  DailyChallenge? _challenge;
+  int _streak = 0;
+  Map<DateTime, Duration?> _history = {};
+  
+  Timer? _timer;
+  Duration _elapsed = Duration.zero;
+  bool _isPlaying = false;
+  bool _showCalendar = false;
+  
+  GameState? _gameState;
 
   @override
   void initState() {
     super.initState();
-    _challengeDateUtc = DateTime.now().toUtc();
-    _dateKey = _formatDateKey(_challengeDateUtc);
-    _loadStatus();
-    _loadLevel();
+    _loadChallenge();
   }
 
-  void _loadStatus() {
-    final storage = StorageService();
-    _isCompletedToday = storage.isDailyChallengeCompleted(_dateKey);
-    _currentStreak = storage.getDailyChallengeStreak();
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _gameState?.dispose();
+    super.dispose();
   }
 
-  void _loadLevel() {
-    final (stacks, par) = _levelGenerator.generateDailyChallengeWithPar(
-      date: _challengeDateUtc,
-    );
-    context.read<GameState>().initGame(stacks, 0, par: par);
-  }
-
-  Future<void> _onDailyComplete() async {
-    if (_isCompletedToday) return;
-
-    final storage = StorageService();
-    final previousStreak = storage.getDailyChallengeStreak();
-
-    await storage.addMoves(context.read<GameState>().moveCount);
-    final newStreak = await storage.markDailyChallengeCompleted(_dateKey);
-    final milestone =
-        _isStreakMilestone(newStreak) && newStreak > previousStreak;
-
-    if (!mounted) return;
+  Future<void> _loadChallenge() async {
+    final challenge = await _service.getTodaysChallenge();
+    final streak = await _service.getStreak();
+    final history = await _service.getHistory();
+    
+    // Generate puzzle grid and convert to stacks
+    final puzzleGrid = challenge.generatePuzzle();
+    final stacks = _gridToStacks(puzzleGrid);
+    
+    final gameState = GameState();
+    gameState.initGame(stacks, challenge.getDayNumber());
+    
     setState(() {
-      _isCompletedToday = true;
-      _currentStreak = newStreak;
-      _milestoneReached = milestone;
+      _challenge = challenge;
+      _streak = streak;
+      _history = history;
+      _gameState = gameState;
     });
+    
+    // Listen to game state for completion
+    gameState.addListener(_onGameStateChanged);
   }
 
-  void _restartChallenge() {
-    _loadLevel();
-  }
-
-  void _onUndo() {
-    final gameState = context.read<GameState>();
-    if (gameState.canUndo) {
-      AudioService().playTap();
-      gameState.undo();
+  void _onGameStateChanged() {
+    if (_gameState?.isComplete ?? false) {
+      if (!(_challenge?.completed ?? false)) {
+        _onChallengeCompleted();
+      }
     }
   }
 
-  void _onUndoWithAd() {
-    // Daily challenge does not grant extra undos via ads yet.
+  List<GameStack> _gridToStacks(List<List<int>> grid) {
+    final stacks = <GameStack>[];
+    final maxDepth = grid.length;
+    
+    // Convert each column of the grid to a stack
+    for (var col = 0; col < grid[0].length; col++) {
+      final layers = <Layer>[];
+      for (var row = grid.length - 1; row >= 0; row--) {
+        final colorIndex = grid[row][col] - 1; // Grid uses 1-6, Layer uses 0-5
+        layers.add(Layer(colorIndex: colorIndex));
+      }
+      stacks.add(GameStack(layers: layers, maxDepth: maxDepth));
+    }
+    
+    // Add 2 empty stacks for moves
+    stacks.add(GameStack(layers: [], maxDepth: maxDepth));
+    stacks.add(GameStack(layers: [], maxDepth: maxDepth));
+    
+    return stacks;
   }
 
-  void _shareResult(int moves) {
-    final dateLabel = _formatDisplayDate(_challengeDateUtc);
-    final text =
-        'I completed the Stakd Daily Challenge for $dateLabel (UTC) in $moves moves! \u{1F525}';
-    Share.share(text, subject: 'Stakd Daily Challenge');
+  void _startTimer() {
+    if (_challenge?.completed ?? false) return;
+    
+    if (!_isPlaying) {
+      setState(() {
+        _isPlaying = true;
+      });
+      
+      _timer?.cancel();
+      _timer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+        if (mounted) {
+          setState(() {
+            _elapsed += const Duration(milliseconds: 100);
+          });
+        }
+      });
+    }
   }
 
-  void _goHome() {
-    Navigator.of(context).pop({
-      'completed': _isCompletedToday,
-      'milestone': _milestoneReached,
-      'streak': _currentStreak,
-    });
+  void _stopTimer() {
+    _timer?.cancel();
+    if (mounted) {
+      setState(() {
+        _isPlaying = false;
+      });
+    }
+  }
+
+  Future<void> _onChallengeCompleted() async {
+    _stopTimer();
+    
+    await _service.markCompleted(_elapsed);
+    await _loadChallenge(); // Reload to get updated streak
+    
+    if (mounted) {
+      _showCompletionDialog();
+    }
+  }
+
+  void _showCompletionDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: GameColors.surface,
+        title: const Text(
+          '🎉 Challenge Complete!',
+          style: TextStyle(color: GameColors.text),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _formatDuration(_elapsed),
+              style: const TextStyle(
+                fontSize: 40,
+                fontWeight: FontWeight.bold,
+                color: GameColors.accent,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '🔥 $_streak day streak!',
+              style: const TextStyle(fontSize: 20, color: GameColors.text),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${_gameState?.moveCount ?? 0} moves',
+              style: const TextStyle(fontSize: 16, color: GameColors.textMuted),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pop(context);
+            },
+            child: const Text('Close'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: GameColors.accent,
+              foregroundColor: GameColors.text,
+            ),
+            onPressed: () {
+              _shareResult();
+              Navigator.pop(context);
+            },
+            child: const Text('Share'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _shareResult() {
+    final dayNum = _challenge?.getDayNumber() ?? 0;
+    final timeStr = _formatDuration(_elapsed);
+    final text = '''Stakd Daily #$dayNum 🟩
+⏱️ $timeStr
+🔥 $_streak day streak
+go7studio.com/stakd''';
+    
+    Clipboard.setData(ClipboardData(text: text));
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Result copied to clipboard!'),
+          backgroundColor: GameColors.accent,
+        ),
+      );
+    }
+  }
+
+  String _formatDuration(Duration duration) {
+    final minutes = duration.inMinutes;
+    final seconds = duration.inSeconds % 60;
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_challenge == null || _gameState == null) {
+      return const Scaffold(
+        backgroundColor: GameColors.background,
+        body: Center(child: CircularProgressIndicator(color: GameColors.accent)),
+      );
+    }
+
+    final dateFormat = DateFormat('EEEE, MMMM d');
+    final isCompleted = _challenge!.completed;
+
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF1B1E3C), Color(0xFF2B1B47), Color(0xFF401B3A)],
-          ),
-        ),
-        child: SafeArea(
-          child: Consumer<GameState>(
-            builder: (context, gameState, child) {
-              if (gameState.isComplete && !_completionScheduled) {
-                _completionScheduled = true;
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  _onDailyComplete();
-                });
-              }
-
-              return Stack(
-                children: [
-                  Column(
-                    children: [
-                      _buildTopBar(gameState),
-                      _buildDailyHeader(),
-                      Expanded(
-                        child: GameBoard(
-                          gameState: gameState,
-                          onTap: () => AudioService().playTap(),
-                          onMove: () => AudioService().playSlide(),
-                          onClear: () => AudioService().playClear(),
-                        ),
-                      ),
-                      _buildBottomControls(gameState),
-                      _buildLeaderboardPlaceholder(),
-                    ],
-                  ),
-                  if (gameState.isComplete)
-                    _buildCompletionOverlay(gameState.moveCount),
-                ],
-              );
+      backgroundColor: GameColors.background,
+      appBar: AppBar(
+        backgroundColor: GameColors.surface,
+        title: const Text('Daily Challenge', style: TextStyle(color: GameColors.text)),
+        iconTheme: const IconThemeData(color: GameColors.text),
+        actions: [
+          IconButton(
+            icon: Icon(
+              _showCalendar ? Icons.grid_4x4 : Icons.calendar_month,
+              color: GameColors.text,
+            ),
+            onPressed: () {
+              setState(() {
+                _showCalendar = !_showCalendar;
+              });
             },
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTopBar(GameState gameState) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          GameIconButton(icon: Icons.arrow_back, onPressed: _goHome),
-          const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: GameColors.surface,
-              borderRadius: BorderRadius.circular(20),
-              border: gameState.par != null
-                  ? Border.all(
-                      color: gameState.isUnderPar
-                          ? Colors.green.withValues(alpha: 0.6)
-                          : gameState.moveCount > (gameState.par! + 5)
-                              ? Colors.red.withValues(alpha: 0.4)
-                              : Colors.transparent,
-                      width: 2,
-                    )
-                  : null,
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.touch_app, size: 18),
-                const SizedBox(width: 4),
-                Text(
-                  gameState.par != null
-                      ? '${gameState.moveCount}/${gameState.par}'
-                      : '${gameState.moveCount}',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: gameState.par != null && gameState.isUnderPar
-                        ? Colors.green
-                        : null,
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
+      body: _showCalendar ? _buildCalendarView() : _buildGameView(dateFormat, isCompleted),
     );
   }
 
-  Widget _buildDailyHeader() {
-    final dateLabel = _formatDisplayDate(_challengeDateUtc);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              GameColors.accent.withValues(alpha: 0.9),
-              GameColors.palette[1].withValues(alpha: 0.9),
+  Widget _buildGameView(DateFormat dateFormat, bool isCompleted) {
+    return Column(
+      children: [
+        // Header: Date, Timer, Streak
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: GameColors.surface,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.2),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
             ],
           ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: GameColors.accent.withValues(alpha: 0.25),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.today, color: GameColors.text),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          child: Column(
+            children: [
+              Text(
+                dateFormat.format(_challenge!.date),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: GameColors.text,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Daily Challenge #${_challenge!.getDayNumber()}',
+                style: const TextStyle(fontSize: 14, color: GameColors.textMuted),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  const Text(
-                    'Daily Challenge',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: GameColors.text,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '$dateLabel • UTC',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: GameColors.text,
-                    ),
-                  ),
+                  _buildStatCard('⏱️', _formatDuration(_elapsed), 'Time'),
+                  _buildStatCard('🔥', '$_streak', 'Streak'),
+                  if (isCompleted)
+                    _buildStatCard('✓', _formatDuration(_challenge!.bestTime!), 'Best'),
+                  if (!isCompleted)
+                    _buildStatCard('📦', '${_gameState!.moveCount}', 'Moves'),
                 ],
               ),
-            ),
-            if (_isCompletedToday)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.25),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: const Text(
-                  'Completed!',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: GameColors.text,
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBottomControls(GameState gameState) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          GameIconButton(icon: Icons.refresh, onPressed: _restartChallenge),
-          const SizedBox(width: 16),
-          GameIconButton(
-            icon: Icons.undo,
-            badge: gameState.undosRemaining > 0
-                ? '${gameState.undosRemaining}'
-                : null,
-            isDisabled: !gameState.canUndo,
-            onPressed: gameState.canUndo ? _onUndo : _onUndoWithAd,
-          ),
-          const SizedBox(width: 16),
-          GameIconButton(
-            icon: Icons.lightbulb_outline,
-            onPressed: () {
-              final hint = gameState.getHint();
-              if (hint != null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Move from stack ${hint.$1 + 1} to ${hint.$2 + 1}',
-                    ),
-                    duration: const Duration(seconds: 2),
-                  ),
-                );
-              }
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLeaderboardPlaceholder() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: GameColors.surface.withValues(alpha: 0.6),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: GameColors.accent.withValues(alpha: 0.35)),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.leaderboard, color: GameColors.textMuted),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text(
-                'Leaderboard coming soon',
-                style: TextStyle(
-                  color: GameColors.textMuted,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: GameColors.empty,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: const Text(
-                'Soon',
-                style: TextStyle(color: GameColors.textMuted, fontSize: 12),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCompletionOverlay(int moves) {
-    return Stack(
-      children: [
-        const Positioned.fill(
-          child: ConfettiOverlay(
-            duration: Duration(seconds: 3),
-            colors: GameColors.palette,
-            confettiCount: 50,
+            ],
           ),
         ),
-        Container(
-          color: Colors.black.withValues(alpha: 0.75),
+        
+        // Game Board
+        Expanded(
           child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.emoji_events,
-                  size: 72,
-                  color: GameColors.accent,
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'Daily Complete!',
-                  style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                    color: GameColors.text,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: GameColors.surface,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.touch_app, color: GameColors.accent),
-                      const SizedBox(width: 8),
-                      Text(
-                        '$moves moves',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 32),
-                ElevatedButton.icon(
-                  onPressed: () => _shareResult(moves),
-                  icon: const Icon(Icons.share),
-                  label: const Text('Share Result'),
-                ),
-                const SizedBox(height: 12),
-                TextButton.icon(
-                  onPressed: _goHome,
-                  icon: const Icon(Icons.home),
-                  label: const Text('Home'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: GameColors.textMuted,
-                  ),
-                ),
-              ],
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: GameBoard(
+                gameState: _gameState!,
+                onTap: _startTimer,
+                onMove: () {},
+                onClear: () {},
+              ),
             ),
+          ),
+        ),
+        
+        // Bottom Actions
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              if (isCompleted) ...[
+                Expanded(
+                  child: GameButton(
+                    text: 'Share Result',
+                    icon: Icons.share,
+                    isPrimary: true,
+                    onPressed: _shareResult,
+                  ),
+                ),
+              ] else ...[
+                if (_gameState!.canUndo)
+                  Expanded(
+                    child: GameButton(
+                      text: 'Undo',
+                      icon: Icons.undo,
+                      isPrimary: false,
+                      onPressed: () {
+                        _gameState!.undo();
+                      },
+                    ),
+                  ),
+              ],
+            ],
           ),
         ),
       ],
     );
   }
 
-  String _formatDateKey(DateTime date) {
-    final year = date.year.toString().padLeft(4, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    final day = date.day.toString().padLeft(2, '0');
-    return '$year$month$day';
+  Widget _buildStatCard(String emoji, String value, String label) {
+    return Column(
+      children: [
+        Text(emoji, style: const TextStyle(fontSize: 24)),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: GameColors.text,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, color: GameColors.textMuted),
+        ),
+      ],
+    );
   }
 
-  String _formatDisplayDate(DateTime date) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    final monthLabel = months[date.month - 1];
-    return '$monthLabel ${date.day}, ${date.year}';
-  }
-
-  bool _isStreakMilestone(int streak) {
-    const milestones = [3, 5, 7, 10, 14, 21, 30];
-    return milestones.contains(streak);
+  Widget _buildCalendarView() {
+    final now = DateTime.now();
+    final daysToShow = 30;
+    
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const Text(
+          'Past 30 Days',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: GameColors.text,
+          ),
+        ),
+        const SizedBox(height: 16),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 7,
+            childAspectRatio: 1,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+          ),
+          itemCount: daysToShow,
+          itemBuilder: (context, index) {
+            final date = DateTime(now.year, now.month, now.day)
+                .subtract(Duration(days: daysToShow - 1 - index));
+            final time = _history[date];
+            final isCompleted = time != null;
+            
+            return Container(
+              decoration: BoxDecoration(
+                color: isCompleted ? GameColors.palette[2] : GameColors.empty,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isCompleted
+                      ? GameColors.palette[2]
+                      : GameColors.empty.withValues(alpha: 0.3),
+                  width: 2,
+                ),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '${date.day}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: isCompleted ? GameColors.text : GameColors.textMuted,
+                    ),
+                  ),
+                  if (isCompleted)
+                    Text(
+                      _formatDuration(time),
+                      style: TextStyle(
+                        fontSize: 8,
+                        color: GameColors.text.withValues(alpha: 0.7),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
+      ],
+    );
   }
 }

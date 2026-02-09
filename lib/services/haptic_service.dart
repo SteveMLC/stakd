@@ -1,4 +1,5 @@
 import 'package:flutter/services.dart';
+import 'storage_service.dart';
 
 /// Haptic feedback service for Stakd
 /// Provides consistent haptic patterns throughout the game
@@ -7,23 +8,29 @@ class HapticService {
   HapticService._();
   static final HapticService instance = HapticService._();
 
+  bool _isEnabled() => StorageService().getHapticsEnabled();
+
   /// Light tap - used for layer/stack selection
   Future<void> lightTap() async {
+    if (!_isEnabled()) return;
     await HapticFeedback.lightImpact();
   }
 
   /// Medium impact - used for layer drop/placement
   Future<void> mediumImpact() async {
+    if (!_isEnabled()) return;
     await HapticFeedback.mediumImpact();
   }
 
   /// Heavy impact - used for significant events
   Future<void> heavyImpact() async {
+    if (!_isEnabled()) return;
     await HapticFeedback.heavyImpact();
   }
 
   /// Success pattern - 3 quick pulses for stack complete
   Future<void> successPattern() async {
+    if (!_isEnabled()) return;
     for (int i = 0; i < 3; i++) {
       await HapticFeedback.lightImpact();
       if (i < 2) {
@@ -34,6 +41,7 @@ class HapticService {
 
   /// Level win pattern - heavy impact followed by success sequence
   Future<void> levelWinPattern() async {
+    if (!_isEnabled()) return;
     await HapticFeedback.heavyImpact();
     await Future.delayed(const Duration(milliseconds: 150));
     await successPattern();
@@ -41,6 +49,7 @@ class HapticService {
 
   /// Combo burst - medium impact with varying intensity based on combo level
   Future<void> comboBurst(int comboLevel) async {
+    if (!_isEnabled()) return;
     if (comboLevel >= 4) {
       // High combo gets heavy impact
       await HapticFeedback.heavyImpact();
@@ -52,6 +61,7 @@ class HapticService {
 
   /// Error/invalid move feedback
   Future<void> error() async {
+    if (!_isEnabled()) return;
     await HapticFeedback.vibrate();
   }
 

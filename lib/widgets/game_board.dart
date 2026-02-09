@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../models/game_state.dart';
 import '../models/stack_model.dart';
 import '../services/haptic_service.dart';
@@ -183,7 +182,7 @@ class _GameBoardState extends State<GameBoard>
                                         if (!sourceStack.isEmpty && 
                                             !targetStack.canAccept(sourceStack.topLayer!)) {
                                           // Haptic feedback for invalid move
-                                          HapticFeedback.vibrate();
+                                          haptics.error();
                                           // Trigger shake animation
                                           _shakeController.forward(from: 0);
                                         }
