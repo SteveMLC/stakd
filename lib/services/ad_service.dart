@@ -11,11 +11,14 @@ class AdService {
 
   InterstitialAd? _interstitialAd;
   RewardedAd? _rewardedAd;
+  BannerAd? _bannerAd;
 
   int _levelsSinceLastAd = 0;
   bool _initialized = false;
 
   // Test ad unit IDs (replace with real ones for production)
+  static const String _bannerAdUnitId =
+      'ca-app-pub-3940256099942544/6300978111'; // Test ID
   static const String _interstitialAdUnitId =
       'ca-app-pub-3940256099942544/1033173712'; // Test ID
   static const String _rewardedAdUnitId =
@@ -30,12 +33,41 @@ class AdService {
       _initialized = true;
 
       // Pre-load ads
+      _loadBannerAd();
       _loadInterstitialAd();
       _loadRewardedAd();
     } catch (e) {
       debugPrint('AdService init failed: $e');
     }
   }
+
+  /// Load a banner ad
+  void _loadBannerAd() {
+    if (!shouldShowAds) return;
+
+    try {
+      _bannerAd = BannerAd(
+        adUnitId: _bannerAdUnitId,
+        size: AdSize.banner,
+        request: const AdRequest(),
+        listener: BannerAdListener(
+          onAdLoaded: (_) {
+            debugPrint('Banner ad loaded');
+          },
+          onAdFailedToLoad: (ad, error) {
+            debugPrint('Banner ad failed to load: $error');
+            ad.dispose();
+            _bannerAd = null;
+          },
+        ),
+      )..load();
+    } catch (e) {
+      debugPrint('Banner ad load threw an error: $e');
+    }
+  }
+
+  /// Get the banner ad widget (or null if not ready)
+  BannerAd? get bannerAd => _bannerAd;
 
   /// Check if ads should be shown (not removed via IAP)
   bool get shouldShowAds {
@@ -166,6 +198,7 @@ class AdService {
 
   /// Dispose ads
   void dispose() {
+    _bannerAd?.dispose();
     _interstitialAd?.dispose();
     _rewardedAd?.dispose();
   }

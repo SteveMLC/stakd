@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/game_state.dart';
 import '../models/stack_model.dart';
 import '../services/haptic_service.dart';
@@ -158,13 +159,35 @@ class _GameBoardState extends State<GameBoard>
                                     final previousCleared = List<int>.from(
                                       widget.gameState.recentlyCleared,
                                     );
+                                    final previousSelectedStack =
+                                        widget.gameState.selectedStackIndex;
 
                                     widget.gameState.onStackTap(actualIndex);
                                     widget.onTap?.call();
 
-                                    if (widget.gameState.moveCount >
-                                        previousMoveCount) {
+                                    // Check if move was made
+                                    final moveMade = widget.gameState.moveCount > previousMoveCount;
+                                    
+                                    if (moveMade) {
                                       widget.onMove?.call();
+                                    } else {
+                                      // Check if this was an invalid move attempt
+                                      // (tried to move to a stack that can't accept the layer)
+                                      final wasSourceSelected = previousSelectedStack >= 0 && 
+                                                               previousSelectedStack != actualIndex;
+                                      if (wasSourceSelected) {
+                                        final sourceStack = widget.gameState.stacks[previousSelectedStack];
+                                        final targetStack = widget.gameState.stacks[actualIndex];
+                                        
+                                        // Invalid move: has source layer but target can't accept it
+                                        if (!sourceStack.isEmpty && 
+                                            !targetStack.canAccept(sourceStack.topLayer!)) {
+                                          // Haptic feedback for invalid move
+                                          HapticFeedback.vibrate();
+                                          // Trigger shake animation
+                                          _shakeController.forward(from: 0);
+                                        }
+                                      }
                                     }
 
                                     final currentCleared =

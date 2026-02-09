@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../models/game_state.dart';
 import '../services/level_generator.dart';
 import '../services/storage_service.dart';
@@ -7,6 +9,7 @@ import '../services/ad_service.dart';
 import '../services/audio_service.dart';
 import '../services/iap_service.dart';
 import '../services/tutorial_service.dart';
+import '../services/haptic_service.dart';
 import '../utils/constants.dart';
 import '../widgets/game_board.dart';
 import '../widgets/game_button.dart';
@@ -14,6 +17,7 @@ import '../widgets/completion_overlay.dart';
 import '../widgets/hint_overlay.dart';
 import '../widgets/multi_grab_hint_overlay.dart';
 import '../widgets/tutorial_overlay.dart';
+import 'settings_screen.dart';
 
 /// Main gameplay screen
 class GameScreen extends StatefulWidget {
@@ -200,6 +204,12 @@ class _GameScreenState extends State<GameScreen> {
       setState(() {
         _completionDuration = DateTime.now().difference(startTime);
       });
+      // Heavy haptic impact on level complete
+      HapticFeedback.heavyImpact();
+      // Follow with success pattern for extra juice
+      Future.delayed(const Duration(milliseconds: 100), () {
+        haptics.levelWinPattern();
+      });
     });
   }
 
@@ -291,6 +301,12 @@ class _GameScreenState extends State<GameScreen> {
 
   void _goHome() {
     Navigator.of(context).pop();
+  }
+
+  void _goToSettings() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => const SettingsScreen()),
+    );
   }
 
   void _showHint() {
@@ -436,6 +452,9 @@ class _GameScreenState extends State<GameScreen> {
                           onClear: () => AudioService().playClear(),
                         ),
                       ),
+                      
+                      // Banner ad
+                      _buildBannerAd(),
                       
                       // Bottom controls
                       _buildBottomControls(gameState, iap),
@@ -591,8 +610,29 @@ class _GameScreenState extends State<GameScreen> {
               ),
             ],
           ),
+          const SizedBox(width: 12),
+
+          // Settings button
+          GameIconButton(icon: Icons.settings, onPressed: _goToSettings),
         ],
       ),
+    );
+  }
+
+  Widget _buildBannerAd() {
+    final adService = AdService();
+    final bannerAd = adService.bannerAd;
+
+    // Don't show if ads are disabled (premium user)
+    if (!adService.shouldShowAds || bannerAd == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      alignment: Alignment.center,
+      width: bannerAd.size.width.toDouble(),
+      height: bannerAd.size.height.toDouble(),
+      child: AdWidget(ad: bannerAd),
     );
   }
 
