@@ -44,9 +44,11 @@ class GardenState {
     return names[currentStage.clamp(0, 9)];
   }
 
+  /// Stage thresholds for progression
+  static const thresholds = [0, 5, 15, 30, 50, 75, 100, 150, 200];
+
   /// Get progress to next stage (0.0 - 1.0)
   double get progressToNextStage {
-    const thresholds = [0, 5, 15, 30, 50, 75, 100, 150, 200];
     if (currentStage >= 9) return 1.0;
 
     final current =
@@ -57,6 +59,42 @@ class GardenState {
 
     return ((totalPuzzlesSolved - current) / (next - current))
         .clamp(0.0, 1.0);
+  }
+
+  /// Get puzzles solved in current stage
+  int get puzzlesSolvedInStage {
+    if (currentStage >= 9) return totalPuzzlesSolved;
+    final current =
+        currentStage < thresholds.length ? thresholds[currentStage] : 200;
+    return totalPuzzlesSolved - current;
+  }
+
+  /// Get puzzles needed to reach next stage (from current stage start)
+  int get puzzlesNeededForNextStage {
+    if (currentStage >= 9) return 0;
+    final current =
+        currentStage < thresholds.length ? thresholds[currentStage] : 200;
+    final next = currentStage + 1 < thresholds.length
+        ? thresholds[currentStage + 1]
+        : 999;
+    return next - current;
+  }
+
+  /// Get stage icon emoji
+  String get stageIcon {
+    const icons = [
+      '🌑', // Empty Canvas
+      '🌱', // First Signs
+      '🌿', // Taking Root
+      '🌲', // Growth
+      '🌸', // Flourishing
+      '🌺', // Bloom
+      '🏮', // Harmony
+      '⛩️', // Sanctuary
+      '🌙', // Transcendence
+      '✨', // Infinite
+    ];
+    return icons[currentStage.clamp(0, 9)];
   }
 
   GardenState copyWith({

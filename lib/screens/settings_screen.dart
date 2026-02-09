@@ -64,7 +64,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
+            colors: [GameColors.backgroundDark, GameColors.backgroundMid],
           ),
         ),
         child: SafeArea(

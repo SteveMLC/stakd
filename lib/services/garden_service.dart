@@ -46,6 +46,11 @@ class GardenService {
   static List<String> _getUnlocksForStage(int stage) {
     final unlocks = <String>[];
 
+    // Stage 0: Always show baseline elements so garden isn't completely empty
+    if (stage >= 0) {
+      unlocks.addAll(['ground', 'grass_base', 'grass_base_2', 'grass_base_3', 'ambient_particles']);
+    }
+
     if (stage >= 1) {
       unlocks.addAll(['pebble_path', 'small_stones', 'grass_1']);
     }

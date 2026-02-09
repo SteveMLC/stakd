@@ -319,6 +319,13 @@ class _ZenModeScreenState extends State<ZenModeScreen>
             ),
           ),
 
+          // Garden progress indicator (bottom left)
+          Positioned(
+            bottom: 32,
+            left: 16,
+            child: _buildGardenProgress(),
+          ),
+
           // Session stats overlay (bottom right)
           Positioned(
             bottom: 32,
@@ -503,6 +510,103 @@ class _ZenModeScreenState extends State<ZenModeScreen>
             style: TextStyle(
               color: GameColors.textMuted.withValues(alpha: 0.5),
               fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build garden progress indicator showing stage and progress to next
+  Widget _buildGardenProgress() {
+    final state = GardenService.state;
+    final progress = state.progressToNextStage;
+    final puzzlesInStage = state.puzzlesSolvedInStage;
+    final puzzlesNeeded = state.puzzlesNeededForNextStage;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: GameColors.surface.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: GameColors.zen.withValues(alpha: 0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Stage name with icon
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                state.stageIcon,
+                style: const TextStyle(fontSize: 14),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                state.stageName,
+                style: TextStyle(
+                  color: GameColors.text.withValues(alpha: 0.9),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          
+          // Progress bar
+          SizedBox(
+            width: 120,
+            child: Stack(
+              children: [
+                // Background
+                Container(
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: GameColors.surface.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+                // Progress fill
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 500),
+                  curve: Curves.easeOutCubic,
+                  height: 6,
+                  width: 120 * progress,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        GameColors.zen.withValues(alpha: 0.7),
+                        GameColors.zen,
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(3),
+                    boxShadow: [
+                      BoxShadow(
+                        color: GameColors.zen.withValues(alpha: 0.4),
+                        blurRadius: 4,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+          
+          // Progress text
+          Text(
+            state.currentStage >= 9 
+                ? '∞ Infinite'
+                : '$puzzlesInStage / $puzzlesNeeded to next',
+            style: TextStyle(
+              color: GameColors.textMuted.withValues(alpha: 0.6),
+              fontSize: 10,
             ),
           ),
         ],

@@ -186,9 +186,13 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
 
   Widget _buildSky(int stage) {
     final isNight = stage >= 6;
+    // Stage 0-5: Day sky with visible colors (not pure black)
+    // Stage 6+: Night sky
     final colors = isNight
         ? [const Color(0xFF0D1321), const Color(0xFF1A1E3A), const Color(0xFF2E3D65)]
-        : [const Color(0xFF87CEEB), const Color(0xFFB8D4E8), const Color(0xFFE6F7FF)];
+        : stage == 0
+            ? [const Color(0xFF1a2a3a), const Color(0xFF2a3a4a), const Color(0xFF3a4a5a)] // Dusk for empty canvas
+            : [const Color(0xFF87CEEB), const Color(0xFFB8D4E8), const Color(0xFFE6F7FF)];
 
     return Stack(
       fit: StackFit.expand,
@@ -560,7 +564,32 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
   Widget _buildFlora(int stage) {
     final elements = <Widget>[];
 
-    // Stage 1: First grass patches
+    // Stage 0: Baseline grass - sparse but visible, so garden isn't empty
+    if (stage >= 0) {
+      elements.add(
+        GardenElement(
+          elementId: 'grass_base',
+          revealType: GardenRevealType.growUp,
+          child: _baseGrass(left: 20, size: 28, opacity: 0.7),
+        ),
+      );
+      elements.add(
+        GardenElement(
+          elementId: 'grass_base_2',
+          revealType: GardenRevealType.growUp,
+          child: _baseGrass(right: 30, size: 24, opacity: 0.6),
+        ),
+      );
+      elements.add(
+        GardenElement(
+          elementId: 'grass_base_3',
+          revealType: GardenRevealType.growUp,
+          child: _baseGrass(left: 160, size: 26, opacity: 0.5),
+        ),
+      );
+    }
+
+    // Stage 1: First grass patches (more vibrant)
     if (stage >= 1) {
       elements.add(
         GardenElement(
@@ -649,6 +678,33 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
         child: CustomPaint(
           size: Size(size, size * 1.5),
           painter: GrassPainter(),
+        ),
+      ),
+    );
+  }
+
+  /// Sparse baseline grass for stage 0 - visible but subtle
+  Widget _baseGrass({double? left, double? right, required double size, double opacity = 0.6}) {
+    return Positioned(
+      bottom: 65,
+      left: left,
+      right: right,
+      child: AnimatedBuilder(
+        animation: _ambientController,
+        builder: (context, child) {
+          final sway = math.sin(_ambientController.value * 2 * math.pi) * 2;
+          return Transform.rotate(
+            angle: sway * 0.015,
+            alignment: Alignment.bottomCenter,
+            child: child,
+          );
+        },
+        child: Opacity(
+          opacity: opacity,
+          child: CustomPaint(
+            size: Size(size, size * 1.2),
+            painter: BaseGrassPainter(),
+          ),
         ),
       ),
     );
@@ -1133,17 +1189,45 @@ class GroundPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Stage 0: Dark earth with subtle texture (not black!)
+    // Stage 1: Brown earth
+    // Stage 2+: Green grass
+    final List<Color> colors;
+    if (stage >= 2) {
+      colors = const [Color(0xFF6FA35E), Color(0xFF4F7F45)];
+    } else if (stage >= 1) {
+      colors = const [Color(0xFF9B8368), Color(0xFF7B624A)];
+    } else {
+      // Stage 0: Dark but visible earth
+      colors = const [Color(0xFF3D4A3A), Color(0xFF2A3528)];
+    }
+
     final earthPaint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: stage >= 2
-            ? const [Color(0xFF6FA35E), Color(0xFF4F7F45)]
-            : const [Color(0xFF9B8368), Color(0xFF7B624A)],
+        colors: colors,
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
 
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), earthPaint);
 
+    // Add subtle texture at stage 0 so it's not flat
+    if (stage == 0) {
+      final texturePaint = Paint()..color = const Color(0xFF4A5A47).withValues(alpha: 0.3);
+      for (var i = 0; i < 12; i++) {
+        final x = (i * 35.0) + 10;
+        canvas.drawOval(
+          Rect.fromCenter(
+            center: Offset(x, size.height - 60 + (i % 3) * 20),
+            width: 25 + (i % 4) * 8,
+            height: 12 + (i % 3) * 5,
+          ),
+          texturePaint,
+        );
+      }
+    }
+
+    // Pebbles/stones at stage 1+
     if (stage >= 1) {
       final stonePaint = Paint()..color = const Color(0xFF9CA3AF);
       for (var i = 0; i < 5; i++) {
@@ -1185,6 +1269,40 @@ class GrassPainter extends CustomPainter {
         x + 8,
         size.height * 0.5,
         x + 5,
+        size.height,
+      );
+    }
+    path.close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Sparse grass for stage 0 - darker, fewer blades
+class BaseGrassPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF4A6B4A) // Darker, more muted green
+      ..style = PaintingStyle.fill;
+
+    final path = Path();
+    // Just 3 sparse blades
+    for (var i = 0; i < 3; i++) {
+      final x = size.width * (i / 3 + 0.15);
+      path.moveTo(x, size.height);
+      path.quadraticBezierTo(
+        x - 3,
+        size.height * 0.5,
+        x + 2,
+        0,
+      );
+      path.quadraticBezierTo(
+        x + 5,
+        size.height * 0.5,
+        x + 3,
         size.height,
       );
     }

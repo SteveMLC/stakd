@@ -229,7 +229,7 @@ class _HomeScreenState extends State<HomeScreen>
                   width: 12,
                   height: 12,
                   decoration: BoxDecoration(
-                    color: Colors.red,
+                    color: GameColors.errorGlow,
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: GameColors.background,
@@ -273,14 +273,14 @@ class _HomeScreenState extends State<HomeScreen>
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: const [
-            Icon(Icons.spa, size: 32, color: Colors.white),
+            Icon(Icons.spa, size: 32, color: GameColors.text),
             SizedBox(width: 12),
             Text(
               'ZEN MODE',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: GameColors.text,
                 letterSpacing: 2,
               ),
             ),
@@ -340,7 +340,7 @@ class _HomeScreenState extends State<HomeScreen>
             style: TextStyle(
               fontSize: 56,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: GameColors.text,
               letterSpacing: 8,
             ),
           ),
@@ -646,7 +646,7 @@ class _StarFieldPainter extends CustomPainter {
       final dy = (star.y + progress * star.speed) % 1.0;
       final offset = Offset(star.x * size.width, dy * size.height);
       final paint = Paint()
-        ..color = Colors.white.withValues(alpha: star.opacity)
+        ..color = GameColors.text.withValues(alpha: star.opacity)
         ..style = PaintingStyle.fill;
       canvas.drawCircle(offset, star.size, paint);
     }

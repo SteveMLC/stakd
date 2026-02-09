@@ -41,10 +41,12 @@ class _GardenElementState extends State<GardenElement>
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
   late Animation<double> _slideAnimation;
+  late Animation<double> _glowAnimation;
   
   bool _hasBeenRevealed = false;
   bool _isUnlocked = false;
   bool _showingParticles = false;
+  bool _showingGlow = false;
   List<_Particle> _particles = [];
 
   @override
@@ -81,6 +83,14 @@ class _GardenElementState extends State<GardenElement>
         curve: const Interval(0.0, 0.8, curve: Curves.easeOutCubic),
       ),
     );
+
+    // Glow animation - pulses then fades
+    _glowAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 20),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.6), weight: 15),
+      TweenSequenceItem(tween: Tween(begin: 0.6, end: 0.9), weight: 15),
+      TweenSequenceItem(tween: Tween(begin: 0.9, end: 0.0), weight: 50),
+    ]).animate(_controller);
   }
 
   Future<void> _checkRevealState() async {
@@ -117,8 +127,15 @@ class _GardenElementState extends State<GardenElement>
       _spawnParticles();
     }
     
+    // Enable glow effect
+    _showingGlow = true;
+    
     // Play animation
-    _controller.forward();
+    _controller.forward().then((_) {
+      if (mounted) {
+        setState(() => _showingGlow = false);
+      }
+    });
   }
 
   void _spawnParticles() {
@@ -208,6 +225,27 @@ class _GardenElementState extends State<GardenElement>
               ),
             );
             break;
+        }
+
+        // Add glow effect for newly revealed elements
+        if (_showingGlow) {
+          result = Container(
+            decoration: BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFFFD700).withValues(alpha: _glowAnimation.value * 0.6),
+                  blurRadius: 20 * _glowAnimation.value,
+                  spreadRadius: 8 * _glowAnimation.value,
+                ),
+                BoxShadow(
+                  color: const Color(0xFFFFFFFF).withValues(alpha: _glowAnimation.value * 0.3),
+                  blurRadius: 10 * _glowAnimation.value,
+                  spreadRadius: 2 * _glowAnimation.value,
+                ),
+              ],
+            ),
+            child: result,
+          );
         }
 
         // Add particles overlay

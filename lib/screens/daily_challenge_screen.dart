@@ -112,7 +112,7 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
             const SizedBox(height: 8),
             Text(
               '$moves moves',
-              style: const TextStyle(fontSize: 16, color: Colors.grey),
+              style: const TextStyle(fontSize: 16, color: GameColors.textMuted),
             ),
             const SizedBox(height: 12),
             Text(
@@ -351,17 +351,17 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      color: isCompleted ? Colors.white : GameColors.textMuted,
+                      color: isCompleted ? GameColors.text : GameColors.textMuted,
                     ),
                   ),
                   if (isCompleted) ...[
                     Text(
                       _formatDuration(result.time),
-                      style: const TextStyle(fontSize: 9, color: Colors.white70),
+                      style: TextStyle(fontSize: 9, color: GameColors.text.withValues(alpha: 0.7)),
                     ),
                     Text(
                       '${result.moves}m',
-                      style: const TextStyle(fontSize: 8, color: Colors.white70),
+                      style: TextStyle(fontSize: 8, color: GameColors.text.withValues(alpha: 0.7)),
                     ),
                   ],
                 ],

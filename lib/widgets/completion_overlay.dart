@@ -102,7 +102,7 @@ class _CompletionOverlayState extends State<CompletionOverlay>
       animation: _fadeAnimation,
       builder: (context, child) {
         return Container(
-          color: Colors.black.withValues(alpha: 0.7 * _fadeAnimation.value),
+          color: GameColors.backgroundDark.withValues(alpha: 0.85 * _fadeAnimation.value),
           child: Stack(
             children: [
               AnimatedBuilder(
