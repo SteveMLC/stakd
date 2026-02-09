@@ -7,6 +7,7 @@ import '../models/game_state.dart';
 import '../services/level_generator.dart';
 import '../services/zen_puzzle_isolate.dart';
 import '../services/audio_service.dart';
+import '../services/garden_service.dart';
 import '../utils/constants.dart';
 import '../widgets/game_board.dart';
 import '../widgets/loading_text.dart';
@@ -45,6 +46,7 @@ class _ZenScreenState extends State<ZenScreen>
   @override
   void initState() {
     super.initState();
+    GardenService.startFreshSession();
     _sessionTimer = Stopwatch()..start();
 
     _fadeController = AnimationController(
@@ -109,6 +111,7 @@ class _ZenScreenState extends State<ZenScreen>
       _totalMoves += context.read<GameState>().moveCount;
     });
     _recordSolveTime();
+    GardenService.recordPuzzleSolved();
 
     await Future.delayed(const Duration(milliseconds: 800));
     if (!mounted) return;
