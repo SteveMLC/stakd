@@ -640,7 +640,7 @@ class _StackWidgetState extends State<_StackWidget>
                 onLongPressCancel: _onLongPressCancel,
                 child: SizedBox(
                   width: GameSizes.stackWidth,
-                  height: GameSizes.stackHeight,
+                  height: GameSizes.getStackHeight(widget.stack.maxDepth),
                   child: Stack(
                     clipBehavior: Clip.none,
                     children: [
@@ -1084,13 +1084,17 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
     final layerCount = widget.animatingLayer.layerCount;
     final totalHeight = GameSizes.layerHeight * layerCount + (2 * (layerCount - 1));
 
+    // Use actual rendered stack height (dynamic based on maxDepth)
+    final fromStackHeight = fromBox.size.height;
+    final toStackHeight = toBox.size.height;
+
     // Calculate position of top layer on source stack
     final fromLayerY =
-        fromGlobal.dy + GameSizes.stackHeight - totalHeight - 2;
+        fromGlobal.dy + fromStackHeight - totalHeight - 2;
 
     // Calculate position where layers should land on destination stack
     final toLayerY =
-        toGlobal.dy + GameSizes.stackHeight - totalHeight - 2;
+        toGlobal.dy + toStackHeight - totalHeight - 2;
 
     setState(() {
       _startPos = Offset(fromGlobal.dx, fromLayerY);

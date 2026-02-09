@@ -56,11 +56,19 @@ class GameColors {
 /// Layout constants
 class GameSizes {
   static const double stackWidth = 60.0;
-  static const double stackHeight = 200.0;
+  static const double stackHeight = 200.0; // Default for depth 4-5
   static const double layerHeight = 40.0;
+  static const double layerMargin = 2.0;
   static const double stackSpacing = 12.0;
   static const double borderRadius = 12.0;
   static const double stackBorderRadius = 8.0;
+
+  /// Calculate dynamic stack height based on max depth
+  /// Formula: (depth × (layerHeight + margin)) + topPadding
+  static double getStackHeight(int maxDepth) {
+    const topPadding = 8.0;
+    return (maxDepth * (layerHeight + layerMargin)) + topPadding;
+  }
 }
 
 /// Animation durations
