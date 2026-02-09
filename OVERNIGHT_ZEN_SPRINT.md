@@ -181,3 +181,33 @@ By morning, the zen garden should:
 - Created this plan
 - Beginning sound sourcing...
 
+### 22:45 - Sound Design Complete ✅
+Generated 8 sounds via ElevenLabs Sound Effects API:
+- wind_ambient.mp3 (30s ambient loop)
+- birds_ambient.mp3 (30s ambient loop)
+- crickets_night.mp3 (30s ambient loop)
+- water_stream.mp3 (30s ambient loop)
+- wind_chime.mp3 (3s one-shot)
+- bloom.mp3 (2s one-shot)
+- water_drop.mp3 (2s one-shot)
+- stage_advance.mp3 (3s one-shot)
+
+### 22:55 - ZenAudioService Complete ✅
+Created layered ambient audio service:
+- Automatic init and playback on garden entry
+- Day/night crossfade (birds ↔ crickets)
+- Water layer unlocks with pond_full
+- Sound effect triggers for events
+
+### 23:10 - Visual Improvements Complete ✅
+- Sky: Twinkling stars, moon, sun with glow
+- Trees: Complete rewrite with organic layered foliage
+- Trees: Subtle swaying animation
+- Pond: Gradient water, koi fish, lily pads
+- Structures: Torii gate painter
+
+### 23:15 - Committed and Pushed
+- Commit: fddafe3
+- 1202 lines added, 323 removed
+- Beginning growth animation sprint...
+
