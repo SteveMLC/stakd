@@ -65,22 +65,41 @@ class StackWidget extends StatelessWidget {
               ),
             ],
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              // Layers (bottom to top)
-              ...stack.layers.asMap().entries.map((entry) {
+          clipBehavior: Clip.hardEdge,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final maxHeight = constraints.maxHeight;
+              final layerCount = stack.layers.length;
+              final baseHeight = GameSizes.layerHeight;
+              final gap = 2.0;
+              final bottomPadding = 4.0;
+              final totalNeeded = layerCount > 0
+                  ? (baseHeight * layerCount) + (gap * (layerCount - 1)) + bottomPadding
+                  : 0.0;
+              final effectiveHeight = totalNeeded > maxHeight && layerCount > 0
+                  ? (maxHeight - bottomPadding - (gap * (layerCount - 1))) / layerCount
+                  : baseHeight;
+
+              return Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  // Layers (bottom to top)
+                  ...stack.layers.asMap().entries.map((entry) {
                 final index = entry.key;
                 final layer = entry.value;
                 final isTop = index == stack.layers.length - 1;
 
                 return Padding(
                   padding: EdgeInsets.only(
-                    bottom: index == 0 ? 4 : 2,
+                    bottom: index == 0 ? bottomPadding : gap,
                     left: 4,
                     right: 4,
                   ),
-                  child: LayerWidget(layer: layer, isTop: isTop),
+                  child: LayerWidget(
+                    layer: layer,
+                    isTop: isTop,
+                    height: effectiveHeight,
+                  ),
                 );
               }),
 
@@ -106,7 +125,9 @@ class StackWidget extends StatelessWidget {
                     ),
                   ),
                 ),
-            ],
+                ],
+              );
+            },
           ),
         ),
       ),

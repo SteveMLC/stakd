@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'dart:ui' as ui;
-import 'dart:typed_data';
+import 'package:flutter/material.dart' show Canvas, Paint, Color, Colors, Offset, Rect, RRect, Radius, PaintingStyle, MaskFilter, BlurStyle;
 
 /// Generates the Stakd app icon with stacked colorful layers
 /// representing the game mechanic in a zen, playful style.
@@ -71,7 +71,7 @@ Future<void> main() async {
     
     // Shadow for depth
     final shadowPaint = Paint()
-      ..color = Colors.black.withOpacity(0.15)
+      ..color = Colors.black.withValues(alpha: 0.15)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
     
     canvas.drawRRect(
@@ -84,7 +84,7 @@ Future<void> main() async {
     
     // Subtle highlight on top edge
     final highlightPaint = Paint()
-      ..color = Colors.white.withOpacity(0.3)
+      ..color = Colors.white.withValues(alpha: 0.3)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
     
@@ -104,7 +104,7 @@ Future<void> main() async {
   
   // Add subtle zen circle in background (behind layers)
   final zenCirclePaint = Paint()
-    ..color = const Color(0xFF9C27B0).withOpacity(0.05)
+    ..color = const Color(0xFF9C27B0).withValues(alpha: 0.05)
     ..style = PaintingStyle.stroke
     ..strokeWidth = size * 0.03;
   
@@ -133,16 +133,11 @@ Future<void> main() async {
 
 /// Helper to adjust color brightness
 Color _adjustBrightness(Color color, double factor) {
-  return Color.fromARGB(
-    color.alpha,
-    (color.red * factor).clamp(0, 255).toInt(),
-    (color.green * factor).clamp(0, 255).toInt(),
-    (color.blue * factor).clamp(0, 255).toInt(),
+  return Color.fromRGBO(
+    ((color.r * 255) * factor).clamp(0, 255).round(),
+    ((color.g * 255) * factor).clamp(0, 255).round(),
+    ((color.b * 255) * factor).clamp(0, 255).round(),
+    color.a,
   );
 }
 
-/// Color utilities
-class Colors {
-  static const Color black = Color(0xFF000000);
-  static const Color white = Color(0xFFFFFFFF);
-}
