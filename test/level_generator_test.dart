@@ -99,12 +99,13 @@ void main() {
     });
 
     test('high levels have fewer empty slots', () {
-      final level50Params = LevelParams.forLevel(50);
+      // Expert tier (51-100): 1 empty slot; Advanced (26-50): 2 empty slots
+      final level51Params = LevelParams.forLevel(51);
       final level60Params = LevelParams.forLevel(60);
       final level80Params = LevelParams.forLevel(80);
 
-      expect(level50Params.emptySlots, equals(1),
-          reason: 'Level 50 should have only 1 empty slot');
+      expect(level51Params.emptySlots, equals(1),
+          reason: 'Level 51 (Expert) should have only 1 empty slot');
       expect(level60Params.emptySlots, equals(1),
           reason: 'Level 60 should have only 1 empty slot');
       expect(level80Params.emptySlots, equals(1),

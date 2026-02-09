@@ -89,8 +89,9 @@ class LevelGenerator {
   List<GameStack> _shuffleLevel(
     List<GameStack> stacks,
     int moves,
-    Random random,
-  ) {
+    Random random, {
+    int recursionDepth = 0,
+  }) {
     var current = stacks.map((s) => s.copy()).toList();
 
     int movesRemaining = moves;
@@ -152,9 +153,12 @@ class LevelGenerator {
     }
 
     // Verify the result isn't already solved
-    if (_isSolved(current) || difficultyScore(current) < 4) {
+    const maxRecursionDepth = 5;
+    if (recursionDepth < maxRecursionDepth &&
+        (_isSolved(current) || difficultyScore(current) < 4)) {
       // Do a few more shuffles
-      return _shuffleLevel(stacks, moves + 10, random);
+      return _shuffleLevel(stacks, moves + 10, random,
+          recursionDepth: recursionDepth + 1);
     }
 
     return current;

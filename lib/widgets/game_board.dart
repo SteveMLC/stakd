@@ -1151,13 +1151,17 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
           layerWidget = SizedBox(
             width: GameSizes.stackWidth,
             height: totalHeight,
-            child: Column(
-              children: allLayers.map((layer) {
-                final gradientColors = GameColors.getGradient(layer.colorIndex);
-                return Container(
-                  width: GameSizes.stackWidth,
-                  height: GameSizes.layerHeight,
-                  margin: const EdgeInsets.only(bottom: 2),
+            child: ClipRect(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: allLayers.toList().asMap().entries.map((entry) {
+                  final layer = entry.value;
+                  final isLast = entry.key == allLayers.length - 1;
+                  final gradientColors = GameColors.getGradient(layer.colorIndex);
+                  return Container(
+                    width: GameSizes.stackWidth,
+                    height: GameSizes.layerHeight,
+                    margin: EdgeInsets.only(bottom: isLast ? 0 : 2),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
@@ -1200,6 +1204,7 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
                   ),
                 );
               }).toList(),
+              ),
             ),
           );
         } else {
