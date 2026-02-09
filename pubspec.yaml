@@ -30,6 +30,7 @@ flutter:
   
   assets:
     - assets/sounds/
+    - assets/sounds/zen/
     - assets/images/
 
 flutter_launcher_icons:

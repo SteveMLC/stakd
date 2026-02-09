@@ -1,13 +1,17 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../models/garden_state.dart';
+import '../../services/zen_audio_service.dart';
 import 'base_theme_scene.dart';
 
 class ZenGardenScene extends BaseThemeScene {
+  final bool enableAudio;
+  
   const ZenGardenScene({
     super.key,
     super.showStats = false,
     super.interactive = false,
+    this.enableAudio = true,
   });
 
   @override
@@ -19,6 +23,9 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
   late AnimationController _ambientController;
   late List<Offset> _fireflySeeds;
   late List<Offset> _petalSeeds;
+  final ZenAudioService _audioService = ZenAudioService();
+  int _lastStage = -1;
+  bool _hadWater = false;
 
   @override
   void initState() {
@@ -35,17 +42,63 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     _petalSeeds = List.generate(6, (_) {
       return Offset(rng.nextDouble(), rng.nextDouble());
     });
+
+    // Start ambient audio
+    if (widget.enableAudio) {
+      _initAudio();
+    }
+  }
+
+  Future<void> _initAudio() async {
+    await _audioService.init();
+    final isNight = gardenState.currentStage >= 6;
+    final hasWater = isUnlocked('pond_full');
+    await _audioService.startAmbience(isNight: isNight, hasWater: hasWater);
+    _hadWater = hasWater;
+    _lastStage = gardenState.currentStage;
+  }
+
+  void _checkAudioUpdates() {
+    if (!widget.enableAudio) return;
+    
+    final state = gardenState;
+    
+    // Check for stage advance
+    if (state.currentStage > _lastStage && _lastStage >= 0) {
+      _audioService.playStageAdvance();
+      _lastStage = state.currentStage;
+    }
+    
+    // Check night mode transition (stage 6+)
+    final shouldBeNight = state.currentStage >= 6;
+    if (shouldBeNight != _audioService.isNightMode) {
+      _audioService.setNightMode(shouldBeNight);
+    }
+    
+    // Check water unlock
+    final hasWater = isUnlocked('pond_full');
+    if (hasWater && !_hadWater) {
+      _audioService.setWaterEnabled(true);
+      _audioService.playWaterDrop();
+      _hadWater = true;
+    }
   }
 
   @override
   void dispose() {
     _ambientController.dispose();
+    if (widget.enableAudio) {
+      _audioService.stopAmbience();
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final state = gardenState;
+    
+    // Check for audio updates on each build
+    _checkAudioUpdates();
 
     return Stack(
       fit: StackFit.expand,
@@ -87,17 +140,117 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
   }
 
   Widget _buildSky(int stage) {
-    final colors = stage >= 6
-        ? [const Color(0xFF1A1E3A), const Color(0xFF2E3D65)]
-        : [const Color(0xFF87CEEB), const Color(0xFFE6F7FF)];
+    final isNight = stage >= 6;
+    final colors = isNight
+        ? [const Color(0xFF0D1321), const Color(0xFF1A1E3A), const Color(0xFF2E3D65)]
+        : [const Color(0xFF87CEEB), const Color(0xFFB8D4E8), const Color(0xFFE6F7FF)];
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: colors,
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Gradient background
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: colors,
+              stops: isNight ? const [0.0, 0.4, 1.0] : const [0.0, 0.5, 1.0],
+            ),
+          ),
         ),
+        
+        // Stars (night only, stage 6+)
+        if (isNight) _buildStars(),
+        
+        // Moon (night, stage 8+) or Sun (day)
+        if (isUnlocked('moon')) 
+          _buildMoon()
+        else if (!isNight && stage >= 3)
+          _buildSun(),
+      ],
+    );
+  }
+
+  Widget _buildStars() {
+    final rng = math.Random(123);
+    return Stack(
+      children: List.generate(30, (i) {
+        final x = rng.nextDouble();
+        final y = rng.nextDouble() * 0.6; // Stars in upper 60%
+        final size = 1.0 + rng.nextDouble() * 2;
+        final twinkle = rng.nextDouble();
+        
+        return Positioned(
+          left: x * MediaQuery.of(context).size.width,
+          top: y * MediaQuery.of(context).size.height,
+          child: AnimatedBuilder(
+            animation: _ambientController,
+            builder: (context, child) {
+              final opacity = 0.3 + 0.7 * ((math.sin(
+                _ambientController.value * 2 * math.pi + twinkle * 10
+              ) + 1) / 2);
+              return Container(
+                width: size,
+                height: size,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(opacity),
+                  shape: BoxShape.circle,
+                ),
+              );
+            },
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildMoon() {
+    return Positioned(
+      top: 60,
+      right: 50,
+      child: Container(
+        width: 60,
+        height: 60,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: const Color(0xFFFFFAE6),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFFFFAE6).withOpacity(0.4),
+              blurRadius: 30,
+              spreadRadius: 10,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSun() {
+    return Positioned(
+      top: 50,
+      right: 60,
+      child: AnimatedBuilder(
+        animation: _ambientController,
+        builder: (context, child) {
+          final glow = 15 + math.sin(_ambientController.value * 2 * math.pi) * 5;
+          return Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFFFFF9C4),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFFFEB3B).withOpacity(0.5),
+                  blurRadius: glow,
+                  spreadRadius: 5,
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -172,18 +325,158 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
 
   Widget _buildWater() {
     final hasFull = isUnlocked('pond_full');
+    final hasKoi = isUnlocked('koi_fish');
+    final hasLily = isUnlocked('lily_pads');
 
     return Positioned(
       bottom: 90,
       right: 60,
-      child: Container(
-        width: 130,
-        height: 75,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(80),
-          color: hasFull
-              ? const Color(0xFF5BA3C0).withOpacity(0.7)
-              : const Color(0xFF8B7355).withOpacity(0.25),
+      child: SizedBox(
+        width: 140,
+        height: 85,
+        child: Stack(
+          children: [
+            // Pond base
+            AnimatedBuilder(
+              animation: _ambientController,
+              builder: (context, child) {
+                return Container(
+                  width: 130,
+                  height: 75,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(80),
+                    gradient: hasFull
+                        ? RadialGradient(
+                            center: Alignment.center,
+                            colors: [
+                              const Color(0xFF4FC3F7).withOpacity(0.8),
+                              const Color(0xFF039BE5).withOpacity(0.6),
+                            ],
+                          )
+                        : null,
+                    color: hasFull ? null : const Color(0xFF8B7355).withOpacity(0.25),
+                    boxShadow: hasFull
+                        ? [
+                            BoxShadow(
+                              color: const Color(0xFF4FC3F7).withOpacity(0.3),
+                              blurRadius: 10,
+                              spreadRadius: 2,
+                            )
+                          ]
+                        : null,
+                  ),
+                );
+              },
+            ),
+            
+            // Lily pads
+            if (hasLily) ...[
+              Positioned(
+                top: 15,
+                left: 20,
+                child: _lilyPad(size: 18),
+              ),
+              Positioned(
+                top: 35,
+                left: 45,
+                child: _lilyPad(size: 22, hasFlower: true),
+              ),
+              Positioned(
+                top: 20,
+                right: 30,
+                child: _lilyPad(size: 16),
+              ),
+            ],
+            
+            // Koi fish
+            if (hasKoi)
+              AnimatedBuilder(
+                animation: _ambientController,
+                builder: (context, child) {
+                  return Stack(
+                    children: [
+                      _koiFish(
+                        progress: _ambientController.value,
+                        startX: 20,
+                        startY: 45,
+                        color: const Color(0xFFFF6B00),
+                      ),
+                      _koiFish(
+                        progress: (_ambientController.value + 0.5) % 1.0,
+                        startX: 80,
+                        startY: 30,
+                        color: const Color(0xFFFFFFFF),
+                        reverse: true,
+                      ),
+                    ],
+                  );
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _lilyPad({required double size, bool hasFlower = false}) {
+    return SizedBox(
+      width: size + (hasFlower ? 8 : 0),
+      height: size + (hasFlower ? 8 : 0),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: size,
+            height: size * 0.7,
+            decoration: BoxDecoration(
+              color: const Color(0xFF2E7D32),
+              borderRadius: BorderRadius.circular(size),
+            ),
+          ),
+          if (hasFlower)
+            Positioned(
+              top: 0,
+              child: Container(
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFFB7C5),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _koiFish({
+    required double progress,
+    required double startX,
+    required double startY,
+    required Color color,
+    bool reverse = false,
+  }) {
+    // Simple fish swimming in a figure-8 pattern
+    final t = progress * 2 * math.pi;
+    final x = startX + math.sin(t) * 30 * (reverse ? -1 : 1);
+    final y = startY + math.sin(t * 2) * 10;
+    final angle = math.atan2(
+      math.cos(t * 2) * 10,
+      math.cos(t) * 30 * (reverse ? -1 : 1),
+    );
+
+    return Positioned(
+      left: x,
+      top: y,
+      child: Transform.rotate(
+        angle: angle + (reverse ? math.pi : 0),
+        child: SizedBox(
+          width: 16,
+          height: 8,
+          child: CustomPaint(
+            painter: KoiFishPainter(color: color),
+          ),
         ),
       ),
     );
@@ -263,28 +556,32 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
 
   Widget _tree({double? left, double? right, required int stage, bool isCherry = false}) {
     final height = 80.0 + (stage - 3) * 28;
-    final color = isCherry ? const Color(0xFFFFB7C5) : const Color(0xFF228B22);
+    final scale = height / 140;
 
     return Positioned(
-      bottom: 110,
+      bottom: 100,
       left: left,
       right: right,
-      child: Column(
-        children: [
-          Container(
-            width: height * 0.8,
-            height: height * 0.6,
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(height * 0.4),
+      child: AnimatedBuilder(
+        animation: _ambientController,
+        builder: (context, child) {
+          final sway = math.sin(_ambientController.value * 2 * math.pi) * 0.015;
+          return Transform.rotate(
+            angle: sway,
+            alignment: Alignment.bottomCenter,
+            child: child,
+          );
+        },
+        child: SizedBox(
+          width: 120 * scale,
+          height: 160 * scale,
+          child: CustomPaint(
+            painter: TreePainter(
+              isCherry: isCherry,
+              scale: scale,
             ),
           ),
-          Container(
-            width: 14,
-            height: height * 0.4,
-            color: const Color(0xFF8B4513),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -308,6 +605,22 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
           bottom: 90,
           right: 40,
           child: _simpleLantern(),
+        ),
+      );
+    }
+
+    if (isUnlocked('torii_gate')) {
+      elements.add(
+        Positioned(
+          bottom: 95,
+          left: 220,
+          child: SizedBox(
+            width: 80,
+            height: 100,
+            child: CustomPaint(
+              painter: ToriiPainter(),
+            ),
+          ),
         ),
       );
     }
@@ -556,6 +869,187 @@ class GrassPainter extends CustomPainter {
     }
     path.close();
     canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Beautiful organic tree with layered foliage
+class TreePainter extends CustomPainter {
+  final bool isCherry;
+  final double scale;
+
+  TreePainter({this.isCherry = false, this.scale = 1.0});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final trunkPaint = Paint()
+      ..color = const Color(0xFF5D4037)
+      ..style = PaintingStyle.fill;
+
+    final trunkHighlight = Paint()
+      ..color = const Color(0xFF795548)
+      ..style = PaintingStyle.fill;
+
+    // Draw trunk
+    final trunkPath = Path()
+      ..moveTo(size.width * 0.42, size.height)
+      ..lineTo(size.width * 0.38, size.height * 0.55)
+      ..quadraticBezierTo(
+        size.width * 0.35, size.height * 0.45,
+        size.width * 0.4, size.height * 0.4,
+      )
+      ..lineTo(size.width * 0.6, size.height * 0.4)
+      ..quadraticBezierTo(
+        size.width * 0.65, size.height * 0.45,
+        size.width * 0.62, size.height * 0.55,
+      )
+      ..lineTo(size.width * 0.58, size.height)
+      ..close();
+
+    canvas.drawPath(trunkPath, trunkPaint);
+
+    // Trunk highlight
+    canvas.drawRect(
+      Rect.fromLTWH(size.width * 0.45, size.height * 0.5, size.width * 0.06, size.height * 0.45),
+      trunkHighlight,
+    );
+
+    // Foliage colors
+    final baseColor = isCherry ? const Color(0xFFFFB7C5) : const Color(0xFF2E7D32);
+    final midColor = isCherry ? const Color(0xFFFF8FAA) : const Color(0xFF43A047);
+    final highlightColor = isCherry ? const Color(0xFFFFCDD2) : const Color(0xFF66BB6A);
+
+    final basePaint = Paint()..color = baseColor..style = PaintingStyle.fill;
+    final midPaint = Paint()..color = midColor..style = PaintingStyle.fill;
+    final highlightPaint = Paint()..color = highlightColor..style = PaintingStyle.fill;
+
+    // Draw layered foliage clusters
+    // Back layer (larger, darker)
+    _drawFoliageCluster(canvas, size.width * 0.5, size.height * 0.25, 50 * scale, basePaint);
+    _drawFoliageCluster(canvas, size.width * 0.3, size.height * 0.3, 35 * scale, basePaint);
+    _drawFoliageCluster(canvas, size.width * 0.7, size.height * 0.28, 38 * scale, basePaint);
+
+    // Mid layer
+    _drawFoliageCluster(canvas, size.width * 0.45, size.height * 0.2, 40 * scale, midPaint);
+    _drawFoliageCluster(canvas, size.width * 0.6, size.height * 0.22, 35 * scale, midPaint);
+    _drawFoliageCluster(canvas, size.width * 0.35, size.height * 0.26, 30 * scale, midPaint);
+
+    // Front layer (smaller, lighter - highlights)
+    _drawFoliageCluster(canvas, size.width * 0.5, size.height * 0.15, 28 * scale, highlightPaint);
+    _drawFoliageCluster(canvas, size.width * 0.4, size.height * 0.22, 22 * scale, highlightPaint);
+    _drawFoliageCluster(canvas, size.width * 0.62, size.height * 0.2, 20 * scale, highlightPaint);
+  }
+
+  void _drawFoliageCluster(Canvas canvas, double cx, double cy, double radius, Paint paint) {
+    // Draw organic blob shape using overlapping circles
+    canvas.drawCircle(Offset(cx, cy), radius, paint);
+    canvas.drawCircle(Offset(cx - radius * 0.5, cy + radius * 0.3), radius * 0.7, paint);
+    canvas.drawCircle(Offset(cx + radius * 0.5, cy + radius * 0.2), radius * 0.65, paint);
+    canvas.drawCircle(Offset(cx, cy - radius * 0.4), radius * 0.6, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant TreePainter oldDelegate) =>
+      oldDelegate.isCherry != isCherry || oldDelegate.scale != scale;
+}
+
+/// Simple koi fish shape
+class KoiFishPainter extends CustomPainter {
+  final Color color;
+
+  KoiFishPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    // Fish body (oval)
+    final bodyPath = Path()
+      ..moveTo(size.width * 0.8, size.height * 0.5)
+      ..quadraticBezierTo(
+        size.width * 0.5,
+        0,
+        size.width * 0.15,
+        size.height * 0.5,
+      )
+      ..quadraticBezierTo(
+        size.width * 0.5,
+        size.height,
+        size.width * 0.8,
+        size.height * 0.5,
+      )
+      ..close();
+
+    canvas.drawPath(bodyPath, paint);
+
+    // Tail
+    final tailPath = Path()
+      ..moveTo(size.width * 0.8, size.height * 0.5)
+      ..lineTo(size.width, size.height * 0.2)
+      ..lineTo(size.width, size.height * 0.8)
+      ..close();
+
+    canvas.drawPath(tailPath, paint);
+
+    // Eye
+    canvas.drawCircle(
+      Offset(size.width * 0.25, size.height * 0.4),
+      1.5,
+      Paint()..color = Colors.black,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant KoiFishPainter oldDelegate) =>
+      oldDelegate.color != color;
+}
+
+/// Traditional Japanese torii gate
+class ToriiPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final redPaint = Paint()
+      ..color = const Color(0xFFD32F2F)
+      ..style = PaintingStyle.fill;
+
+    final darkRedPaint = Paint()
+      ..color = const Color(0xFFB71C1C)
+      ..style = PaintingStyle.fill;
+
+    // Main pillars
+    canvas.drawRect(
+      Rect.fromLTWH(size.width * 0.1, size.height * 0.25, size.width * 0.12, size.height * 0.75),
+      redPaint,
+    );
+    canvas.drawRect(
+      Rect.fromLTWH(size.width * 0.78, size.height * 0.25, size.width * 0.12, size.height * 0.75),
+      redPaint,
+    );
+
+    // Top beam (kasagi) - curved
+    final kasagiPath = Path()
+      ..moveTo(0, size.height * 0.12)
+      ..quadraticBezierTo(size.width * 0.5, 0, size.width, size.height * 0.12)
+      ..lineTo(size.width, size.height * 0.2)
+      ..quadraticBezierTo(size.width * 0.5, size.height * 0.08, 0, size.height * 0.2)
+      ..close();
+    canvas.drawPath(kasagiPath, darkRedPaint);
+
+    // Lower beam (nuki)
+    canvas.drawRect(
+      Rect.fromLTWH(size.width * 0.05, size.height * 0.28, size.width * 0.9, size.height * 0.08),
+      redPaint,
+    );
+
+    // Small decorative piece on top
+    canvas.drawRect(
+      Rect.fromLTWH(size.width * 0.42, size.height * 0.04, size.width * 0.16, size.height * 0.08),
+      darkRedPaint,
+    );
   }
 
   @override
