@@ -625,6 +625,57 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
+    if (isUnlocked('pagoda')) {
+      elements.add(
+        Positioned(
+          bottom: 130,
+          left: 20,
+          child: SizedBox(
+            width: 55,
+            height: 85,
+            child: CustomPaint(
+              painter: PagodaPainter(),
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (isUnlocked('stream')) {
+      elements.add(
+        Positioned(
+          bottom: 70,
+          left: 0,
+          child: SizedBox(
+            width: 200,
+            height: 60,
+            child: AnimatedBuilder(
+              animation: _ambientController,
+              builder: (context, _) => CustomPaint(
+                painter: StreamPainter(animationValue: _ambientController.value),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (isUnlocked('bridge')) {
+      elements.add(
+        Positioned(
+          bottom: 88,
+          left: 90,
+          child: SizedBox(
+            width: 45,
+            height: 32,
+            child: CustomPaint(
+              painter: BridgePainter(),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Stack(children: elements);
   }
 
@@ -731,6 +782,36 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
                     blurRadius: 8,
                   ),
                 ],
+              ),
+            ),
+          ),
+        );
+      }
+    }
+
+    // Dragonflies near water (stage 7+)
+    if (isUnlocked('dragonflies')) {
+      for (var i = 0; i < 2; i++) {
+        final baseX = 200.0 + i * 60;
+        final baseY = 160.0;
+        final hoverX = baseX + math.sin(_ambientController.value * 2 * math.pi + i * 2) * 25;
+        final hoverY = baseY + math.cos(_ambientController.value * 3 * math.pi + i) * 15;
+        final angle = math.sin(_ambientController.value * 4 * math.pi + i) * 0.3;
+        
+        particles.add(
+          Positioned(
+            top: hoverY,
+            left: hoverX,
+            child: Transform.rotate(
+              angle: angle,
+              child: SizedBox(
+                width: 20,
+                height: 16,
+                child: CustomPaint(
+                  painter: DragonflyPainter(
+                    color: i == 0 ? const Color(0xFF64B5F6) : const Color(0xFF81C784),
+                  ),
+                ),
               ),
             ),
           ),
@@ -1054,4 +1135,244 @@ class ToriiPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Small Japanese pagoda silhouette
+class PagodaPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final woodPaint = Paint()
+      ..color = const Color(0xFF5D4037)
+      ..style = PaintingStyle.fill;
+
+    final roofPaint = Paint()
+      ..color = const Color(0xFF3E2723)
+      ..style = PaintingStyle.fill;
+
+    // Base tier
+    canvas.drawRect(
+      Rect.fromLTWH(size.width * 0.15, size.height * 0.7, size.width * 0.7, size.height * 0.25),
+      woodPaint,
+    );
+    
+    // Base roof
+    final roof1 = Path()
+      ..moveTo(0, size.height * 0.7)
+      ..lineTo(size.width * 0.5, size.height * 0.58)
+      ..lineTo(size.width, size.height * 0.7)
+      ..close();
+    canvas.drawPath(roof1, roofPaint);
+
+    // Middle tier
+    canvas.drawRect(
+      Rect.fromLTWH(size.width * 0.2, size.height * 0.45, size.width * 0.6, size.height * 0.18),
+      woodPaint,
+    );
+    
+    // Middle roof
+    final roof2 = Path()
+      ..moveTo(size.width * 0.05, size.height * 0.45)
+      ..lineTo(size.width * 0.5, size.height * 0.32)
+      ..lineTo(size.width * 0.95, size.height * 0.45)
+      ..close();
+    canvas.drawPath(roof2, roofPaint);
+
+    // Top tier
+    canvas.drawRect(
+      Rect.fromLTWH(size.width * 0.28, size.height * 0.22, size.width * 0.44, size.height * 0.13),
+      woodPaint,
+    );
+    
+    // Top roof
+    final roof3 = Path()
+      ..moveTo(size.width * 0.15, size.height * 0.22)
+      ..lineTo(size.width * 0.5, size.height * 0.08)
+      ..lineTo(size.width * 0.85, size.height * 0.22)
+      ..close();
+    canvas.drawPath(roof3, roofPaint);
+
+    // Spire
+    canvas.drawRect(
+      Rect.fromLTWH(size.width * 0.47, 0, size.width * 0.06, size.height * 0.1),
+      roofPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Wooden bridge painter
+class BridgePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final woodPaint = Paint()
+      ..color = const Color(0xFF8B4513)
+      ..style = PaintingStyle.fill;
+
+    final plankPaint = Paint()
+      ..color = const Color(0xFFA0522D)
+      ..style = PaintingStyle.fill;
+
+    // Bridge arc/deck
+    final deckPath = Path()
+      ..moveTo(0, size.height * 0.7)
+      ..quadraticBezierTo(
+        size.width * 0.5, size.height * 0.3,
+        size.width, size.height * 0.7,
+      )
+      ..lineTo(size.width, size.height * 0.85)
+      ..quadraticBezierTo(
+        size.width * 0.5, size.height * 0.45,
+        0, size.height * 0.85,
+      )
+      ..close();
+    canvas.drawPath(deckPath, woodPaint);
+
+    // Planks
+    for (int i = 1; i < 6; i++) {
+      final x = size.width * (i / 6);
+      // Calculate y position on the arc
+      final t = i / 6;
+      final y = size.height * (0.7 - 0.4 * math.sin(t * math.pi));
+      
+      canvas.drawRect(
+        Rect.fromCenter(
+          center: Offset(x, y + 5),
+          width: 3,
+          height: 12,
+        ),
+        plankPaint,
+      );
+    }
+
+    // Railings
+    canvas.drawRect(
+      Rect.fromLTWH(size.width * 0.1, size.height * 0.4, size.width * 0.03, size.height * 0.35),
+      woodPaint,
+    );
+    canvas.drawRect(
+      Rect.fromLTWH(size.width * 0.87, size.height * 0.4, size.width * 0.03, size.height * 0.35),
+      woodPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Animated stream painter
+class StreamPainter extends CustomPainter {
+  final double animationValue;
+
+  StreamPainter({required this.animationValue});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Create gradient for water
+    final waterPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          const Color(0xFF4FC3F7).withOpacity(0.7),
+          const Color(0xFF039BE5).withOpacity(0.6),
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 18
+      ..strokeCap = StrokeCap.round;
+
+    // Stream path - curves from left side toward pond area
+    final streamPath = Path()
+      ..moveTo(0, size.height * 0.3)
+      ..quadraticBezierTo(
+        size.width * 0.3, size.height * 0.5,
+        size.width * 0.5, size.height * 0.4,
+      )
+      ..quadraticBezierTo(
+        size.width * 0.7, size.height * 0.3,
+        size.width * 0.9, size.height * 0.5,
+      );
+
+    canvas.drawPath(streamPath, waterPaint);
+
+    // Shimmer effect
+    final shimmerPaint = Paint()
+      ..color = Colors.white.withOpacity(0.3 * (0.5 + 0.5 * math.sin(animationValue * 2 * math.pi)))
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round;
+
+    // Draw shimmer highlights that move along stream
+    final offset = animationValue * size.width;
+    for (int i = 0; i < 3; i++) {
+      final startX = ((offset + i * size.width / 3) % size.width);
+      if (startX < size.width * 0.1 || startX > size.width * 0.85) continue;
+      
+      canvas.drawCircle(
+        Offset(startX, size.height * 0.4 + math.sin(startX / 50) * 10),
+        3,
+        shimmerPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant StreamPainter oldDelegate) =>
+      oldDelegate.animationValue != animationValue;
+}
+
+/// Dragonfly particle
+class DragonflyPainter extends CustomPainter {
+  final Color color;
+
+  DragonflyPainter({this.color = const Color(0xFF64B5F6)});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final bodyPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final wingPaint = Paint()
+      ..color = Colors.white.withOpacity(0.6)
+      ..style = PaintingStyle.fill;
+
+    // Body
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(size.width * 0.5, size.height * 0.5),
+        width: size.width * 0.6,
+        height: size.height * 0.2,
+      ),
+      bodyPaint,
+    );
+
+    // Wings (4 wings)
+    // Top left
+    canvas.drawOval(
+      Rect.fromLTWH(size.width * 0.1, size.height * 0.1, size.width * 0.35, size.height * 0.3),
+      wingPaint,
+    );
+    // Top right
+    canvas.drawOval(
+      Rect.fromLTWH(size.width * 0.55, size.height * 0.1, size.width * 0.35, size.height * 0.3),
+      wingPaint,
+    );
+    // Bottom left
+    canvas.drawOval(
+      Rect.fromLTWH(size.width * 0.1, size.height * 0.55, size.width * 0.35, size.height * 0.3),
+      wingPaint,
+    );
+    // Bottom right
+    canvas.drawOval(
+      Rect.fromLTWH(size.width * 0.55, size.height * 0.55, size.width * 0.35, size.height * 0.3),
+      wingPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant DragonflyPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
