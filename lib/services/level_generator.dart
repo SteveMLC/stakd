@@ -41,16 +41,39 @@ class LevelGenerator {
     return stacks;
   }
 
-  /// Create a solved puzzle state
+  /// Create a solved puzzle state with special blocks
   List<GameStack> _createSolvedState(LevelParams params, Random random) {
     final stacks = <GameStack>[];
 
     // Create color stacks (filled with one color each)
     for (int colorIndex = 0; colorIndex < params.colors; colorIndex++) {
-      final layers = List.generate(
-        params.depth,
-        (i) => Layer(colorIndex: colorIndex),
-      );
+      final layers = <Layer>[];
+      
+      for (int i = 0; i < params.depth; i++) {
+        // Decide if this should be a special block
+        final multiColorRoll = random.nextDouble();
+        final lockedRoll = random.nextDouble();
+        
+        if (params.multiColorProbability > 0 && multiColorRoll < params.multiColorProbability) {
+          // Create multi-color block
+          final availableColors = List.generate(params.colors, (i) => i);
+          availableColors.shuffle(random);
+          final numColors = random.nextBool() ? 2 : 3;
+          final colors = availableColors.take(numColors).toList();
+          if (!colors.contains(colorIndex)) {
+            colors[0] = colorIndex; // Ensure primary color is included
+          }
+          layers.add(Layer.multiColor(colors: colors));
+        } else if (params.lockedBlockProbability > 0 && lockedRoll < params.lockedBlockProbability) {
+          // Create locked block
+          final lockedFor = random.nextInt(params.maxLockedMoves) + 1;
+          layers.add(Layer.locked(colorIndex: colorIndex, lockedFor: lockedFor));
+        } else {
+          // Normal block
+          layers.add(Layer(colorIndex: colorIndex));
+        }
+      }
+      
       stacks.add(GameStack(layers: layers, maxDepth: params.depth));
     }
 

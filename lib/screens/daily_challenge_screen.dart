@@ -195,7 +195,7 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
       ),
       body: _showCalendar
           ? _buildCalendarView()
-          : _buildGameView(dateFormat, isCompleted, timeDisplay),
+          : _buildGameView(dateFormat, isCompleted, timeDisplay, movesDisplay),
     );
   }
 
@@ -203,6 +203,7 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
     DateFormat dateFormat,
     bool isCompleted,
     String timeDisplay,
+    String movesDisplay,
   ) {
     return Column(
       children: [

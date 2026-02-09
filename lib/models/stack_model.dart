@@ -16,12 +16,14 @@ class GameStack {
   /// Check if stack is full
   bool get isFull => layers.length >= maxDepth;
 
-  /// Check if stack is complete (all same color)
+  /// Check if stack is complete (all layers match with each other)
   bool get isComplete {
     if (layers.isEmpty) return false;
     if (layers.length != maxDepth) return false;
-    final firstColor = layers.first.colorIndex;
-    return layers.every((layer) => layer.colorIndex == firstColor);
+    
+    // For multi-color stacks, all layers must be able to match with each other
+    final firstLayer = layers.first;
+    return layers.every((layer) => firstLayer.canMatchWith(layer));
   }
 
   /// Get the top layer (last in list)
@@ -33,17 +35,21 @@ class GameStack {
   /// Check if a layer can be added to this stack
   bool canAccept(Layer layer) {
     if (isFull) return false;
+    if (layer.isLocked) return false; // Can't move locked blocks
     if (isEmpty) return true;
-    return topColorIndex == layer.colorIndex;
+    
+    // Multi-color matching: check if layer can match with top layer
+    final top = topLayer!;
+    return top.canMatchWith(layer);
   }
 
-  /// Count consecutive same-color layers from top
+  /// Count consecutive matching layers from top (considers multi-color matching)
   int get topGroupSize {
     if (isEmpty) return 0;
     int count = 1;
-    final topColor = topColorIndex!;
+    final topLayerObj = topLayer!;
     for (int i = layers.length - 2; i >= 0; i--) {
-      if (layers[i].colorIndex == topColor) {
+      if (topLayerObj.canMatchWith(layers[i])) {
         count++;
       } else {
         break;
@@ -67,13 +73,13 @@ class GameStack {
     );
   }
 
-  /// Get all consecutive same-color layers from top (for multi-grab)
+  /// Get all consecutive matching layers from top (for multi-grab)
   List<Layer> getTopGroup() {
     if (isEmpty) return [];
-    final topColor = topColorIndex!;
+    final topLayerObj = topLayer!;
     final group = <Layer>[];
     for (int i = layers.length - 1; i >= 0; i--) {
-      if (layers[i].colorIndex == topColor) {
+      if (topLayerObj.canMatchWith(layers[i]) && !layers[i].isLocked) {
         group.insert(0, layers[i]);
       } else {
         break;
@@ -85,11 +91,13 @@ class GameStack {
   /// Check if this stack can accept multiple layers (multi-grab drop validation)
   bool canAcceptMultiple(List<Layer> layersToAdd) {
     if (layersToAdd.isEmpty) return false;
+    if (layersToAdd.any((l) => l.isLocked)) return false; // Can't move locked blocks
     final spaceAvailable = maxDepth - layers.length;
     if (layersToAdd.length > spaceAvailable) return false;
     if (isEmpty) return true;
-    // All layers in the group should be same color (enforced by getTopGroup)
-    return topColorIndex == layersToAdd.first.colorIndex;
+    // Check if bottom layer of group can match with top of stack
+    final top = topLayer!;
+    return top.canMatchWith(layersToAdd.first);
   }
 
   /// Create a copy with multiple layers removed from top

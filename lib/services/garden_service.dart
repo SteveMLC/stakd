@@ -5,6 +5,7 @@ import '../models/garden_state.dart';
 /// Like a sand mandala - beautiful, impermanent.
 class GardenService {
   static GardenState _state = GardenState();
+  static Function(int newStage, String stageName)? onStageAdvanced;
 
   static GardenState get state => _state;
 
@@ -14,7 +15,9 @@ class GardenService {
   }
 
   /// Record a puzzle completion in Zen Mode (session only, not persisted)
-  static void recordPuzzleSolved() {
+  /// Returns true if stage advanced
+  static bool recordPuzzleSolved() {
+    final oldStage = _state.currentStage;
     final newTotal = _state.totalPuzzlesSolved + 1;
     final newStage = GardenState.calculateStage(newTotal);
 
@@ -30,7 +33,13 @@ class GardenService {
       unlockedElements: [..._state.unlockedElements, ...newUnlocks],
     );
 
-    // No persistence - garden lives only in this session
+    // Notify if stage advanced
+    final stageAdvanced = newStage > oldStage;
+    if (stageAdvanced && onStageAdvanced != null) {
+      onStageAdvanced!(newStage, _state.stageName);
+    }
+
+    return stageAdvanced;
   }
 
   /// Get elements that should be unlocked at a given stage

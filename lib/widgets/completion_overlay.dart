@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../utils/constants.dart';
 import '../services/haptic_service.dart';
+import '../services/audio_service.dart';
 
 class CompletionOverlay extends StatefulWidget {
   final int moves;
@@ -176,12 +177,18 @@ class _CompletionOverlayState extends State<CompletionOverlay>
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 TextButton(
-                                  onPressed: widget.onHome,
+                                  onPressed: () {
+                                    AudioService().playTap();
+                                    widget.onHome();
+                                  },
                                   child: const Text('Home'),
                                 ),
                                 const SizedBox(width: 16),
                                 ElevatedButton(
-                                  onPressed: widget.onNextPuzzle,
+                                  onPressed: () {
+                                    AudioService().playTap();
+                                    widget.onNextPuzzle();
+                                  },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: GameColors.accent,
                                     padding: const EdgeInsets.symmetric(

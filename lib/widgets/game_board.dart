@@ -4,9 +4,11 @@ import '../models/game_state.dart';
 import '../models/stack_model.dart';
 import '../services/haptic_service.dart';
 import '../services/storage_service.dart';
+import '../services/audio_service.dart';
 import '../utils/constants.dart';
 import 'particles/particle_burst.dart';
 import 'combo_popup.dart';
+import 'color_flash_overlay.dart';
 
 /// Game board widget - displays all stacks and handles interactions
 class GameBoard extends StatefulWidget {
@@ -34,6 +36,7 @@ class _GameBoardState extends State<GameBoard>
   late final Map<int, GlobalKey> _stackKeys;
   List<ParticleBurstData> _currentBursts = [];
   int? _showComboMultiplier;
+  Color? _flashColor;
   late AnimationController _shakeController;
   late Animation<double> _shakeAnimation;
 
@@ -181,6 +184,8 @@ class _GameBoardState extends State<GameBoard>
                                         // Invalid move: has source layer but target can't accept it
                                         if (!sourceStack.isEmpty && 
                                             !targetStack.canAccept(sourceStack.topLayer!)) {
+                                          // Play error sound
+                                          AudioService().playError();
                                           // Haptic feedback for invalid move
                                           haptics.error();
                                           // Trigger shake animation
@@ -202,18 +207,28 @@ class _GameBoardState extends State<GameBoard>
                                       // Haptic success pattern for stack complete
                                       haptics.successPattern();
 
+                                      // Trigger screen shake for big clears (2+ stacks at once)
+                                      if (currentCleared.length >= 2) {
+                                        _shakeController.forward(from: 0);
+                                      }
+
                                       // Show combo popup if combo > 1
                                       final currentCombo =
                                           widget.gameState.currentCombo;
                                       if (currentCombo > 1) {
                                         setState(() {
                                           _showComboMultiplier = currentCombo;
+                                          // Trigger color flash on combos
+                                          _flashColor = _getComboFlashColor(currentCombo);
                                         });
+
+                                        // Play escalating combo sound
+                                        AudioService().playCombo(currentCombo);
 
                                         // Haptic combo burst
                                         haptics.comboBurst(currentCombo);
 
-                                        // Trigger screen shake for 4x+ combos
+                                        // Additional shake for 4x+ combos
                                         if (currentCombo >= 4) {
                                           _shakeController.forward(from: 0);
                                         }
@@ -260,6 +275,19 @@ class _GameBoardState extends State<GameBoard>
                             _showComboMultiplier = null;
                           });
                         },
+                      ),
+                    // Color flash overlay for combos
+                    if (_flashColor != null)
+                      Positioned.fill(
+                        child: ColorFlashOverlay(
+                          color: _flashColor!,
+                          duration: const Duration(milliseconds: 400),
+                          onComplete: () {
+                            setState(() {
+                              _flashColor = null;
+                            });
+                          },
+                        ),
                       ),
                   ],
                 );
@@ -317,8 +345,8 @@ class _GameBoardState extends State<GameBoard>
         ParticleBurstData(
           center: center,
           color: color,
-          particleCount: 18,
-          lifetime: const Duration(milliseconds: 500),
+          particleCount: 24, // Increased for more visual impact
+          lifetime: const Duration(milliseconds: 600),
         ),
       );
     }
@@ -327,6 +355,21 @@ class _GameBoardState extends State<GameBoard>
       setState(() {
         _currentBursts = bursts;
       });
+    }
+  }
+
+  Color _getComboFlashColor(int comboMultiplier) {
+    switch (comboMultiplier) {
+      case 2:
+        return const Color(0xFFFFD700); // Gold
+      case 3:
+        return const Color(0xFFFF8C00); // Orange
+      case 4:
+        return const Color(0xFFFF4500); // Red-Orange
+      case 5:
+        return const Color(0xFF9370DB); // Purple
+      default:
+        return GameColors.accent; // Pink
     }
   }
 }

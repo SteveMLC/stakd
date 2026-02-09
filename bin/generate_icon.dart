@@ -9,27 +9,27 @@ Future<void> main() async {
   
   // Create a picture recorder to draw the icon
   final recorder = ui.PictureRecorder();
-  final canvas = Canvas(recorder, Rect.fromLTWH(0, 0, size.toDouble(), size.toDouble()));
+  final canvas = ui.Canvas(recorder, ui.Rect.fromLTWH(0, 0, size.toDouble(), size.toDouble()));
   
   // Background - soft gradient
-  final bgPaint = Paint()
+  final bgPaint = ui.Paint()
     ..shader = ui.Gradient.radial(
-      Offset(size / 2, size / 2),
+      ui.Offset(size / 2, size / 2),
       size * 0.6,
       [
-        const Color(0xFFF5F5F5),
-        const Color(0xFFE8E8E8),
+        const ui.Color(0xFFF5F5F5),
+        const ui.Color(0xFFE8E8E8),
       ],
     );
-  canvas.drawRect(Rect.fromLTWH(0, 0, size.toDouble(), size.toDouble()), bgPaint);
+  canvas.drawRect(ui.Rect.fromLTWH(0, 0, size.toDouble(), size.toDouble()), bgPaint);
   
   // Define vibrant colors for stacked layers
   final colors = [
-    const Color(0xFF9C27B0), // Purple
-    const Color(0xFF2196F3), // Blue
-    const Color(0xFF00BCD4), // Teal
-    const Color(0xFF4CAF50), // Green
-    const Color(0xFFFFC107), // Yellow
+    const ui.Color(0xFF9C27B0), // Purple
+    const ui.Color(0xFF2196F3), // Blue
+    const ui.Color(0xFF00BCD4), // Teal
+    const ui.Color(0xFF4CAF50), // Green
+    const ui.Color(0xFFFFC107), // Yellow
   ];
   
   // Center point for stacking
@@ -47,35 +47,35 @@ Future<void> main() async {
     final y = centerY + (layerSpacing * (2 - i)) - (layerHeight / 2);
     
     // Create gradient for this layer
-    final layerPaint = Paint()
+    final layerPaint = ui.Paint()
       ..shader = ui.Gradient.linear(
-        Offset(centerX - layerWidth / 2, y),
-        Offset(centerX + layerWidth / 2, y),
+        ui.Offset(centerX - layerWidth / 2, y),
+        ui.Offset(centerX + layerWidth / 2, y),
         [
           colors[i],
           _adjustBrightness(colors[i], 1.2),
         ],
       )
-      ..style = PaintingStyle.fill;
+      ..style = ui.PaintingStyle.fill;
     
     // Draw rounded rectangle for layer
-    final rect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(
+    final rect = ui.RRect.fromRectAndRadius(
+      ui.Rect.fromLTWH(
         centerX - layerWidth / 2,
         y,
         layerWidth,
         layerHeight,
       ),
-      Radius.circular(cornerRadius),
+      ui.Radius.circular(cornerRadius),
     );
     
     // Shadow for depth
-    final shadowPaint = Paint()
-      ..color = Colors.black.withOpacity(0.15)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+    final shadowPaint = ui.Paint()
+      ..color = Colors.black.withValues(alpha: 0.15)
+      ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 8);
     
     canvas.drawRRect(
-      rect.shift(const Offset(0, 4)),
+      rect.shift(const ui.Offset(0, 4)),
       shadowPaint,
     );
     
@@ -83,33 +83,33 @@ Future<void> main() async {
     canvas.drawRRect(rect, layerPaint);
     
     // Subtle highlight on top edge
-    final highlightPaint = Paint()
-      ..color = Colors.white.withOpacity(0.3)
-      ..style = PaintingStyle.stroke
+    final highlightPaint = ui.Paint()
+      ..color = Colors.white.withValues(alpha: 0.3)
+      ..style = ui.PaintingStyle.stroke
       ..strokeWidth = 2;
     
     canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(
+      ui.RRect.fromRectAndRadius(
+        ui.Rect.fromLTWH(
           centerX - layerWidth / 2 + 1,
           y + 1,
           layerWidth - 2,
           layerHeight / 2,
         ),
-        Radius.circular(cornerRadius),
+        ui.Radius.circular(cornerRadius),
       ),
       highlightPaint,
     );
   }
   
   // Add subtle zen circle in background (behind layers)
-  final zenCirclePaint = Paint()
-    ..color = const Color(0xFF9C27B0).withOpacity(0.05)
-    ..style = PaintingStyle.stroke
+  final zenCirclePaint = ui.Paint()
+    ..color = const ui.Color(0xFF9C27B0).withValues(alpha: 0.05)
+    ..style = ui.PaintingStyle.stroke
     ..strokeWidth = size * 0.03;
   
   canvas.drawCircle(
-    Offset(centerX, centerY),
+    ui.Offset(centerX, centerY),
     size * 0.40,
     zenCirclePaint,
   );
@@ -132,17 +132,17 @@ Future<void> main() async {
 }
 
 /// Helper to adjust color brightness
-Color _adjustBrightness(Color color, double factor) {
-  return Color.fromARGB(
-    color.alpha,
-    (color.red * factor).clamp(0, 255).toInt(),
-    (color.green * factor).clamp(0, 255).toInt(),
-    (color.blue * factor).clamp(0, 255).toInt(),
+ui.Color _adjustBrightness(ui.Color color, double factor) {
+  return ui.Color.fromARGB(
+    (color.a * 255.0).round().clamp(0, 255),
+    ((color.r * 255.0) * factor).clamp(0, 255).toInt(),
+    ((color.g * 255.0) * factor).clamp(0, 255).toInt(),
+    ((color.b * 255.0) * factor).clamp(0, 255).toInt(),
   );
 }
 
 /// Color utilities
 class Colors {
-  static const Color black = Color(0xFF000000);
-  static const Color white = Color(0xFFFFFFFF);
+  static const ui.Color black = ui.Color(0xFF000000);
+  static const ui.Color white = ui.Color(0xFFFFFFFF);
 }

@@ -8,6 +8,7 @@ class LayerWidget extends StatelessWidget {
   final bool isTop;
   final double width;
   final double height;
+  final bool glowEffect;
 
   const LayerWidget({
     super.key,
@@ -15,11 +16,34 @@ class LayerWidget extends StatelessWidget {
     this.isTop = false,
     this.width = GameSizes.stackWidth - 8,
     this.height = GameSizes.layerHeight,
+    this.glowEffect = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final gradientColors = GameColors.getGradient(layer.colorIndex);
+    
+    // Enhanced shadow with glow effect
+    final shadows = glowEffect ? [
+      BoxShadow(
+        color: gradientColors.last.withValues(alpha: 0.7),
+        blurRadius: 12,
+        spreadRadius: 2,
+        offset: const Offset(0, 2),
+      ),
+      BoxShadow(
+        color: gradientColors.last.withValues(alpha: 0.4),
+        blurRadius: 20,
+        spreadRadius: 4,
+      ),
+    ] : [
+      BoxShadow(
+        color: gradientColors.last.withValues(alpha: 0.45),
+        blurRadius: 6,
+        offset: const Offset(0, 2),
+      ),
+    ];
+    
     return Container(
       width: width,
       height: height,
@@ -30,13 +54,7 @@ class LayerWidget extends StatelessWidget {
           colors: gradientColors,
         ),
         borderRadius: BorderRadius.circular(GameSizes.stackBorderRadius),
-        boxShadow: [
-          BoxShadow(
-            color: gradientColors.last.withValues(alpha: 0.45),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: shadows,
       ),
       child: Stack(
         children: [
@@ -48,7 +66,7 @@ class LayerWidget extends StatelessWidget {
             height: 4,
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.25),
+                color: Colors.white.withValues(alpha: glowEffect ? 0.35 : 0.25),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -75,7 +93,7 @@ class LayerWidget extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Colors.white.withValues(alpha: 0.25),
+                  Colors.white.withValues(alpha: glowEffect ? 0.35 : 0.25),
                   Colors.transparent,
                   Colors.black.withValues(alpha: 0.12),
                 ],

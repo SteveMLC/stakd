@@ -203,6 +203,8 @@ class _GameScreenState extends State<GameScreen> {
       setState(() {
         _completionDuration = DateTime.now().difference(startTime);
       });
+      // Play win sound
+      AudioService().playWin();
       // Heavy haptic impact on level complete
       haptics.heavyImpact();
       // Follow with success pattern for extra juice

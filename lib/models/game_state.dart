@@ -64,6 +64,10 @@ class GameState extends ChangeNotifier {
   bool _isMultiGrabMode = false;
   List<Layer>? _multiGrabLayers;
 
+  // Unstacking state
+  int? _unstackSlotIndex; // Stack where unstacked layers are temporarily held
+  List<Layer> _unstakedLayers = [];
+
   // Getters
   List<GameStack> get stacks => _stacks;
   int get selectedStackIndex => _selectedStackIndex;
@@ -85,6 +89,9 @@ class GameState extends ChangeNotifier {
   bool get isZenMode => _isZenMode;
   int get completedStackCount => _stacks.where((s) => s.isComplete).length;
   int get totalStacks => _stacks.length;
+  bool get hasUnstakedLayers => _unstakedLayers.isNotEmpty;
+  List<Layer> get unstakedLayers => _unstakedLayers;
+  int? get unstackSlotIndex => _unstackSlotIndex;
 
   /// Initialize game with stacks
   void initGame(List<GameStack> stacks, int level, {int? par}) {
@@ -103,6 +110,8 @@ class GameState extends ChangeNotifier {
     _isMultiGrabMode = false;
     _multiGrabLayers = null;
     _isZenMode = false;
+    _unstackSlotIndex = null;
+    _unstakedLayers = [];
     notifyListeners();
   }
 
@@ -122,6 +131,8 @@ class GameState extends ChangeNotifier {
     _isMultiGrabMode = false;
     _multiGrabLayers = null;
     _isZenMode = true;
+    _unstackSlotIndex = null;
+    _unstakedLayers = [];
     notifyListeners();
   }
 
@@ -300,6 +311,9 @@ class GameState extends ChangeNotifier {
     _moveCount++; // Still counts as 1 move!
     _animatingLayer = null;
 
+    // Decrement locked block counters
+    _decrementLockedBlocks();
+
     // Check for completed stacks
     _checkForCompletedStacks();
 
@@ -307,6 +321,32 @@ class GameState extends ChangeNotifier {
     _checkWinCondition();
 
     notifyListeners();
+  }
+
+  /// Decrement lock counters on all locked blocks after each move
+  void _decrementLockedBlocks() {
+    for (int i = 0; i < _stacks.length; i++) {
+      final stack = _stacks[i];
+      bool changed = false;
+      final newLayers = <Layer>[];
+      
+      for (final layer in stack.layers) {
+        if (layer.isLocked) {
+          newLayers.add(layer.decrementLock());
+          changed = true;
+        } else {
+          newLayers.add(layer);
+        }
+      }
+      
+      if (changed) {
+        _stacks[i] = GameStack(
+          layers: newLayers,
+          maxDepth: stack.maxDepth,
+          id: stack.id,
+        );
+      }
+    }
   }
 
   /// Check and mark completed stacks
@@ -382,6 +422,8 @@ class GameState extends ChangeNotifier {
     _lastClearTime = null;
     _isMultiGrabMode = false;
     _multiGrabLayers = null;
+    _unstackSlotIndex = null;
+    _unstakedLayers = [];
 
     notifyListeners();
   }
@@ -451,5 +493,73 @@ class GameState extends ChangeNotifier {
   /// Reset the current level
   void resetLevel(List<GameStack> stacks) {
     initGame(stacks, _currentLevel);
+  }
+
+  /// Unstack layers from a stack (remove from top to access buried colors)
+  /// Returns true if successful
+  bool unstackFrom(int stackIndex, int count) {
+    if (_animatingLayer != null) return false;
+    if (stackIndex < 0 || stackIndex >= _stacks.length) return false;
+    if (hasUnstakedLayers) return false; // Can only have one unstack operation at a time
+    
+    final stack = _stacks[stackIndex];
+    if (stack.isEmpty || count > stack.layers.length) return false;
+    
+    // Extract top N layers
+    final layersToUnstack = stack.layers.sublist(
+      stack.layers.length - count,
+      stack.layers.length,
+    );
+    
+    // Can't unstack locked layers
+    if (layersToUnstack.any((l) => l.isLocked)) return false;
+    
+    _unstakedLayers = layersToUnstack;
+    _unstackSlotIndex = stackIndex;
+    _stacks[stackIndex] = stack.withTopGroupRemoved(count);
+    
+    notifyListeners();
+    return true;
+  }
+
+  /// Restack the unstacked layers back to any valid stack
+  /// Returns true if successful
+  bool restackTo(int stackIndex) {
+    if (!hasUnstakedLayers) return false;
+    if (_animatingLayer != null) return false;
+    if (stackIndex < 0 || stackIndex >= _stacks.length) return false;
+    
+    final targetStack = _stacks[stackIndex];
+    
+    // Check if we can add all unstacked layers
+    if (!targetStack.canAcceptMultiple(_unstakedLayers)) return false;
+    
+    _stacks[stackIndex] = targetStack.withLayersAdded(_unstakedLayers);
+    _unstakedLayers = [];
+    _unstackSlotIndex = null;
+    _moveCount++; // Unstacking counts as a move
+    
+    // Decrement locked blocks
+    _decrementLockedBlocks();
+    
+    // Check for completed stacks
+    _checkForCompletedStacks();
+    
+    // Check win condition
+    _checkWinCondition();
+    
+    notifyListeners();
+    return true;
+  }
+
+  /// Cancel unstacking and return layers to original stack
+  void cancelUnstack() {
+    if (!hasUnstakedLayers || _unstackSlotIndex == null) return;
+    
+    _stacks[_unstackSlotIndex!] = _stacks[_unstackSlotIndex!].withLayersAdded(_unstakedLayers);
+    _unstakedLayers = [];
+    _unstackSlotIndex = null;
+    
+    notifyListeners();
   }
 }

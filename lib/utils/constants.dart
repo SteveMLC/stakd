@@ -89,6 +89,9 @@ class LevelParams {
   final int depth;
   final int shuffleMoves;
   final int minDifficultyScore;
+  final double multiColorProbability; // 0.0 to 1.0: chance of multi-color blocks
+  final double lockedBlockProbability; // 0.0 to 1.0: chance of locked blocks
+  final int maxLockedMoves; // Maximum moves a block can be locked for
 
   const LevelParams({
     required this.colors,
@@ -97,12 +100,15 @@ class LevelParams {
     required this.depth,
     required this.shuffleMoves,
     this.minDifficultyScore = 0,
+    this.multiColorProbability = 0.0,
+    this.lockedBlockProbability = 0.0,
+    this.maxLockedMoves = 3,
   });
 
-  /// Get parameters for a given level number
+  /// Get parameters for a given level number with progressive difficulty
   static LevelParams forLevel(int level) {
     if (level <= 10) {
-      // Learning: 4 colors, 2 empty slots
+      // Learning: 4 colors, 2 empty slots, no special blocks
       return LevelParams(
         colors: 4,
         depth: 4,
@@ -110,10 +116,13 @@ class LevelParams {
         emptySlots: 2,
         shuffleMoves: 15 + (level * 3),
         minDifficultyScore: level,
+        multiColorProbability: 0.0,
+        lockedBlockProbability: 0.0,
       );
     }
     if (level <= 25) {
-      // Intermediate: 5 colors
+      // Intermediate: 5 colors, introduce multi-color blocks gradually
+      final multiColorProb = ((level - 10) / 15).clamp(0.0, 0.15);
       return LevelParams(
         colors: 5,
         depth: 4,
@@ -121,11 +130,15 @@ class LevelParams {
         emptySlots: 2,
         shuffleMoves: 30 + ((level - 10) * 2),
         minDifficultyScore: 4 + (level - 10),
+        multiColorProbability: multiColorProb,
+        lockedBlockProbability: 0.0,
       );
     }
     if (level <= 50) {
-      // Advanced: 5-6 colors, deeper
+      // Advanced: 5-6 colors, more multi-color blocks, introduce locked blocks
       final colors = level <= 35 ? 5 : 6;
+      final multiColorProb = 0.15 + ((level - 25) / 25 * 0.15).clamp(0.0, 0.3);
+      final lockedProb = level >= 35 ? ((level - 35) / 15).clamp(0.0, 0.1) : 0.0;
       return LevelParams(
         colors: colors,
         depth: 5,
@@ -133,10 +146,15 @@ class LevelParams {
         emptySlots: 2,
         shuffleMoves: 45 + ((level - 25) * 2),
         minDifficultyScore: 8 + (level - 25),
+        multiColorProbability: multiColorProb,
+        lockedBlockProbability: lockedProb,
+        maxLockedMoves: 3,
       );
     }
     if (level <= 100) {
-      // Expert: 6 colors, 1 empty slot
+      // Expert: 6 colors, 1 empty slot, frequent multi-color and locked blocks
+      final multiColorProb = 0.3 + ((level - 50) / 50 * 0.15).clamp(0.0, 0.45);
+      final lockedProb = 0.1 + ((level - 50) / 50 * 0.1).clamp(0.0, 0.2);
       return LevelParams(
         colors: 6,
         depth: 5,
@@ -144,10 +162,15 @@ class LevelParams {
         emptySlots: 1,
         shuffleMoves: 60 + (level - 50),
         minDifficultyScore: 15 + ((level - 50) ~/ 5),
+        multiColorProbability: multiColorProb,
+        lockedBlockProbability: lockedProb,
+        maxLockedMoves: 4,
       );
     }
-    // Master: 6-7 colors, 1 empty, deep
+    // Master: 6-7 colors, 1 empty, deep, maximum difficulty
     final extraColors = ((level - 100) ~/ 25).clamp(0, 1);
+    final multiColorProb = 0.45 + (extraColors * 0.1);
+    final lockedProb = 0.2 + (extraColors * 0.05);
     return LevelParams(
       colors: 6 + extraColors,
       depth: 6,
@@ -155,6 +178,9 @@ class LevelParams {
       emptySlots: 1,
       shuffleMoves: 80 + ((level - 100) ~/ 2),
       minDifficultyScore: 25,
+      multiColorProbability: multiColorProb.clamp(0.0, 0.6),
+      lockedBlockProbability: lockedProb.clamp(0.0, 0.3),
+      maxLockedMoves: 5,
     );
   }
 }

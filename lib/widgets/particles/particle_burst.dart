@@ -96,11 +96,17 @@ class _ParticleBurstState extends State<ParticleBurst>
 
       final velocity = Offset(cos(angle) * speed, sin(angle) * speed);
 
+      // Add color variation for more visual interest
+      final hslColor = HSLColor.fromColor(widget.color);
+      final variedColor = hslColor.withLightness(
+        (hslColor.lightness + (_random.nextDouble() * 0.2 - 0.1)).clamp(0.0, 1.0)
+      ).toColor();
+
       _particles.add(
         Particle(
           position: widget.center,
           velocity: velocity,
-          color: widget.color,
+          color: variedColor,
           startTime: _startTime,
           lifetime: widget.lifetime.inMilliseconds.toDouble(),
         ),
@@ -145,12 +151,23 @@ class _ParticlePainter extends CustomPainter {
     for (final particle in particles) {
       if (particle.isDead) continue;
 
+      // Draw glow effect
+      final glowPaint = Paint()
+        ..color = particle.color.withValues(alpha: particle.opacity * 0.3)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+      canvas.drawCircle(particle.position, 6.0 * particle.scale, glowPaint);
+
+      // Draw solid particle
       final paint = Paint()
         ..color = particle.color.withValues(alpha: particle.opacity)
         ..style = PaintingStyle.fill;
-
-      // Draw small circles for particles
       canvas.drawCircle(particle.position, 4.0 * particle.scale, paint);
+
+      // Draw bright core
+      final corePaint = Paint()
+        ..color = Colors.white.withValues(alpha: particle.opacity * 0.6)
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(particle.position, 2.0 * particle.scale, corePaint);
     }
   }
 
