@@ -32,6 +32,7 @@ flutter:
     - assets/sounds/
     - assets/sounds/zen/
     - assets/images/
+    - assets/images/textures/
 
 flutter_launcher_icons:
   android: true

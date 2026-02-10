@@ -26,6 +26,7 @@ class StorageService {
   static const String _keyMultiGrabUsed = 'multi_grab_used';
   static const String _keyMultiGrabUsageCount = 'multi_grab_usage_count';
   static const String _keyMultiGrabHintsEnabled = 'multi_grab_hints_enabled';
+  static const String _keyTextureSkinsEnabled = 'texture_skins_enabled';
 
   /// Initialize the storage service
   Future<void> init() async {
@@ -391,6 +392,25 @@ class StorageService {
       await _prefs?.setBool(_keyMultiGrabHintsEnabled, enabled);
     } catch (e) {
       debugPrint('StorageService setMultiGrabHintsEnabled failed: $e');
+    }
+  }
+
+  /// Get texture skins enabled setting
+  bool getTextureSkinsEnabled() {
+    try {
+      return _prefs?.getBool(_keyTextureSkinsEnabled) ?? false;
+    } catch (e) {
+      debugPrint('StorageService getTextureSkinsEnabled failed: $e');
+      return false;
+    }
+  }
+
+  /// Set texture skins enabled setting
+  Future<void> setTextureSkinsEnabled(bool enabled) async {
+    try {
+      await _prefs?.setBool(_keyTextureSkinsEnabled, enabled);
+    } catch (e) {
+      debugPrint('StorageService setTextureSkinsEnabled failed: $e');
     }
   }
 

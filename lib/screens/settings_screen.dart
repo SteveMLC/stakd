@@ -16,6 +16,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _soundEnabled = true;
   bool _hapticsEnabled = true;
+  bool _textureSkinsEnabled = false;
 
   @override
   void initState() {
@@ -28,6 +29,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _soundEnabled = storage.getSoundEnabled();
       _hapticsEnabled = storage.getHapticsEnabled();
+      _textureSkinsEnabled = storage.getTextureSkinsEnabled();
     });
   }
 
@@ -53,6 +55,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (nextValue) {
       haptics.lightTap();
+    }
+  }
+
+  Future<void> _toggleTextureSkins() async {
+    final storage = StorageService();
+    final nextValue = !_textureSkinsEnabled;
+
+    setState(() => _textureSkinsEnabled = nextValue);
+    await storage.setTextureSkinsEnabled(nextValue);
+
+    if (_soundEnabled) {
+      AudioService().playTap();
     }
   }
 
@@ -104,6 +118,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       title: 'Haptics',
                       value: _hapticsEnabled,
                       onToggle: _toggleHaptics,
+                    ),
+                    const SizedBox(height: 24),
+                    _buildSectionTitle('Visuals'),
+                    _buildToggleTile(
+                      icon: Icons.texture,
+                      title: 'Texture Skins',
+                      value: _textureSkinsEnabled,
+                      onToggle: _toggleTextureSkins,
                     ),
                     const SizedBox(height: 24),
                     _buildSectionTitle('Ads'),

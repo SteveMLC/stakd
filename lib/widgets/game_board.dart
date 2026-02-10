@@ -755,6 +755,9 @@ class _StackWidgetState extends State<_StackWidget>
     final isMultiGrabActive = widget.isMultiGrabMode && widget.isSelected;
     final topGroupSize = widget.stack.topGroupSize;
     final multiGrabPulse = isMultiGrabActive ? _multiGrabPulseAnimation.value : 0.0;
+    
+    // Check if texture skins are enabled
+    final textureSkinsEnabled = StorageService().getTextureSkinsEnabled();
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
@@ -774,6 +777,14 @@ class _StackWidgetState extends State<_StackWidget>
             end: Alignment.bottomCenter,
             colors: gradientColors,
           ),
+          // Texture skin overlay when enabled
+          image: textureSkinsEnabled
+              ? const DecorationImage(
+                  image: AssetImage('assets/images/textures/cherry_blossom.png'),
+                  fit: BoxFit.cover,
+                  opacity: 0.3,
+                )
+              : null,
           borderRadius: BorderRadius.circular(4),
           border: isInGrabZone
               ? Border.all(
