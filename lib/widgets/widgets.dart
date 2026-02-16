@@ -8,3 +8,4 @@ export 'celebration_overlay.dart';
 export 'game_button.dart';
 export 'daily_streak_badge.dart';
 export 'combo_popup.dart';
+export 'achievement_toast_card.dart';
