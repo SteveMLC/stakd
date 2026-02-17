@@ -6,6 +6,7 @@ import '../services/haptic_service.dart';
 import '../services/storage_service.dart';
 import '../services/audio_service.dart';
 import '../utils/constants.dart';
+import '../utils/theme_colors.dart';
 import 'particles/particle_burst.dart';
 import 'particles/confetti_overlay.dart';
 import 'combo_popup.dart';
@@ -20,6 +21,8 @@ class GameBoard extends StatefulWidget {
   final VoidCallback? onClear;
   final void Function(int chainLevel)? onChain;
   final Map<int, GlobalKey>? stackKeys;
+  final void Function(int stackIndex)? onStackTapOverride;
+  final List<int>? highlightedStacks;
 
   const GameBoard({
     super.key,
@@ -29,6 +32,8 @@ class GameBoard extends StatefulWidget {
     this.onClear,
     this.onChain,
     this.stackKeys,
+    this.onStackTapOverride,
+    this.highlightedStacks,
   });
 
   @override
@@ -162,6 +167,13 @@ class _GameBoardState extends State<GameBoard>
                                   isMultiGrabMode: widget.gameState.isMultiGrabMode,
                                   multiGrabCount: widget.gameState.multiGrabCount,
                                   onTap: () {
+                                    // Check if there's an override handler (for power-up selection)
+                                    if (widget.onStackTapOverride != null) {
+                                      widget.onStackTapOverride!(actualIndex);
+                                      widget.onTap?.call();
+                                      return;
+                                    }
+                                    
                                     final previousMoveCount =
                                         widget.gameState.moveCount;
                                     final previousCleared = List<int>.from(
@@ -220,6 +232,7 @@ class _GameBoardState extends State<GameBoard>
                                     widget.gameState.activateMultiGrab(actualIndex);
                                     widget.onTap?.call();
                                   },
+                                  isPowerUpHighlighted: widget.highlightedStacks?.contains(actualIndex) ?? false,
                                 ),
                               );
                             }),
@@ -321,7 +334,7 @@ class _GameBoardState extends State<GameBoard>
     if (clearedIndices.isEmpty) return;
     
     // Skip particles if theme has them disabled
-    if (!GameColors.hasParticles) return;
+    if (!ThemeColors.hasParticles) return;
 
     final bursts = <ParticleBurstData>[];
     
@@ -348,11 +361,11 @@ class _GameBoardState extends State<GameBoard>
         position.dy + size.height / 2,
       );
 
-      // Get the stack's color
+      // Get the stack's color (use theme-aware colors)
       final stack = widget.gameState.stacks[stackIndex];
       final topLayer = stack.layers.isNotEmpty ? stack.layers.first : null;
       final color = topLayer != null
-          ? GameColors.getColor(topLayer.colorIndex)
+          ? ThemeColors.getColor(topLayer.colorIndex)
           : GameColors.accent;
 
       bursts.add(
@@ -473,6 +486,7 @@ class _StackWidget extends StatefulWidget {
   final int multiGrabCount;
   final VoidCallback onTap;
   final VoidCallback onMultiGrab;
+  final bool isPowerUpHighlighted;
 
   const _StackWidget({
     super.key,
@@ -484,6 +498,7 @@ class _StackWidget extends StatefulWidget {
     required this.multiGrabCount,
     required this.onTap,
     required this.onMultiGrab,
+    this.isPowerUpHighlighted = false,
   });
 
   @override
@@ -751,16 +766,18 @@ class _StackWidgetState extends State<_StackWidget>
                             GameSizes.stackBorderRadius,
                           ),
                           border: Border.all(
-                            color: isMultiGrabActive
-                                ? glowColor.withValues(alpha: 0.8 + multiGrabPulse * 0.2)
-                                : widget.isSelected
-                                    ? GameColors.accent
-                                    : widget.isRecentlyCleared
-                                        ? GameColors.palette[2]
-                                        : nearingCompletion
-                                            ? glowColor.withValues(alpha: 0.6 + pulseValue * 0.4)
-                                            : GameColors.empty,
-                            width: isMultiGrabActive ? 4 : (widget.isSelected ? 3 : nearingCompletion ? 2.5 : 2),
+                            color: widget.isPowerUpHighlighted
+                                ? GameColors.zen.withValues(alpha: 0.9)
+                                : isMultiGrabActive
+                                    ? glowColor.withValues(alpha: 0.8 + multiGrabPulse * 0.2)
+                                    : widget.isSelected
+                                        ? GameColors.accent
+                                        : widget.isRecentlyCleared
+                                            ? GameColors.palette[2]
+                                            : nearingCompletion
+                                                ? glowColor.withValues(alpha: 0.6 + pulseValue * 0.4)
+                                                : GameColors.empty,
+                            width: widget.isPowerUpHighlighted ? 3 : (isMultiGrabActive ? 4 : (widget.isSelected ? 3 : nearingCompletion ? 2.5 : 2)),
                           ),
                           boxShadow: [
                             // Multi-grab glow effect (strongest)

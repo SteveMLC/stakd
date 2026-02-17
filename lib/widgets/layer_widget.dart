@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/layer_model.dart';
 import '../utils/constants.dart';
+import '../utils/theme_colors.dart';
 
 /// Displays a single colored layer
 class LayerWidget extends StatelessWidget {
@@ -21,8 +22,8 @@ class LayerWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Choose gradient/colors based on block type
-    final gradientColors = GameColors.getGradient(layer.colorIndex);
+    // Choose gradient/colors based on block type (use theme-aware colors)
+    final gradientColors = ThemeColors.getGradient(layer.colorIndex);
     
     // Apply frost effect to locked blocks
     final isLocked = layer.isLocked;
@@ -30,8 +31,11 @@ class LayerWidget extends StatelessWidget {
         ? Colors.blue.withValues(alpha: 0.3) 
         : gradientColors.last;
     
+    // Check if theme has block glow enabled
+    final useGlow = glowEffect || ThemeColors.hasBlockGlow;
+    
     // Enhanced shadow with glow effect
-    final shadows = glowEffect ? [
+    final shadows = useGlow ? [
       BoxShadow(
         color: shadowColor.withValues(alpha: 0.7),
         blurRadius: 12,
@@ -56,7 +60,7 @@ class LayerWidget extends StatelessWidget {
       height: height,
       decoration: BoxDecoration(
         gradient: _buildBlockGradient(),
-        borderRadius: BorderRadius.circular(GameSizes.stackBorderRadius),
+        borderRadius: BorderRadius.circular(ThemeColors.blockBorderRadius),
         boxShadow: shadows,
       ),
       child: Stack(
@@ -172,8 +176,8 @@ class LayerWidget extends StatelessWidget {
       );
     }
     
-    // Standard or locked block: vertical gradient
-    final gradientColors = GameColors.getGradient(layer.colorIndex);
+    // Standard or locked block: vertical gradient (use theme-aware colors)
+    final gradientColors = ThemeColors.getGradient(layer.colorIndex);
     
     // Apply desaturation to locked blocks
     if (layer.isLocked) {

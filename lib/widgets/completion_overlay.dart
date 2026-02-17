@@ -7,6 +7,9 @@ import '../services/audio_service.dart';
 class CompletionOverlay extends StatefulWidget {
   final int moves;
   final Duration time;
+  final int? par;
+  final int stars;
+  final bool isNewRecord;
   final VoidCallback onNextPuzzle;
   final VoidCallback onHome;
 
@@ -14,6 +17,9 @@ class CompletionOverlay extends StatefulWidget {
     super.key,
     required this.moves,
     required this.time,
+    this.par,
+    required this.stars,
+    this.isNewRecord = false,
     required this.onNextPuzzle,
     required this.onHome,
   });
@@ -27,11 +33,16 @@ class _CompletionOverlayState extends State<CompletionOverlay>
   late AnimationController _fadeController;
   late AnimationController _scaleController;
   late AnimationController _confettiController;
+  late List<AnimationController> _starControllers;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
+  late List<Animation<double>> _starAnimations;
 
   final List<_ConfettiParticle> _confetti = [];
   final Random _random = Random();
+
+  static const Color starGold = Color(0xFFFFD700);
+  static const Color starEmpty = Color(0xFF3A3A4A);
 
   @override
   void initState() {
@@ -50,12 +61,28 @@ class _CompletionOverlayState extends State<CompletionOverlay>
       duration: const Duration(seconds: 3),
     );
 
+    // Create controllers for each star animation (pop effect)
+    _starControllers = List.generate(
+      3,
+      (index) => AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 400),
+      ),
+    );
+
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _fadeController, curve: Curves.easeOut),
     );
     _scaleAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
       CurvedAnimation(parent: _scaleController, curve: Curves.elasticOut),
     );
+
+    // Create pop animations for each star
+    _starAnimations = _starControllers.map((controller) {
+      return Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(parent: controller, curve: Curves.elasticOut),
+      );
+    }).toList();
 
     _generateConfetti();
 
@@ -64,7 +91,21 @@ class _CompletionOverlayState extends State<CompletionOverlay>
       _scaleController.forward();
       _confettiController.forward();
       haptics.levelWinPattern();
+      
+      // Animate stars in sequence
+      _animateStars();
     });
+  }
+
+  void _animateStars() async {
+    for (int i = 0; i < widget.stars && i < 3; i++) {
+      await Future.delayed(const Duration(milliseconds: 200));
+      if (mounted) {
+        _starControllers[i].forward();
+        // Light haptic for each star
+        haptics.lightTap();
+      }
+    }
   }
 
   void _generateConfetti() {
@@ -85,6 +126,9 @@ class _CompletionOverlayState extends State<CompletionOverlay>
     _fadeController.dispose();
     _scaleController.dispose();
     _confettiController.dispose();
+    for (final controller in _starControllers) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -94,6 +138,40 @@ class _CompletionOverlayState extends State<CompletionOverlay>
     return minutes > 0
         ? '$minutes:${seconds.toString().padLeft(2, '0')}'
         : '${seconds}s';
+  }
+
+  Widget _buildStarRating() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(3, (index) {
+        final isFilled = index < widget.stars;
+        return AnimatedBuilder(
+          animation: _starAnimations[index],
+          builder: (context, child) {
+            final scale = isFilled ? _starAnimations[index].value : 1.0;
+            return Transform.scale(
+              scale: scale,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Icon(
+                  isFilled ? Icons.star : Icons.star_border,
+                  size: 48,
+                  color: isFilled ? starGold : starEmpty,
+                  shadows: isFilled
+                      ? [
+                          Shadow(
+                            color: starGold.withValues(alpha: 0.6),
+                            blurRadius: 12,
+                          ),
+                        ]
+                      : null,
+                ),
+              ),
+            );
+          },
+        );
+      }),
+    );
   }
 
   @override
@@ -140,13 +218,7 @@ class _CompletionOverlayState extends State<CompletionOverlay>
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(
-                              Icons.celebration,
-                              color: GameColors.accent,
-                              size: 64,
-                            ),
-                            const SizedBox(height: 16),
-                            const Text(
+                            Text(
                               'PUZZLE COMPLETE!',
                               style: TextStyle(
                                 fontSize: 24,
@@ -155,14 +227,46 @@ class _CompletionOverlayState extends State<CompletionOverlay>
                                 letterSpacing: 2,
                               ),
                             ),
-                            const SizedBox(height: 24),
+                            const SizedBox(height: 16),
+                            // Star rating
+                            _buildStarRating(),
+                            // New Record badge
+                            if (widget.isNewRecord)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: starGold.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: starGold.withValues(alpha: 0.5),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    '⭐ NEW RECORD! ⭐',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: starGold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            const SizedBox(height: 20),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 _StatChip(
                                   icon: Icons.touch_app,
                                   label: '${widget.moves}',
-                                  subtitle: 'moves',
+                                  subtitle: widget.par != null
+                                      ? 'moves (par ${widget.par})'
+                                      : 'moves',
                                 ),
                                 const SizedBox(width: 24),
                                 _StatChip(
@@ -239,7 +343,7 @@ class _StatChip extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.bold,
             color: GameColors.text,
@@ -247,7 +351,7 @@ class _StatChip extends StatelessWidget {
         ),
         Text(
           subtitle,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             color: GameColors.textMuted,
           ),

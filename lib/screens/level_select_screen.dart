@@ -152,7 +152,7 @@ class _LevelButton extends StatelessWidget {
 
             // Completed checkmark
             if (isCompleted)
-              const Positioned(
+              Positioned(
                 top: 4,
                 right: 4,
                 child: Icon(

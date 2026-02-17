@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import '../services/audio_service.dart';
 import '../services/haptic_service.dart';
 import '../services/storage_service.dart';
+import '../services/theme_service.dart';
+import '../services/leaderboard_service.dart';
 import '../utils/constants.dart';
 import '../widgets/game_button.dart';
+import '../widgets/name_entry_dialog.dart';
+import 'theme_store_screen.dart';
 
 /// Settings screen
 class SettingsScreen extends StatefulWidget {
@@ -127,6 +131,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       value: _textureSkinsEnabled,
                       onToggle: _toggleTextureSkins,
                     ),
+                    const SizedBox(height: 8),
+                    _buildThemeButton(),
                     const SizedBox(height: 24),
                     _buildSectionTitle('Ads'),
                     Center(
@@ -146,6 +152,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 24),
+                    _buildSectionTitle('Leaderboards'),
+                    _buildLeaderboardNameTile(),
                   ],
                 ),
               ),
@@ -196,6 +205,117 @@ class _SettingsScreenState extends State<SettingsScreen> {
             activeTrackColor: GameColors.accent.withValues(alpha: 0.4),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildThemeButton() {
+    final themeService = ThemeService();
+    final currentTheme = themeService.currentTheme;
+
+    return GestureDetector(
+      onTap: () {
+        haptics.lightTap();
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const ThemeStoreScreen()),
+        ).then((_) {
+          // Refresh when returning from theme store
+          if (mounted) setState(() {});
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: GameColors.surface,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Text(
+              currentTheme.icon,
+              style: const TextStyle(fontSize: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Theme',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  Text(
+                    currentTheme.name,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: GameColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: GameColors.textMuted,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLeaderboardNameTile() {
+    final leaderboardService = LeaderboardService();
+    final currentName = leaderboardService.playerName;
+
+    return GestureDetector(
+      onTap: () async {
+        haptics.lightTap();
+        final name = await showNameEntryDialog(
+          context,
+          currentName: currentName,
+        );
+        if (name != null && name.isNotEmpty) {
+          await leaderboardService.setPlayerName(name);
+          if (mounted) setState(() {});
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: GameColors.surface,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.person, color: GameColors.accent),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Display Name',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  Text(
+                    currentName,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: GameColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.edit,
+              size: 16,
+              color: GameColors.textMuted,
+            ),
+          ],
+        ),
       ),
     );
   }

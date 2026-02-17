@@ -5,6 +5,7 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 
 import 'ad_service.dart';
 import 'storage_service.dart';
+import 'power_up_service.dart';
 
 /// Handles in-app purchases and entitlements.
 class IapService extends ChangeNotifier {
@@ -16,6 +17,14 @@ class IapService extends ChangeNotifier {
   static const String hintPack10ProductId = 'com.go7studio.stakd.hint_pack_10';
   static const int hintPackAmount = 10;
 
+  // Power-up pack product IDs
+  static const String powerUpPack5ProductId = 'com.go7studio.stakd.powerup_pack_5';
+  static const String powerUpPack20ProductId = 'com.go7studio.stakd.powerup_pack_20';
+  static const String powerUpPack50ProductId = 'com.go7studio.stakd.powerup_pack_50';
+  static const int powerUpPack5Amount = 5;
+  static const int powerUpPack20Amount = 20;
+  static const int powerUpPack50Amount = 50;
+
   // Flip with --dart-define=STAKD_IAP_TEST_IDS=true for store test IDs.
   static const bool useTestProductIds = bool.fromEnvironment(
     'STAKD_IAP_TEST_IDS',
@@ -25,6 +34,9 @@ class IapService extends ChangeNotifier {
   static const Set<String> _productIds = {
     removeAdsProductId,
     hintPack10ProductId,
+    powerUpPack5ProductId,
+    powerUpPack20ProductId,
+    powerUpPack50ProductId,
   };
 
   // Google Play test SKU. Use StoreKit config on iOS.
@@ -52,6 +64,9 @@ class IapService extends ChangeNotifier {
 
   String? get removeAdsPrice => _productFor(removeAdsProductId)?.price;
   String? get hintPackPrice => _productFor(hintPack10ProductId)?.price;
+  String? get powerUpPack5Price => _productFor(powerUpPack5ProductId)?.price;
+  String? get powerUpPack20Price => _productFor(powerUpPack20ProductId)?.price;
+  String? get powerUpPack50Price => _productFor(powerUpPack50ProductId)?.price;
 
   Future<void> init() async {
     if (_initialized) return;
@@ -119,6 +134,18 @@ class IapService extends ChangeNotifier {
 
   Future<void> buyHintPack() async {
     await _buyProduct(hintPack10ProductId, isConsumable: true);
+  }
+
+  Future<void> buyPowerUpPack5() async {
+    await _buyProduct(powerUpPack5ProductId, isConsumable: true);
+  }
+
+  Future<void> buyPowerUpPack20() async {
+    await _buyProduct(powerUpPack20ProductId, isConsumable: true);
+  }
+
+  Future<void> buyPowerUpPack50() async {
+    await _buyProduct(powerUpPack50ProductId, isConsumable: true);
   }
 
   Future<void> restorePurchases() async {
@@ -213,6 +240,7 @@ class IapService extends ChangeNotifier {
 
   Future<void> _deliverPurchase(PurchaseDetails purchase) async {
     final storage = StorageService();
+    final powerUpService = PowerUpService();
     var productId = purchase.productID;
 
     if (useTestProductIds && _testProductIds.contains(productId)) {
@@ -228,6 +256,12 @@ class IapService extends ChangeNotifier {
     } else if (productId == hintPack10ProductId) {
       _hintCount += hintPackAmount;
       await storage.setHintCount(_hintCount);
+    } else if (productId == powerUpPack5ProductId) {
+      await powerUpService.awardPack(powerUpPack5Amount);
+    } else if (productId == powerUpPack20ProductId) {
+      await powerUpService.awardPack(powerUpPack20Amount);
+    } else if (productId == powerUpPack50ProductId) {
+      await powerUpService.awardPack(powerUpPack50Amount);
     }
 
     _pendingProductId = null;

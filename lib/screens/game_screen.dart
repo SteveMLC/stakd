@@ -806,7 +806,7 @@ class _GameScreenState extends State<GameScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel', style: TextStyle(color: GameColors.textMuted)),
+              child: Text('Cancel', style: TextStyle(color: GameColors.textMuted)),
             ),
           ],
         );
@@ -828,8 +828,8 @@ class _GameScreenState extends State<GameScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(title, style: const TextStyle(color: GameColors.text, fontWeight: FontWeight.w500)),
-            Text(price, style: const TextStyle(color: GameColors.accent, fontWeight: FontWeight.bold)),
+            Text(title, style: TextStyle(color: GameColors.text, fontWeight: FontWeight.w500)),
+            Text(price, style: TextStyle(color: GameColors.accent, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
@@ -893,6 +893,10 @@ class _GameScreenState extends State<GameScreen> {
                           onMove: () => AudioService().playSlide(),
                           onClear: () => AudioService().playClear(),
                           onChain: _onChainReaction,
+                          onStackTapOverride: (_colorBombSelectionMode || _magnetSelectionMode) 
+                              ? _handlePowerUpStackTap 
+                              : null,
+                          highlightedStacks: _magnetSelectionMode ? _magnetEligibleStacks : null,
                         ),
                       ),
                       

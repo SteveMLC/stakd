@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'screens/home_screen.dart';
+import 'services/theme_service.dart';
 import 'utils/constants.dart';
 
 class StakdApp extends StatelessWidget {
@@ -7,74 +9,91 @@ class StakdApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Stakd',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: GameColors.background,
-        colorScheme: ColorScheme.dark(
-          primary: GameColors.accent,
-          secondary: GameColors.accent,
-          surface: GameColors.surface,
-          onSurface: GameColors.text,
-        ),
-        textTheme: const TextTheme(
-          displayLarge: TextStyle(
-            fontSize: 48,
-            fontWeight: FontWeight.bold,
-            color: GameColors.text,
-          ),
-          displayMedium: TextStyle(
-            fontSize: 32,
-            fontWeight: FontWeight.bold,
-            color: GameColors.text,
-          ),
-          titleLarge: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w600,
-            color: GameColors.text,
-          ),
-          titleMedium: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w500,
-            color: GameColors.text,
-          ),
-          bodyLarge: TextStyle(fontSize: 16, color: GameColors.text),
-          bodyMedium: TextStyle(fontSize: 14, color: GameColors.textMuted),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: GameColors.accent,
-            foregroundColor: GameColors.text,
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(GameSizes.borderRadius),
+    // Listen to theme changes to rebuild the app
+    return Consumer<ThemeService>(
+      builder: (context, themeService, child) {
+        final theme = themeService.currentTheme;
+        
+        // Determine brightness based on background color luminance
+        final isDark = theme.backgroundColor.computeLuminance() < 0.5;
+        
+        return MaterialApp(
+          title: 'Stakd',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+            useMaterial3: true,
+            brightness: isDark ? Brightness.dark : Brightness.light,
+            scaffoldBackgroundColor: theme.backgroundColor,
+            colorScheme: isDark
+                ? ColorScheme.dark(
+                    primary: theme.accentColor,
+                    secondary: theme.accentColor,
+                    surface: theme.surfaceColor,
+                    onSurface: theme.textColor,
+                  )
+                : ColorScheme.light(
+                    primary: theme.accentColor,
+                    secondary: theme.accentColor,
+                    surface: theme.surfaceColor,
+                    onSurface: theme.textColor,
+                  ),
+            textTheme: TextTheme(
+              displayLarge: TextStyle(
+                fontSize: 48,
+                fontWeight: FontWeight.bold,
+                color: theme.textColor,
+              ),
+              displayMedium: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: theme.textColor,
+              ),
+              titleLarge: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w600,
+                color: theme.textColor,
+              ),
+              titleMedium: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+                color: theme.textColor,
+              ),
+              bodyLarge: TextStyle(fontSize: 16, color: theme.textColor),
+              bodyMedium: TextStyle(fontSize: 14, color: theme.textMutedColor),
             ),
-            textStyle: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
+            elevatedButtonTheme: ElevatedButtonThemeData(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: theme.accentColor,
+                foregroundColor: theme.textColor,
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(GameSizes.borderRadius),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
+            outlinedButtonTheme: OutlinedButtonThemeData(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: theme.textColor,
+                side: BorderSide(color: theme.accentColor, width: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(GameSizes.borderRadius),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            iconTheme: IconThemeData(color: theme.textColor, size: 24),
           ),
-        ),
-        outlinedButtonTheme: OutlinedButtonThemeData(
-          style: OutlinedButton.styleFrom(
-            foregroundColor: GameColors.text,
-            side: const BorderSide(color: GameColors.accent, width: 2),
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(GameSizes.borderRadius),
-            ),
-            textStyle: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        iconTheme: const IconThemeData(color: GameColors.text, size: 24),
-      ),
-      home: const HomeScreen(),
+          home: const HomeScreen(),
+        );
+      },
     );
   }
 }

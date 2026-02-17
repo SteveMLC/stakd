@@ -2,12 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'models/game_state.dart';
 import 'services/audio_service.dart';
 import 'services/storage_service.dart';
 import 'services/ad_service.dart';
 import 'services/review_service.dart';
 import 'services/iap_service.dart';
+import 'services/achievement_service.dart';
+import 'services/theme_service.dart';
+import 'services/currency_service.dart';
+import 'services/leaderboard_service.dart';
+import 'services/power_up_service.dart';
 import 'app.dart';
 
 void main() async {
@@ -29,11 +35,23 @@ void main() async {
     ),
   );
 
+  // Initialize Firebase
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    debugPrint('Firebase init failed: $e');
+  }
+
   // Initialize services
   await StorageService().init();
   await AudioService().init();
   await AdService().init();
   await IapService().init();
+  await AchievementService().init();
+  await CurrencyService().init();
+  await ThemeService().init();
+  await LeaderboardService().init();
+  await PowerUpService().initializeDefaults();
 
   // Initialize review service and increment session count
   final prefs = await SharedPreferences.getInstance();
@@ -50,6 +68,8 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => GameState()),
         ChangeNotifierProvider.value(value: IapService()),
+        ChangeNotifierProvider.value(value: ThemeService()),
+        ChangeNotifierProvider.value(value: PowerUpService()),
       ],
       child: const StakdApp(),
     ),
