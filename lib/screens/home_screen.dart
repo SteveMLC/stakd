@@ -3,12 +3,17 @@ import 'package:flutter/material.dart';
 import '../utils/constants.dart';
 import '../services/storage_service.dart';
 import '../services/daily_challenge_service.dart';
+import '../services/daily_rewards_service.dart';
+import '../services/currency_service.dart';
+import '../services/leaderboard_service.dart';
 import '../widgets/game_button.dart';
 import '../widgets/daily_streak_badge.dart';
+import '../widgets/daily_rewards_popup.dart';
 import 'daily_challenge_screen.dart';
 import 'level_select_screen.dart';
 import 'settings_screen.dart';
 import 'zen_screen.dart';
+import 'leaderboard_screen.dart';
 
 /// Main menu screen
 class HomeScreen extends StatefulWidget {
@@ -25,6 +30,8 @@ class _HomeScreenState extends State<HomeScreen>
   bool _isDailyCompleted = false;
   int _dailyStreak = 0;
   bool _highlightStreak = false;
+  bool _hasUnclaimedReward = false;
+  int _coinBalance = 0;
 
   @override
   void initState() {
@@ -37,6 +44,7 @@ class _HomeScreenState extends State<HomeScreen>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
     _loadDailyData();
+    _checkDailyRewards();
   }
 
   @override
@@ -65,6 +73,39 @@ class _HomeScreenState extends State<HomeScreen>
     } else if (!_pulseController.isAnimating) {
       _pulseController.repeat(reverse: true);
     }
+  }
+
+  Future<void> _checkDailyRewards() async {
+    final rewardsService = DailyRewardsService();
+    final currencyService = CurrencyService();
+    await rewardsService.init();
+    await currencyService.init();
+    
+    final canClaim = await rewardsService.canClaimToday();
+    final coins = await currencyService.getCoins();
+    
+    if (!mounted) return;
+    
+    setState(() {
+      _hasUnclaimedReward = canClaim;
+      _coinBalance = coins;
+    });
+    
+    // Show popup automatically if reward is available
+    if (canClaim) {
+      // Small delay to let the screen build first
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (mounted) {
+        DailyRewardsPopup.show(context);
+      }
+    }
+  }
+
+  void _openDailyRewards() {
+    DailyRewardsPopup.show(context).then((_) {
+      // Refresh state when popup closes
+      _checkDailyRewards();
+    });
   }
 
   Future<void> _openDailyChallenge(BuildContext context) async {
@@ -102,6 +143,8 @@ class _HomeScreenState extends State<HomeScreen>
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Spacer(flex: 2),
+                _buildTopBar(),
+                const SizedBox(height: 16),
                 _buildLogo(),
                 const SizedBox(height: 16),
                 Text(
@@ -130,12 +173,25 @@ class _HomeScreenState extends State<HomeScreen>
                   ],
                 ),
                 const SizedBox(height: 16),
-                GameButton(
-                  text: 'Settings',
-                  icon: Icons.settings,
-                  isPrimary: false,
-                  isSmall: true,
-                  onPressed: () => _openSettings(context),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    GameButton(
+                      text: 'Leaderboards',
+                      icon: Icons.leaderboard,
+                      isPrimary: false,
+                      isSmall: true,
+                      onPressed: () => _openLeaderboards(context),
+                    ),
+                    const SizedBox(width: 16),
+                    GameButton(
+                      text: 'Settings',
+                      icon: Icons.settings,
+                      isPrimary: false,
+                      isSmall: true,
+                      onPressed: () => _openSettings(context),
+                    ),
+                  ],
                 ),
                 const Spacer(flex: 3),
                 Container(
@@ -171,6 +227,106 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTopBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Coin balance
+          GestureDetector(
+            onTap: _openDailyRewards,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: GameColors.surface.withValues(alpha: 0.7),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: const Color(0xFFFFD700).withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.monetization_on,
+                    color: Color(0xFFFFD700),
+                    size: 20,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '$_coinBalance',
+                    style: TextStyle(
+                      color: GameColors.text,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+          // Daily rewards button
+          GestureDetector(
+            onTap: _openDailyRewards,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: GameColors.surface.withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: _hasUnclaimedReward 
+                          ? GameColors.accent.withValues(alpha: 0.5)
+                          : GameColors.textMuted.withValues(alpha: 0.2),
+                    ),
+                    boxShadow: _hasUnclaimedReward
+                        ? [
+                            BoxShadow(
+                              color: GameColors.accent.withValues(alpha: 0.3),
+                              blurRadius: 10,
+                              spreadRadius: 1,
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Icon(
+                    Icons.card_giftcard,
+                    color: _hasUnclaimedReward 
+                        ? GameColors.accent 
+                        : GameColors.textMuted,
+                    size: 24,
+                  ),
+                ),
+                // Notification badge
+                if (_hasUnclaimedReward)
+                  Positioned(
+                    top: -4,
+                    right: -4,
+                    child: Container(
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: GameColors.errorGlow,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: GameColors.background,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -368,6 +524,12 @@ class _HomeScreenState extends State<HomeScreen>
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
+  }
+
+  void _openLeaderboards(BuildContext context) {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const LeaderboardScreen()));
   }
 
   void _showZenDifficultyPicker() {
