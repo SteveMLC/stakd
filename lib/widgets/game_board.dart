@@ -780,6 +780,13 @@ class _StackWidgetState extends State<_StackWidget>
                             width: widget.isPowerUpHighlighted ? 3 : (isMultiGrabActive ? 4 : (widget.isSelected ? 3 : nearingCompletion ? 2.5 : 2)),
                           ),
                           boxShadow: [
+                            // Power-up highlight glow (magnet eligible)
+                            if (widget.isPowerUpHighlighted)
+                              BoxShadow(
+                                color: GameColors.zen.withValues(alpha: 0.5),
+                                blurRadius: 16,
+                                spreadRadius: 4,
+                              ),
                             // Multi-grab glow effect (strongest)
                             if (isMultiGrabActive)
                               BoxShadow(

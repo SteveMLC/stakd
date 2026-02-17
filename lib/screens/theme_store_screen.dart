@@ -101,8 +101,8 @@ class _ThemeStoreScreenState extends State<ThemeStoreScreen> {
     // Attempt purchase
     final success = await _themeService.purchaseTheme(theme.id);
     if (success) {
-      AudioService().playSuccess();
-      haptics.success();
+      AudioService().playWin();
+      haptics.successPattern();
       await _loadCoins();
       _showMessage('${theme.name} unlocked! 🎉');
       
@@ -131,7 +131,7 @@ class _ThemeStoreScreenState extends State<ThemeStoreScreen> {
     setState(() {
       _previewThemeId = _previewThemeId == theme.id ? null : theme.id;
     });
-    haptics.selectionTap();
+    haptics.selection();
   }
 
   void _showMessage(String message) {

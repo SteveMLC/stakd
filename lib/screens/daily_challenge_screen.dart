@@ -4,8 +4,10 @@ import 'package:intl/intl.dart';
 import '../models/daily_challenge.dart';
 import '../models/game_state.dart';
 import '../services/daily_challenge_service.dart';
+import '../services/leaderboard_service.dart';
 import '../utils/constants.dart';
 import '../widgets/game_board.dart';
+import '../widgets/name_entry_dialog.dart';
 
 class DailyChallengeScreen extends StatefulWidget {
   const DailyChallengeScreen({super.key});
@@ -91,10 +93,37 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
     final moves = _gameState.moveCount;
 
     await _service.markCompleted(elapsed, moves);
+    
+    // Submit to leaderboard
+    await _submitToLeaderboard(elapsed.inSeconds);
+    
     await _loadChallenge();
 
     if (!mounted) return;
     _showCompletionDialog(elapsed, moves);
+  }
+
+  Future<void> _submitToLeaderboard(int seconds) async {
+    final leaderboardService = LeaderboardService();
+    
+    // Check if player has set a custom name
+    final hasName = await leaderboardService.hasCustomName();
+    
+    if (!hasName && mounted) {
+      // Prompt for name on first leaderboard submission
+      final name = await showNameEntryDialog(
+        context,
+        currentName: leaderboardService.playerName,
+        isFirstTime: true,
+      );
+      
+      if (name != null && name.isNotEmpty) {
+        await leaderboardService.setPlayerName(name);
+      }
+    }
+    
+    // Submit the time
+    await leaderboardService.submitDailyTime(seconds);
   }
 
   void _showCompletionDialog(Duration elapsed, int moves) {
