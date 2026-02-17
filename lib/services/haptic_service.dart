@@ -69,6 +69,37 @@ class HapticService {
   Future<void> selection() async {
     await lightTap();
   }
+
+  /// Chain reaction haptic - escalating intensity based on chain level
+  Future<void> chainReaction(int chainLevel) async {
+    if (!_isEnabled()) return;
+    
+    if (chainLevel >= 4) {
+      // Mega chain - heavy burst pattern
+      await HapticFeedback.heavyImpact();
+      await Future.delayed(const Duration(milliseconds: 50));
+      await HapticFeedback.heavyImpact();
+      await Future.delayed(const Duration(milliseconds: 50));
+      await HapticFeedback.heavyImpact();
+      await Future.delayed(const Duration(milliseconds: 100));
+      await successPattern();
+    } else if (chainLevel == 3) {
+      // Triple chain - strong double tap
+      await HapticFeedback.heavyImpact();
+      await Future.delayed(const Duration(milliseconds: 80));
+      await HapticFeedback.mediumImpact();
+      await Future.delayed(const Duration(milliseconds: 80));
+      await HapticFeedback.lightImpact();
+    } else if (chainLevel == 2) {
+      // Double chain - medium double tap
+      await HapticFeedback.mediumImpact();
+      await Future.delayed(const Duration(milliseconds: 100));
+      await HapticFeedback.mediumImpact();
+    } else {
+      // Single - just the normal success
+      await successPattern();
+    }
+  }
 }
 
 /// Global instance for easy access

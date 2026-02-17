@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'power_up_service.dart';
 
 /// Handles local storage for game progress and settings
 class StorageService {
@@ -27,6 +28,9 @@ class StorageService {
   static const String _keyMultiGrabUsageCount = 'multi_grab_usage_count';
   static const String _keyMultiGrabHintsEnabled = 'multi_grab_hints_enabled';
   static const String _keyTextureSkinsEnabled = 'texture_skins_enabled';
+  static const String _keyLevelStarsPrefix = 'level_stars_';
+  static const String _keyPowerUpPrefix = 'power_up_';
+  static const String _keyPowerUpsInitialized = 'power_ups_initialized';
 
   /// Initialize the storage service
   Future<void> init() async {
@@ -414,6 +418,147 @@ class StorageService {
     }
   }
 
+  /// Get stars for a specific level (0-3)
+  int getLevelStars(int level) {
+    try {
+      return _prefs?.getInt('$_keyLevelStarsPrefix$level') ?? 0;
+    } catch (e) {
+      debugPrint('StorageService getLevelStars failed: $e');
+      return 0;
+    }
+  }
+
+  /// Set stars for a level (only saves if new stars > existing)
+  /// Returns true if stars were updated (new record)
+  Future<bool> setLevelStars(int level, int stars) async {
+    try {
+      final currentStars = getLevelStars(level);
+      if (stars > currentStars) {
+        await _prefs?.setInt('$_keyLevelStarsPrefix$level', stars);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('StorageService setLevelStars failed: $e');
+      return false;
+    }
+  }
+
+  /// Get total stars earned across all levels
+  int getTotalStars() {
+    try {
+      int total = 0;
+      final completedLevels = getCompletedLevels();
+      for (final level in completedLevels) {
+        total += getLevelStars(level);
+      }
+      return total;
+    } catch (e) {
+      debugPrint('StorageService getTotalStars failed: $e');
+      return 0;
+    }
+  }
+
+  /// Get count of levels with 3 stars
+  int getThreeStarCount() {
+    try {
+      int count = 0;
+      final completedLevels = getCompletedLevels();
+      for (final level in completedLevels) {
+        if (getLevelStars(level) == 3) count++;
+      }
+      return count;
+    } catch (e) {
+      debugPrint('StorageService getThreeStarCount failed: $e');
+      return 0;
+    }
+  }
+
+  /// Get power-up count for a type
+  int getPowerUpCount(PowerUpType type) {
+    try {
+      return _prefs?.getInt('$_keyPowerUpPrefix${type.name}') ?? 0;
+    } catch (e) {
+      debugPrint('StorageService getPowerUpCount failed: $e');
+      return 0;
+    }
+  }
+
+  /// Set power-up count for a type
+  Future<void> setPowerUpCount(PowerUpType type, int count) async {
+    try {
+      await _prefs?.setInt('$_keyPowerUpPrefix${type.name}', count);
+    } catch (e) {
+      debugPrint('StorageService setPowerUpCount failed: $e');
+    }
+  }
+
+  /// Check if power-ups have been initialized
+  bool getPowerUpsInitialized() {
+    try {
+      return _prefs?.getBool(_keyPowerUpsInitialized) ?? false;
+    } catch (e) {
+      debugPrint('StorageService getPowerUpsInitialized failed: $e');
+      return false;
+    }
+  }
+
+  /// Set power-ups initialized flag
+  Future<void> setPowerUpsInitialized(bool initialized) async {
+    try {
+      await _prefs?.setBool(_keyPowerUpsInitialized, initialized);
+    } catch (e) {
+      debugPrint('StorageService setPowerUpsInitialized failed: $e');
+    }
+  }
+
+  // ============ Chain Tracking ============
+
+  /// Get max chain ever achieved
+  int getMaxChainEver() {
+    try {
+      return _prefs?.getInt('max_chain_ever') ?? 0;
+    } catch (e) {
+      debugPrint('StorageService getMaxChainEver failed: $e');
+      return 0;
+    }
+  }
+
+  /// Update max chain if new chain is higher
+  Future<bool> updateMaxChain(int chainLevel) async {
+    try {
+      final currentMax = getMaxChainEver();
+      if (chainLevel > currentMax) {
+        await _prefs?.setInt('max_chain_ever', chainLevel);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('StorageService updateMaxChain failed: $e');
+      return false;
+    }
+  }
+
+  /// Get total chains triggered (2+)
+  int getTotalChains() {
+    try {
+      return _prefs?.getInt('total_chains') ?? 0;
+    } catch (e) {
+      debugPrint('StorageService getTotalChains failed: $e');
+      return 0;
+    }
+  }
+
+  /// Increment total chains count
+  Future<void> incrementTotalChains() async {
+    try {
+      final count = getTotalChains() + 1;
+      await _prefs?.setInt('total_chains', count);
+    } catch (e) {
+      debugPrint('StorageService incrementTotalChains failed: $e');
+    }
+  }
+
   /// Clear all data (for testing)
   Future<void> clearAll() async {
     try {
@@ -431,6 +576,10 @@ class StorageService {
       'totalMoves': getTotalMoves(),
       'dailyStreak': getDailyChallengeStreak(),
       'multiGrabUses': getMultiGrabUsageCount(),
+      'totalStars': getTotalStars(),
+      'threeStarCount': getThreeStarCount(),
+      'maxChainEver': getMaxChainEver(),
+      'totalChains': getTotalChains(),
     };
   }
 }

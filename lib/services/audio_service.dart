@@ -72,6 +72,42 @@ class AudioService {
     }
   }
 
+  /// Play chain reaction sound with escalating intensity
+  Future<void> playChain(int chainLevel) async {
+    if (!_soundEnabled) return;
+
+    try {
+      await _sfxPlayer.stop();
+      
+      if (chainLevel >= 4) {
+        // Mega chain - play win sound with slight pitch up
+        await _sfxPlayer.setPlaybackRate(1.15);
+        await _sfxPlayer.play(AssetSource(GameSound.win.path));
+      } else if (chainLevel == 3) {
+        // 3x chain - high pitch clear
+        await _sfxPlayer.setPlaybackRate(1.6);
+        await _sfxPlayer.play(AssetSource(GameSound.clear.path));
+      } else if (chainLevel == 2) {
+        // 2x chain - medium pitch clear (double ding effect)
+        await _sfxPlayer.setPlaybackRate(1.3);
+        await _sfxPlayer.play(AssetSource(GameSound.clear.path));
+        // Second ding after short delay
+        await Future.delayed(const Duration(milliseconds: 100));
+        await _sfxPlayer.setPlaybackRate(1.5);
+        await _sfxPlayer.play(AssetSource(GameSound.clear.path));
+      } else {
+        // Normal clear
+        await _sfxPlayer.setPlaybackRate(1.0);
+        await _sfxPlayer.play(AssetSource(GameSound.clear.path));
+      }
+
+      // Reset playback rate for next sound
+      await _sfxPlayer.setPlaybackRate(1.0);
+    } catch (e) {
+      debugPrint('Error playing chain sound: $e');
+    }
+  }
+
   /// Play level win sound
   Future<void> playWin() => playSound(GameSound.win);
 
@@ -145,7 +181,10 @@ enum GameSound {
   slide('sounds/slide.mp3'),
   clear('sounds/clear.mp3'),
   win('sounds/win.mp3'),
-  error('sounds/error.mp3');
+  error('sounds/error.mp3'),
+  chain2('sounds/clear.mp3'),  // Re-use clear with pitch shift
+  chain3('sounds/clear.mp3'),  // Re-use clear with higher pitch
+  chain4('sounds/win.mp3');    // Use win sound for mega chains
 
   final String path;
   const GameSound(this.path);

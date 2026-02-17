@@ -9,6 +9,8 @@ import '../services/audio_service.dart';
 import '../services/iap_service.dart';
 import '../services/tutorial_service.dart';
 import '../services/haptic_service.dart';
+import '../services/achievement_service.dart';
+import '../services/leaderboard_service.dart';
 import '../utils/constants.dart';
 import '../widgets/game_board.dart';
 import '../widgets/game_button.dart';
@@ -16,6 +18,9 @@ import '../widgets/completion_overlay.dart';
 import '../widgets/hint_overlay.dart';
 import '../widgets/multi_grab_hint_overlay.dart';
 import '../widgets/tutorial_overlay.dart';
+import '../widgets/power_up_bar.dart';
+import '../widgets/power_up_effects.dart';
+import '../services/power_up_service.dart';
 import 'settings_screen.dart';
 
 /// Main gameplay screen
@@ -45,8 +50,26 @@ class _GameScreenState extends State<GameScreen> {
   bool _multiGrabHintScheduled = false;
   DateTime? _levelStartTime;
   Duration? _completionDuration;
+  int _earnedStars = 0;
+  bool _isNewStarRecord = false;
+
+  // Power-up state
+  bool _colorBombSelectionMode = false;
+  bool _magnetSelectionMode = false;
+  List<int> _magnetEligibleStacks = [];
+  List<Offset> _colorBombEffectPositions = [];
+  Color? _colorBombEffectColor;
+  bool _showColorBombEffect = false;
+  bool _showShuffleEffect = false;
+  List<Offset> _shuffleBlockPositions = [];
+  List<Color> _shuffleBlockColors = [];
+  bool _showMagnetEffect = false;
+  Offset? _magnetSourcePos;
+  Offset? _magnetTargetPos;
+  Color? _magnetBlockColor;
 
   IapService? _iapService;
+  PowerUpService? _powerUpService;
 
   @override
   void initState() {
@@ -62,6 +85,9 @@ class _GameScreenState extends State<GameScreen> {
     if (_iapService == null) {
       _iapService = context.read<IapService>();
       _iapService!.addListener(_onIapChanged);
+    }
+    if (_powerUpService == null) {
+      _powerUpService = context.read<PowerUpService>();
     }
   }
 
@@ -198,10 +224,21 @@ class _GameScreenState extends State<GameScreen> {
     if (!gameState.isComplete || _completionDuration != null) return;
     final startTime = _levelStartTime;
     if (startTime == null) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted || _completionDuration != null) return;
+      
+      // Calculate stars
+      final stars = gameState.calculateStars();
+      final storage = StorageService();
+      final isNewRecord = await storage.setLevelStars(_currentLevel, stars);
+      
+      // Check for star-based achievements
+      await AchievementService().checkStarAchievements();
+      
       setState(() {
         _completionDuration = DateTime.now().difference(startTime);
+        _earnedStars = stars;
+        _isNewStarRecord = isNewRecord;
       });
       // Play win sound
       AudioService().playWin();
@@ -238,6 +275,8 @@ class _GameScreenState extends State<GameScreen> {
       _stackKeys.clear();
       _previousMoveCount = 0;
       _previousSelectedStack = null;
+      _earnedStars = 0;
+      _isNewStarRecord = false;
     });
 
     // Initialize tutorial if needed
@@ -247,7 +286,9 @@ class _GameScreenState extends State<GameScreen> {
   void _onLevelComplete() async {
     final storage = StorageService();
     final adService = AdService();
-    final moveCount = context.read<GameState>().moveCount;
+    final leaderboardService = LeaderboardService();
+    final gameState = context.read<GameState>();
+    final moveCount = gameState.moveCount;
 
     // Save progress
     await storage.markLevelCompleted(_currentLevel);
@@ -255,6 +296,21 @@ class _GameScreenState extends State<GameScreen> {
 
     // Track for ads
     adService.onLevelComplete();
+
+    // Submit to leaderboards
+    final totalStars = storage.getTotalStars();
+    final maxCombo = gameState.maxCombo;
+
+    // Submit all-time stars
+    if (totalStars > 0) {
+      leaderboardService.submitAllTimeStars(totalStars);
+      leaderboardService.submitWeeklyStars(totalStars);
+    }
+
+    // Submit best combo if it's a record
+    if (maxCombo > 1) {
+      leaderboardService.submitBestCombo(maxCombo);
+    }
   }
 
   void _nextLevel() async {
@@ -273,6 +329,20 @@ class _GameScreenState extends State<GameScreen> {
 
   void _restartLevel() {
     _loadLevel();
+  }
+
+  void _onChainReaction(int chainLevel) {
+    // Persist chain statistics
+    final storage = StorageService();
+    storage.updateMaxChain(chainLevel);
+    storage.incrementTotalChains();
+    
+    // Check and unlock chain achievements
+    final gameState = context.read<GameState>();
+    AchievementService().checkChainAchievements(
+      chainLevel,
+      gameState.maxChainLevel,
+    );
   }
 
   void _onUndo() {
@@ -415,13 +485,384 @@ class _GameScreenState extends State<GameScreen> {
     });
   }
 
+  // ============== POWER-UP METHODS ==============
+
+  void _onColorBombPressed() {
+    final powerUpService = _powerUpService;
+    if (powerUpService == null || !powerUpService.isAvailable(PowerUpType.colorBomb)) {
+      _showPowerUpPurchaseDialog();
+      return;
+    }
+
+    // Enter selection mode
+    setState(() {
+      _colorBombSelectionMode = true;
+      _magnetSelectionMode = false;
+    });
+    AudioService().playTap();
+  }
+
+  void _onColorBombColorSelected(int colorIndex) async {
+    final powerUpService = _powerUpService;
+    final gameState = context.read<GameState>();
+    
+    if (powerUpService == null) return;
+    
+    // Consume the power-up
+    final success = await powerUpService.usePowerUp(PowerUpType.colorBomb);
+    if (!success) return;
+
+    // Get positions of blocks to remove for animation
+    final positions = <Offset>[];
+    for (int stackIdx = 0; stackIdx < gameState.stacks.length; stackIdx++) {
+      final stack = gameState.stacks[stackIdx];
+      final stackKey = _stackKeys[stackIdx];
+      if (stackKey?.currentContext == null) continue;
+      
+      final renderBox = stackKey!.currentContext!.findRenderObject() as RenderBox?;
+      if (renderBox == null) continue;
+      
+      final stackPos = renderBox.localToGlobal(Offset.zero);
+      
+      for (int layerIdx = 0; layerIdx < stack.layers.length; layerIdx++) {
+        final layer = stack.layers[layerIdx];
+        if (layer.colorIndex == colorIndex && !layer.isLocked) {
+          final layerY = stackPos.dy + (stack.layers.length - 1 - layerIdx) * (GameSizes.layerHeight + GameSizes.layerMargin);
+          positions.add(Offset(
+            stackPos.dx + GameSizes.stackWidth / 2,
+            layerY + GameSizes.layerHeight / 2,
+          ));
+        }
+      }
+    }
+
+    // Activate the effect
+    setState(() {
+      _colorBombSelectionMode = false;
+      _colorBombEffectPositions = positions;
+      _colorBombEffectColor = GameColors.getColor(colorIndex);
+      _showColorBombEffect = true;
+    });
+
+    // Apply the color bomb
+    gameState.activateColorBomb(colorIndex);
+    AudioService().playClear();
+    haptics.heavyImpact();
+  }
+
+  void _cancelColorBombSelection() {
+    setState(() {
+      _colorBombSelectionMode = false;
+    });
+  }
+
+  void _onColorBombEffectComplete() {
+    setState(() {
+      _showColorBombEffect = false;
+      _colorBombEffectPositions = [];
+      _colorBombEffectColor = null;
+    });
+  }
+
+  void _onShufflePressed() async {
+    final powerUpService = _powerUpService;
+    final gameState = context.read<GameState>();
+    
+    if (powerUpService == null || !powerUpService.isAvailable(PowerUpType.shuffle)) {
+      _showPowerUpPurchaseDialog();
+      return;
+    }
+
+    // Consume the power-up
+    final success = await powerUpService.usePowerUp(PowerUpType.shuffle);
+    if (!success) return;
+
+    // Collect current block positions and colors for animation
+    final positions = <Offset>[];
+    final colors = <Color>[];
+    
+    for (int stackIdx = 0; stackIdx < gameState.stacks.length; stackIdx++) {
+      final stack = gameState.stacks[stackIdx];
+      final stackKey = _stackKeys[stackIdx];
+      if (stackKey?.currentContext == null) continue;
+      
+      final renderBox = stackKey!.currentContext!.findRenderObject() as RenderBox?;
+      if (renderBox == null) continue;
+      
+      final stackPos = renderBox.localToGlobal(Offset.zero);
+      
+      for (int layerIdx = 0; layerIdx < stack.layers.length; layerIdx++) {
+        final layer = stack.layers[layerIdx];
+        final layerY = stackPos.dy + (stack.layers.length - 1 - layerIdx) * (GameSizes.layerHeight + GameSizes.layerMargin);
+        positions.add(Offset(
+          stackPos.dx + GameSizes.stackWidth / 2,
+          layerY + GameSizes.layerHeight / 2,
+        ));
+        colors.add(layer.color);
+      }
+    }
+
+    setState(() {
+      _shuffleBlockPositions = positions;
+      _shuffleBlockColors = colors;
+      _showShuffleEffect = true;
+    });
+
+    AudioService().playTap();
+    haptics.mediumImpact();
+  }
+
+  void _onShuffleEffectComplete() {
+    final gameState = context.read<GameState>();
+    gameState.activateShuffle();
+    
+    setState(() {
+      _showShuffleEffect = false;
+      _shuffleBlockPositions = [];
+      _shuffleBlockColors = [];
+    });
+    
+    AudioService().playClear();
+  }
+
+  void _onMagnetPressed() {
+    final powerUpService = _powerUpService;
+    final gameState = context.read<GameState>();
+    
+    if (powerUpService == null || !powerUpService.isAvailable(PowerUpType.magnet)) {
+      _showPowerUpPurchaseDialog();
+      return;
+    }
+
+    // Find eligible stacks
+    final eligible = gameState.findMagnetEligibleStacks();
+    if (eligible.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No stacks eligible for Magnet. Need stacks with only 1 mismatched block.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _magnetSelectionMode = true;
+      _colorBombSelectionMode = false;
+      _magnetEligibleStacks = eligible.map((e) => e.$1).toList();
+    });
+    AudioService().playTap();
+  }
+
+  void _onMagnetStackSelected(int stackIndex) async {
+    final powerUpService = _powerUpService;
+    final gameState = context.read<GameState>();
+    
+    if (powerUpService == null) return;
+    if (!_magnetEligibleStacks.contains(stackIndex)) return;
+
+    // Consume the power-up
+    final success = await powerUpService.usePowerUp(PowerUpType.magnet);
+    if (!success) return;
+
+    // Get source position for animation
+    final stackKey = _stackKeys[stackIndex];
+    Offset? sourcePos;
+    
+    if (stackKey?.currentContext != null) {
+      final renderBox = stackKey!.currentContext!.findRenderObject() as RenderBox?;
+      if (renderBox != null) {
+        final stackPos = renderBox.localToGlobal(Offset.zero);
+        sourcePos = Offset(
+          stackPos.dx + GameSizes.stackWidth / 2,
+          stackPos.dy + GameSizes.stackHeight / 2,
+        );
+      }
+    }
+
+    // Apply the magnet (get removed layer info)
+    final result = gameState.activateMagnet(stackIndex);
+    
+    if (result != null && sourcePos != null) {
+      setState(() {
+        _magnetSelectionMode = false;
+        _magnetEligibleStacks = [];
+        _showMagnetEffect = true;
+        _magnetSourcePos = sourcePos;
+        _magnetTargetPos = Offset(sourcePos!.dx, sourcePos.dy - 150); // Fly away
+        _magnetBlockColor = result.$2.color;
+      });
+      AudioService().playClear();
+      haptics.mediumImpact();
+    } else {
+      setState(() {
+        _magnetSelectionMode = false;
+        _magnetEligibleStacks = [];
+      });
+    }
+  }
+
+  void _cancelMagnetSelection() {
+    setState(() {
+      _magnetSelectionMode = false;
+      _magnetEligibleStacks = [];
+    });
+  }
+
+  void _onMagnetEffectComplete() {
+    setState(() {
+      _showMagnetEffect = false;
+      _magnetSourcePos = null;
+      _magnetTargetPos = null;
+      _magnetBlockColor = null;
+    });
+  }
+
+  void _onEnhancedHintPressed() {
+    final powerUpService = _powerUpService;
+    if (powerUpService == null || !powerUpService.isAvailable(PowerUpType.hint)) {
+      _showPowerUpPurchaseDialog();
+      return;
+    }
+
+    final gameState = context.read<GameState>();
+    final hint = gameState.getHint();
+
+    if (hint == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No valid moves right now.')),
+      );
+      return;
+    }
+
+    // Consume power-up only if we have a valid hint
+    powerUpService.usePowerUp(PowerUpType.hint);
+
+    setState(() {
+      _showingHint = true;
+      _hintSourceIndex = hint.$1;
+      _hintDestIndex = hint.$2;
+    });
+    AudioService().playTap();
+  }
+
+  void _showPowerUpPurchaseDialog() {
+    final iap = context.read<IapService>();
+    if (!iap.isAvailable) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Store unavailable.')),
+      );
+      return;
+    }
+
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: GameColors.surface,
+          title: const Text('Get More Power-Ups', style: TextStyle(color: GameColors.text)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildPackOption('5 Power-Ups', iap.powerUpPack5Price ?? '\$0.99', () {
+                Navigator.of(context).pop();
+                iap.buyPowerUpPack5();
+              }),
+              const SizedBox(height: 8),
+              _buildPackOption('20 Power-Ups', iap.powerUpPack20Price ?? '\$2.99', () {
+                Navigator.of(context).pop();
+                iap.buyPowerUpPack20();
+              }),
+              const SizedBox(height: 8),
+              _buildPackOption('50 Power-Ups', iap.powerUpPack50Price ?? '\$4.99', () {
+                Navigator.of(context).pop();
+                iap.buyPowerUpPack50();
+              }),
+              const SizedBox(height: 16),
+              TextButton.icon(
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  final adService = AdService();
+                  if (adService.isRewardedAdReady()) {
+                    final rewarded = await adService.showRewardedAd();
+                    if (rewarded && mounted) {
+                      final awarded = await _powerUpService?.awardRandomPowerUp();
+                      if (awarded != null && mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('You earned 1 ${awarded.name}!')),
+                        );
+                      }
+                    }
+                  } else {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('No ad available right now.')),
+                      );
+                    }
+                  }
+                },
+                icon: const Icon(Icons.play_circle_outline, color: GameColors.accent),
+                label: const Text('Watch Ad for 1 Free', style: TextStyle(color: GameColors.accent)),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel', style: TextStyle(color: GameColors.textMuted)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildPackOption(String title, String price, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: GameColors.backgroundLight,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: GameColors.textMuted.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(title, style: const TextStyle(color: GameColors.text, fontWeight: FontWeight.w500)),
+            Text(price, style: const TextStyle(color: GameColors.accent, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Handle stack tap for power-up selection modes
+  void _handlePowerUpStackTap(int stackIndex) {
+    final gameState = context.read<GameState>();
+    
+    if (_colorBombSelectionMode) {
+      // Get the color of the tapped stack's top block
+      final stack = gameState.stacks[stackIndex];
+      if (stack.isEmpty) return;
+      
+      final topLayer = stack.topLayer!;
+      if (!topLayer.isLocked) {
+        _onColorBombColorSelected(topLayer.colorIndex);
+      }
+    } else if (_magnetSelectionMode) {
+      if (_magnetEligibleStacks.contains(stackIndex)) {
+        _onMagnetStackSelected(stackIndex);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final iap = context.watch<IapService>();
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -451,6 +892,7 @@ class _GameScreenState extends State<GameScreen> {
                           onTap: () => AudioService().playTap(),
                           onMove: () => AudioService().playSlide(),
                           onClear: () => AudioService().playClear(),
+                          onChain: _onChainReaction,
                         ),
                       ),
                       
@@ -493,6 +935,9 @@ class _GameScreenState extends State<GameScreen> {
                     CompletionOverlay(
                       moves: gameState.moveCount,
                       time: _completionDuration ?? Duration.zero,
+                      par: gameState.par,
+                      stars: _earnedStars,
+                      isNewRecord: _isNewStarRecord,
                       onNextPuzzle: () {
                         _onLevelComplete();
                         _nextLevel();
@@ -596,7 +1041,7 @@ class _GameScreenState extends State<GameScreen> {
                 children: [
                   Text(
                     '${gameState.completedStackCount}/${gameState.totalStacks}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       color: GameColors.textMuted,
                     ),

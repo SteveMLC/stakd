@@ -7,8 +7,10 @@ import '../services/storage_service.dart';
 import '../services/audio_service.dart';
 import '../utils/constants.dart';
 import 'particles/particle_burst.dart';
+import 'particles/confetti_overlay.dart';
 import 'combo_popup.dart';
 import 'color_flash_overlay.dart';
+import 'chain_text_popup.dart';
 
 /// Game board widget - displays all stacks and handles interactions
 class GameBoard extends StatefulWidget {
@@ -16,6 +18,7 @@ class GameBoard extends StatefulWidget {
   final VoidCallback? onTap;
   final VoidCallback? onMove;
   final VoidCallback? onClear;
+  final void Function(int chainLevel)? onChain;
   final Map<int, GlobalKey>? stackKeys;
 
   const GameBoard({
@@ -24,6 +27,7 @@ class GameBoard extends StatefulWidget {
     this.onTap,
     this.onMove,
     this.onClear,
+    this.onChain,
     this.stackKeys,
   });
 
@@ -36,7 +40,9 @@ class _GameBoardState extends State<GameBoard>
   late final Map<int, GlobalKey> _stackKeys;
   List<ParticleBurstData> _currentBursts = [];
   int? _showComboMultiplier;
+  int? _showChainLevel;
   Color? _flashColor;
+  bool _showConfetti = false;
   late AnimationController _shakeController;
   late Animation<double> _shakeAnimation;
 
@@ -202,37 +208,12 @@ class _GameBoardState extends State<GameBoard>
                                           currentCleared,
                                         )) {
                                       widget.onClear?.call();
-                                      _triggerParticleBursts(currentCleared);
-
-                                      // Haptic success pattern for stack complete
-                                      haptics.successPattern();
-
-                                      // Trigger screen shake for big clears (2+ stacks at once)
-                                      if (currentCleared.length >= 2) {
-                                        _shakeController.forward(from: 0);
-                                      }
-
-                                      // Show combo popup if combo > 1
-                                      final currentCombo =
-                                          widget.gameState.currentCombo;
-                                      if (currentCombo > 1) {
-                                        setState(() {
-                                          _showComboMultiplier = currentCombo;
-                                          // Trigger color flash on combos
-                                          _flashColor = _getComboFlashColor(currentCombo);
-                                        });
-
-                                        // Play escalating combo sound
-                                        AudioService().playCombo(currentCombo);
-
-                                        // Haptic combo burst
-                                        haptics.comboBurst(currentCombo);
-
-                                        // Additional shake for 4x+ combos
-                                        if (currentCombo >= 4) {
-                                          _shakeController.forward(from: 0);
-                                        }
-                                      }
+                                      
+                                      // Get chain level (number of stacks cleared in one move)
+                                      final chainLevel = widget.gameState.currentChainLevel;
+                                      
+                                      // Trigger appropriate effects based on chain level
+                                      _triggerChainEffects(currentCleared, chainLevel);
                                     }
                                   },
                                   onMultiGrab: () {
@@ -265,18 +246,35 @@ class _GameBoardState extends State<GameBoard>
                           widget.onMove?.call();
                         },
                       ),
-                    // Combo popup overlay
-                    if (_showComboMultiplier != null &&
-                        _showComboMultiplier! > 1)
-                      ComboPopupOverlay(
-                        comboMultiplier: _showComboMultiplier!,
+                    // Chain text popup overlay
+                    if (_showChainLevel != null && _showChainLevel! >= 2)
+                      ChainTextPopupOverlay(
+                        chainLevel: _showChainLevel!,
                         onComplete: () {
                           setState(() {
-                            _showComboMultiplier = null;
+                            _showChainLevel = null;
                           });
                         },
                       ),
-                    // Color flash overlay for combos
+                    // Combo popup overlay (shows after chain popup if both)
+                    if (_showComboMultiplier != null &&
+                        _showComboMultiplier! > 1)
+                      Positioned(
+                        bottom: 120,
+                        left: 0,
+                        right: 0,
+                        child: Center(
+                          child: ComboPopup(
+                            comboMultiplier: _showComboMultiplier!,
+                            onComplete: () {
+                              setState(() {
+                                _showComboMultiplier = null;
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                    // Color flash overlay for chains
                     if (_flashColor != null)
                       Positioned.fill(
                         child: ColorFlashOverlay(
@@ -287,6 +285,15 @@ class _GameBoardState extends State<GameBoard>
                               _flashColor = null;
                             });
                           },
+                        ),
+                      ),
+                    // Confetti for mega chains (4+)
+                    if (_showConfetti)
+                      Positioned.fill(
+                        child: ConfettiOverlay(
+                          colors: GameColors.palette,
+                          confettiCount: 60,
+                          duration: const Duration(seconds: 2),
                         ),
                       ),
                   ],
@@ -310,10 +317,17 @@ class _GameBoardState extends State<GameBoard>
     return maxFit.clamp(4, 6);
   }
 
-  void _triggerParticleBursts(List<int> clearedIndices) {
+  void _triggerParticleBursts(List<int> clearedIndices, [int chainLevel = 1]) {
     if (clearedIndices.isEmpty) return;
+    
+    // Skip particles if theme has them disabled
+    if (!GameColors.hasParticles) return;
 
     final bursts = <ParticleBurstData>[];
+    
+    // Scale particle count and lifetime based on chain level
+    final particleCount = 24 + (chainLevel - 1) * 12; // 24, 36, 48, 60...
+    final lifetime = Duration(milliseconds: 600 + (chainLevel - 1) * 100);
 
     for (final stackIndex in clearedIndices) {
       final stackKey = _stackKeys[stackIndex];
@@ -345,8 +359,8 @@ class _GameBoardState extends State<GameBoard>
         ParticleBurstData(
           center: center,
           color: color,
-          particleCount: 24, // Increased for more visual impact
-          lifetime: const Duration(milliseconds: 600),
+          particleCount: particleCount,
+          lifetime: lifetime,
         ),
       );
     }
@@ -370,6 +384,82 @@ class _GameBoardState extends State<GameBoard>
         return const Color(0xFF9370DB); // Purple
       default:
         return GameColors.accent; // Pink
+    }
+  }
+
+  Color _getChainFlashColor(int chainLevel) {
+    switch (chainLevel) {
+      case 2:
+        return const Color(0xFFFFD700); // Gold
+      case 3:
+        return const Color(0xFFFF8C00); // Orange
+      case 4:
+        return const Color(0xFFFF4500); // Red-Orange
+      default:
+        if (chainLevel >= 5) {
+          return const Color(0xFF9400D3); // Purple for insane chains
+        }
+        return GameColors.accent;
+    }
+  }
+
+  /// Trigger chain reaction effects based on chain level
+  void _triggerChainEffects(List<int> clearedIndices, int chainLevel) {
+    // Always trigger particle bursts
+    _triggerParticleBursts(clearedIndices, chainLevel);
+    
+    // Basic haptic for single clear
+    if (chainLevel <= 1) {
+      haptics.successPattern();
+      return;
+    }
+    
+    // Notify parent about chain for achievements
+    widget.onChain?.call(chainLevel);
+    
+    // Chain level 2+: Show chain popup and enhanced effects
+    setState(() {
+      _showChainLevel = chainLevel;
+      _flashColor = _getChainFlashColor(chainLevel);
+    });
+    
+    // Play chain sound
+    AudioService().playChain(chainLevel);
+    
+    // Chain-specific haptic
+    haptics.chainReaction(chainLevel);
+    
+    // Screen shake - intensity based on chain level
+    if (chainLevel >= 2) {
+      _shakeController.forward(from: 0);
+    }
+    
+    // Confetti for mega chains (4+)
+    if (chainLevel >= 4) {
+      setState(() {
+        _showConfetti = true;
+      });
+      // Auto-hide confetti after animation
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) {
+          setState(() {
+            _showConfetti = false;
+          });
+        }
+      });
+    }
+    
+    // Also show combo popup if combo > 1 (time-based)
+    final currentCombo = widget.gameState.currentCombo;
+    if (currentCombo > 1) {
+      // Small delay so chain shows first
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          setState(() {
+            _showComboMultiplier = currentCombo;
+          });
+        }
+      });
     }
   }
 }
