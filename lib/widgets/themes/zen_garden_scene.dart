@@ -251,7 +251,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
                 width: size,
                 height: size,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(opacity),
+                  color: Colors.white.withValues(alpha: opacity),
                   shape: BoxShape.circle,
                 ),
               );
@@ -274,7 +274,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
           color: const Color(0xFFFFFAE6),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFFFFAE6).withOpacity(0.4),
+              color: const Color(0xFFFFFAE6).withValues(alpha: 0.4),
               blurRadius: 30,
               spreadRadius: 10,
             ),
@@ -300,7 +300,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
               color: const Color(0xFFFFF9C4),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFFFEB3B).withOpacity(0.5),
+                  color: const Color(0xFFFFEB3B).withValues(alpha: 0.5),
                   blurRadius: glow,
                   spreadRadius: 5,
                 ),
@@ -360,7 +360,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
           width: 90,
           height: 40,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.75),
+            color: Colors.white.withValues(alpha: 0.75),
             borderRadius: BorderRadius.circular(30),
           ),
         ),
@@ -401,9 +401,9 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
             height: 75,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(80),
-              color: const Color(0xFF8B7355).withOpacity(0.25),
+              color: const Color(0xFF8B7355).withValues(alpha: 0.25),
               border: Border.all(
-                color: const Color(0xFF6D5643).withOpacity(0.4),
+                color: const Color(0xFF6D5643).withValues(alpha: 0.4),
                 width: 2,
               ),
             ),
@@ -427,13 +427,13 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
                             const Color(0xFF4FC3F7),
                             const Color(0xFF81D4FA),
                             shimmer - 0.7,
-                          )!.withOpacity(0.8),
-                          const Color(0xFF039BE5).withOpacity(0.6),
+                          )!.withValues(alpha: 0.8),
+                          const Color(0xFF039BE5).withValues(alpha: 0.6),
                         ],
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF4FC3F7).withOpacity(0.3),
+                          color: const Color(0xFF4FC3F7).withValues(alpha: 0.3),
                           blurRadius: 10,
                           spreadRadius: 2,
                         )
@@ -646,6 +646,13 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     if (stage >= 3) {
       elements.add(
         GardenElement(
+          elementId: 'grass_3',
+          revealType: GardenRevealType.growUp,
+          child: _grass(left: 230, size: 44, swayPhase: 0.45),
+        ),
+      );
+      elements.add(
+        GardenElement(
           elementId: 'sapling',
           revealType: GardenRevealType.growUp,
           child: _tree(left: 50, stage: stage),
@@ -661,6 +668,17 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
           elementId: 'tree_cherry',
           revealType: GardenRevealType.growUp,
           child: _tree(right: 80, stage: stage, isCherry: true),
+        ),
+      );
+    }
+
+    // Stage 6: Autumn tree
+    if (stage >= 6) {
+      elements.add(
+        GardenElement(
+          elementId: 'tree_autumn',
+          revealType: GardenRevealType.growUp,
+          child: _tree(left: 140, stage: stage, isAutumn: true),
         ),
       );
     }
@@ -741,7 +759,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
             borderRadius: BorderRadius.circular(size / 2),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.2),
+                color: Colors.black.withValues(alpha: 0.2),
                 blurRadius: 4,
                 offset: const Offset(0, 2),
               ),
@@ -786,7 +804,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     return flowerWidget;
   }
 
-  Widget _tree({double? left, double? right, required int stage, bool isCherry = false}) {
+  Widget _tree({double? left, double? right, required int stage, bool isCherry = false, bool isAutumn = false}) {
     final height = 80.0 + (stage - 3) * 28;
     final scale = height / 140;
 
@@ -810,6 +828,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
           child: CustomPaint(
             painter: TreePainter(
               isCherry: isCherry,
+              isAutumn: isAutumn,
               scale: scale,
             ),
           ),
@@ -934,6 +953,31 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
+    if (isUnlocked('wind_chime')) {
+      elements.add(
+        GardenElement(
+          elementId: 'wind_chime',
+          revealType: GardenRevealType.growUp,
+          child: Positioned(
+            bottom: 155,
+            right: 110,
+            child: SizedBox(
+              width: 44,
+              height: 70,
+              child: AnimatedBuilder(
+                animation: _ambientController,
+                builder: (context, _) => CustomPaint(
+                  painter: WindChimePainter(
+                    animationValue: _ambientController.value,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Stack(children: elements);
   }
 
@@ -977,7 +1021,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
               color: const Color(0xFFFFFACD),
               borderRadius: BorderRadius.circular(3),
               boxShadow: isUnlocked('fireflies')
-                  ? [BoxShadow(color: Colors.yellow.withOpacity(0.5), blurRadius: 10)]
+                  ? [BoxShadow(color: Colors.yellow.withValues(alpha: 0.5), blurRadius: 10)]
                   : null,
             ),
           ),
@@ -1067,11 +1111,11 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
                   const Color(0xFFFFEB3B),
                   const Color(0xFFFFF59D),
                   pulse,
-                )!.withOpacity(opacity),
+                )!.withValues(alpha: opacity),
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFFFEB3B).withOpacity(opacity * 0.6),
+                    color: const Color(0xFFFFEB3B).withValues(alpha: opacity * 0.6),
                     blurRadius: glowRadius,
                     spreadRadius: 2,
                   ),
@@ -1081,6 +1125,49 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
           ),
         );
       }
+    }
+
+    // Birds flock flying across the sky (stage 8+)
+    if (isUnlocked('birds')) {
+      // V-formation offsets from the lead bird
+      const vFormation = [
+        Offset(0, 0),       // Lead bird
+        Offset(-26, 18),    // Left wing 1
+        Offset(-52, 36),    // Left wing 2
+        Offset(26, 18),     // Right wing 1
+        Offset(52, 36),     // Right wing 2
+      ];
+
+      final t = _ambientController.value;
+      // Fly across the screen; looping every 10 s ambient cycle
+      final leadX = -80.0 + t * 500;
+      final leadY = 60.0 + math.sin(t * 2 * math.pi) * 15;
+
+      final birdWidgets = <Widget>[
+        for (var i = 0; i < vFormation.length; i++)
+          Positioned(
+            top: leadY + vFormation[i].dy,
+            left: leadX + vFormation[i].dx,
+            child: SizedBox(
+              width: 18,
+              height: 10,
+              child: CustomPaint(
+                painter: BirdPainter(
+                  flapProgress: (t * 3.5 + i * 0.18) % 1.0,
+                ),
+              ),
+            ),
+          ),
+      ];
+
+      particles.add(
+        GardenElement(
+          elementId: 'birds',
+          revealType: GardenRevealType.fadeScale,
+          showParticles: false,
+          child: Stack(children: birdWidgets),
+        ),
+      );
     }
 
     // Dragonflies near water (stage 7+)
@@ -1142,7 +1229,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.4),
+        color: Colors.black.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -1160,7 +1247,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
           const SizedBox(height: 4),
           Text(
             '${state.totalPuzzlesSolved} puzzles solved',
-            style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12),
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
           ),
         ],
       ),
@@ -1172,7 +1259,7 @@ class MountainPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFF4A5568).withOpacity(0.5)
+      ..color = const Color(0xFF4A5568).withValues(alpha: 0.5)
       ..style = PaintingStyle.fill;
 
     final path = Path()
@@ -1325,9 +1412,10 @@ class BaseGrassPainter extends CustomPainter {
 /// Beautiful organic tree with layered foliage
 class TreePainter extends CustomPainter {
   final bool isCherry;
+  final bool isAutumn;
   final double scale;
 
-  TreePainter({this.isCherry = false, this.scale = 1.0});
+  TreePainter({this.isCherry = false, this.isAutumn = false, this.scale = 1.0});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1364,9 +1452,21 @@ class TreePainter extends CustomPainter {
     );
 
     // Foliage colors
-    final baseColor = isCherry ? const Color(0xFFFFB7C5) : const Color(0xFF2E7D32);
-    final midColor = isCherry ? const Color(0xFFFF8FAA) : const Color(0xFF43A047);
-    final highlightColor = isCherry ? const Color(0xFFFFCDD2) : const Color(0xFF66BB6A);
+    final baseColor = isCherry
+        ? const Color(0xFFFFB7C5)
+        : isAutumn
+            ? const Color(0xFFD4522A) // Autumn orange
+            : const Color(0xFF2E7D32);
+    final midColor = isCherry
+        ? const Color(0xFFFF8FAA)
+        : isAutumn
+            ? const Color(0xFFE87D2A) // Autumn amber
+            : const Color(0xFF43A047);
+    final highlightColor = isCherry
+        ? const Color(0xFFFFCDD2)
+        : isAutumn
+            ? const Color(0xFFFFB347) // Autumn gold
+            : const Color(0xFF66BB6A);
 
     final basePaint = Paint()..color = baseColor..style = PaintingStyle.fill;
     final midPaint = Paint()..color = midColor..style = PaintingStyle.fill;
@@ -1399,7 +1499,9 @@ class TreePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant TreePainter oldDelegate) =>
-      oldDelegate.isCherry != isCherry || oldDelegate.scale != scale;
+      oldDelegate.isCherry != isCherry ||
+      oldDelegate.isAutumn != isAutumn ||
+      oldDelegate.scale != scale;
 }
 
 /// Simple koi fish shape
@@ -1641,8 +1743,8 @@ class StreamPainter extends CustomPainter {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          const Color(0xFF4FC3F7).withOpacity(0.7),
-          const Color(0xFF039BE5).withOpacity(0.6),
+          const Color(0xFF4FC3F7).withValues(alpha: 0.7),
+          const Color(0xFF039BE5).withValues(alpha: 0.6),
         ],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))
       ..style = PaintingStyle.stroke
@@ -1665,7 +1767,7 @@ class StreamPainter extends CustomPainter {
 
     // Shimmer effect
     final shimmerPaint = Paint()
-      ..color = Colors.white.withOpacity(0.3 * (0.5 + 0.5 * math.sin(animationValue * 2 * math.pi)))
+      ..color = Colors.white.withValues(alpha: 0.3 * (0.5 + 0.5 * math.sin(animationValue * 2 * math.pi)))
       ..style = PaintingStyle.stroke
       ..strokeWidth = 4
       ..strokeCap = StrokeCap.round;
@@ -1689,6 +1791,150 @@ class StreamPainter extends CustomPainter {
       oldDelegate.animationValue != animationValue;
 }
 
+/// Wind chime with hanging tubes that sway in the ambient breeze
+class WindChimePainter extends CustomPainter {
+  final double animationValue;
+
+  WindChimePainter({required this.animationValue});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final barPaint = Paint()
+      ..color = const Color(0xFF8B7355)
+      ..style = PaintingStyle.fill;
+
+    final tubePaint = Paint()
+      ..color = const Color(0xFFB8A898)
+      ..style = PaintingStyle.fill;
+
+    final tubeShine = Paint()
+      ..color = Colors.white.withValues(alpha: 0.3)
+      ..style = PaintingStyle.fill;
+
+    final stringPaint = Paint()
+      ..color = const Color(0xFF6D5643).withValues(alpha: 0.7)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.9
+      ..strokeCap = StrokeCap.round;
+
+    // Top hanging string
+    canvas.drawLine(
+      Offset(size.width / 2, 0),
+      Offset(size.width / 2, size.height * 0.13),
+      stringPaint,
+    );
+
+    // Horizontal bar
+    final barY = size.height * 0.15;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(
+          center: Offset(size.width / 2, barY),
+          width: size.width * 0.9,
+          height: 4,
+        ),
+        const Radius.circular(2),
+      ),
+      barPaint,
+    );
+
+    // Tubes: (xRatio, lengthRatio, tubeWidth, swayPhase)
+    const tubeData = [
+      (0.15, 0.40, 3.5, 0.0),
+      (0.35, 0.58, 4.5, 1.3),
+      (0.58, 0.66, 5.0, 2.5),
+      (0.78, 0.48, 4.0, 0.7),
+      (0.92, 0.35, 3.0, 1.9),
+    ];
+
+    final barBottom = barY + 2;
+
+    for (final (xRatio, lengthRatio, tubeWidth, phase) in tubeData) {
+      final swayAngle =
+          math.sin(animationValue * 2 * math.pi + phase) * 0.12;
+      final x = size.width * xRatio;
+      final tubeHeight = size.height * lengthRatio;
+
+      // Sway offset increases toward tube bottom (pendulum effect)
+      final swayOffsetTop = math.sin(swayAngle) * tubeHeight * 0.15;
+      final swayOffsetMid = math.sin(swayAngle) * tubeHeight * 0.35;
+
+      // String from bar to tube top
+      canvas.drawLine(
+        Offset(x, barBottom),
+        Offset(x + swayOffsetTop, barBottom + size.height * 0.06),
+        stringPaint,
+      );
+
+      // Tube body
+      final tubeCenterY = barBottom + size.height * 0.06 + tubeHeight / 2;
+      final tubeRect = Rect.fromCenter(
+        center: Offset(x + swayOffsetMid, tubeCenterY),
+        width: tubeWidth,
+        height: tubeHeight,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(tubeRect, const Radius.circular(2)),
+        tubePaint,
+      );
+
+      // Shine highlight
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(
+            center: Offset(x + swayOffsetMid - 1, tubeCenterY),
+            width: 1.5,
+            height: tubeHeight * 0.6,
+          ),
+          const Radius.circular(1),
+        ),
+        tubeShine,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant WindChimePainter oldDelegate) =>
+      oldDelegate.animationValue != animationValue;
+}
+
+/// Single bird painted as an M-shape silhouette (two wing arcs)
+class BirdPainter extends CustomPainter {
+  /// 0–1 progress through one full wing-flap cycle
+  final double flapProgress;
+
+  BirdPainter({required this.flapProgress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF2C3E50)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    // Wing elevation: positive = wings up, negative = wings down
+    final flapAngle = math.sin(flapProgress * 2 * math.pi);
+    final wingLift = size.height * 0.45 * flapAngle;
+
+    final cx = size.width / 2;
+    final cy = size.height * 0.65;
+
+    // Left wing arc + right wing arc meeting at the body centre dip
+    final path = Path()
+      ..moveTo(0, cy)
+      ..quadraticBezierTo(cx * 0.5, cy - wingLift, cx, cy * 0.6)
+      ..quadraticBezierTo(cx * 1.5, cy - wingLift, size.width, cy);
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant BirdPainter oldDelegate) =>
+      oldDelegate.flapProgress != flapProgress;
+}
+
 /// Dragonfly particle
 class DragonflyPainter extends CustomPainter {
   final Color color;
@@ -1702,7 +1948,7 @@ class DragonflyPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
 
     final wingPaint = Paint()
-      ..color = Colors.white.withOpacity(0.6)
+      ..color = Colors.white.withValues(alpha: 0.6)
       ..style = PaintingStyle.fill;
 
     // Body

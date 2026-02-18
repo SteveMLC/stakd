@@ -124,7 +124,7 @@ class _GrowthMilestoneState extends State<GrowthMilestone>
         return Opacity(
           opacity: _fadeAnimation.value,
           child: Container(
-            color: Colors.black.withOpacity(0.3 * _fadeAnimation.value),
+            color: Colors.black.withValues(alpha: 0.3 * _fadeAnimation.value),
             child: Stack(
               children: [
                 // Particles
@@ -145,15 +145,15 @@ class _GrowthMilestoneState extends State<GrowthMilestone>
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
-                            const Color(0xFF2E7D32).withOpacity(0.95),
-                            const Color(0xFF1B5E20).withOpacity(0.95),
+                            const Color(0xFF2E7D32).withValues(alpha: 0.95),
+                            const Color(0xFF1B5E20).withValues(alpha: 0.95),
                           ],
                         ),
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
                             color: const Color(0xFF66BB6A)
-                                .withOpacity(_glowAnimation.value * 0.6),
+                                .withValues(alpha: _glowAnimation.value * 0.6),
                             blurRadius: 30 * _glowAnimation.value,
                             spreadRadius: 5 * _glowAnimation.value,
                           ),
@@ -191,7 +191,7 @@ class _GrowthMilestoneState extends State<GrowthMilestone>
                           Text(
                             'Stage ${widget.stage}',
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.7),
+                              color: Colors.white.withValues(alpha: 0.7),
                               fontSize: 14,
                             ),
                           ),
@@ -230,11 +230,11 @@ class _GrowthMilestoneState extends State<GrowthMilestone>
           width: p.size,
           height: p.size,
           decoration: BoxDecoration(
-            color: p.color.withOpacity(opacity),
+            color: p.color.withValues(alpha: opacity),
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: p.color.withOpacity(opacity * 0.5),
+                color: p.color.withValues(alpha: opacity * 0.5),
                 blurRadius: 8,
               ),
             ],

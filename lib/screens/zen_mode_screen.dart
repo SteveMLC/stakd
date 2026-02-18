@@ -262,9 +262,9 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    const Color(0xFF0B0F14).withOpacity(0.15),  // Much lighter
+                    const Color(0xFF0B0F14).withValues(alpha: 0.15),  // Much lighter
                     Colors.transparent,                         // Middle is clear
-                    const Color(0xFF0B0F14).withOpacity(0.15),  // Much lighter
+                    const Color(0xFF0B0F14).withValues(alpha: 0.15),  // Much lighter
                   ],
                 ),
               ),

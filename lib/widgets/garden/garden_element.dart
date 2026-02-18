@@ -284,11 +284,11 @@ class _GardenElementState extends State<GardenElement>
           width: p.size,
           height: p.size,
           decoration: BoxDecoration(
-            color: p.color.withOpacity(opacity),
+            color: p.color.withValues(alpha: opacity),
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: p.color.withOpacity(opacity * 0.5),
+                color: p.color.withValues(alpha: opacity * 0.5),
                 blurRadius: 6,
               ),
             ],
@@ -465,7 +465,7 @@ class _RipplePainter extends CustomPainter {
       final opacity = (1 - rippleProgress) * 0.3;
       
       final paint = Paint()
-        ..color = Colors.white.withOpacity(opacity)
+        ..color = Colors.white.withValues(alpha: opacity)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2;
       
