@@ -52,10 +52,10 @@ class GardenService {
     }
 
     if (stage >= 1) {
-      unlocks.addAll(['pebble_path', 'small_stones', 'grass_1']);
+      unlocks.addAll(['pebble_path', 'small_stones', 'grass_1', 'grass_1_b']);
     }
     if (stage >= 2) {
-      unlocks.addAll(['grass_2', 'flowers_white', 'flowers_yellow', 'bush_small']);
+      unlocks.addAll(['grass_2', 'grass_2_b', 'flowers_white', 'flowers_yellow', 'bush_small']);
     }
     if (stage >= 3) {
       unlocks.addAll(['grass_3', 'sapling', 'pond_empty', 'flowers_purple']);

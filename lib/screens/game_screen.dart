@@ -900,6 +900,20 @@ class _GameScreenState extends State<GameScreen> {
                         ),
                       ),
                       
+                      // Power-up bar
+                      PowerUpBar(
+                        onColorBomb: _onColorBombPressed,
+                        onShuffle: _onShufflePressed,
+                        onMagnet: _onMagnetPressed,
+                        onHint: _onEnhancedHintPressed,
+                        isSelectionMode: _colorBombSelectionMode || _magnetSelectionMode,
+                        activeSelection: _colorBombSelectionMode 
+                            ? PowerUpType.colorBomb 
+                            : _magnetSelectionMode 
+                                ? PowerUpType.magnet 
+                                : null,
+                      ),
+                      
                       // Banner ad
                       _buildBannerAd(),
                       
@@ -907,6 +921,43 @@ class _GameScreenState extends State<GameScreen> {
                       _buildBottomControls(gameState, iap),
                     ],
                   ),
+
+                  // Power-up selection overlays
+                  if (_colorBombSelectionMode)
+                    ColorBombSelectionOverlay(
+                      onCancel: _cancelColorBombSelection,
+                    ),
+                  if (_magnetSelectionMode)
+                    MagnetSelectionOverlay(
+                      onCancel: _cancelMagnetSelection,
+                    ),
+
+                  // Power-up effects
+                  if (_showColorBombEffect && _colorBombEffectColor != null)
+                    Positioned.fill(
+                      child: ColorBombEffect(
+                        blockPositions: _colorBombEffectPositions,
+                        explosionColor: _colorBombEffectColor!,
+                        onComplete: _onColorBombEffectComplete,
+                      ),
+                    ),
+                  if (_showShuffleEffect)
+                    Positioned.fill(
+                      child: ShuffleEffect(
+                        blockPositions: _shuffleBlockPositions,
+                        blockColors: _shuffleBlockColors,
+                        onComplete: _onShuffleEffectComplete,
+                      ),
+                    ),
+                  if (_showMagnetEffect && _magnetSourcePos != null && _magnetTargetPos != null)
+                    Positioned.fill(
+                      child: MagnetEffect(
+                        sourcePos: _magnetSourcePos!,
+                        targetPos: _magnetTargetPos!,
+                        blockColor: _magnetBlockColor ?? GameColors.accent,
+                        onComplete: _onMagnetEffectComplete,
+                      ),
+                    ),
 
                   // Hint overlay
                   if (_showingHint &&

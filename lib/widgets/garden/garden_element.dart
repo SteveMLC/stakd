@@ -103,16 +103,19 @@ class _GardenElementState extends State<GardenElement>
 
     // Check if we've revealed this before
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return; // Guard after async gap
+    
     final key = 'garden_revealed_${widget.elementId}';
     _hasBeenRevealed = prefs.getBool(key) ?? false;
 
     if (_hasBeenRevealed) {
       // Already revealed, show immediately
-      _controller.value = 1.0;
+      if (mounted) _controller.value = 1.0;
     } else {
       // First time reveal - animate!
-      _triggerReveal();
+      if (mounted) _triggerReveal();
       await prefs.setBool(key, true);
+      if (!mounted) return; // Guard after second async gap
     }
 
     if (mounted) setState(() {});

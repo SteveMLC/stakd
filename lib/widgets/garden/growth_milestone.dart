@@ -100,10 +100,9 @@ class _GrowthMilestoneState extends State<GrowthMilestone>
     ZenAudioService().playStageAdvance();
     
     // Start animations
-    _controller.forward();
-    _particleController.forward();
-
-    // Wait for completion
+    _particleController.forward(); // particles run simultaneously
+    
+    // Wait for main animation to complete (2.5s)
     await _controller.forward();
     
     // Callback

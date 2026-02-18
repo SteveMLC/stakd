@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'stack_model.dart';
 import 'layer_model.dart';
 import '../utils/constants.dart';
-import '../services/level_generator.dart';
 
 /// Move record for undo functionality (supports single or multi-layer)
 class Move {
