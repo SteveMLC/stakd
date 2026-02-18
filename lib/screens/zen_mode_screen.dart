@@ -53,7 +53,6 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   bool _isTransitioning = false;
   bool _isLoading = false;
   int _puzzleSeed = 0;
-  int _gardenRebuildKey = 0;
 
   // Fade animation for puzzle transitions
   late AnimationController _fadeController;
@@ -141,7 +140,6 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     final storage = StorageService();
     await storage.addZenPuzzle();
     GardenService.recordPuzzleSolved();
-    setState(() => _gardenRebuildKey++);
 
     // Fade out current puzzle
     await _fadeController.animateTo(0.0);
@@ -241,10 +239,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
       body: Stack(
         fit: StackFit.expand,
         children: [
-          KeyedSubtree(
-            key: ValueKey(_gardenRebuildKey),
-            child: const ZenGardenScene(showStats: false, interactive: false),
-          ),
+          const ZenGardenScene(showStats: false, interactive: false),
 
           // Ambient particles background
           Positioned.fill(

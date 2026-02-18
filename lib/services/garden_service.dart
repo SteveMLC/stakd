@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../models/garden_state.dart';
 
 /// Garden state is SESSION-ONLY. Each Zen Mode session starts fresh.
@@ -6,6 +7,10 @@ import '../models/garden_state.dart';
 class GardenService {
   static GardenState _state = GardenState();
   static Function(int newStage, String stageName)? onStageAdvanced;
+
+  /// Notifier incremented after every puzzle solve so ZenGardenScene can
+  /// rebuild itself without a full KeyedSubtree teardown.
+  static final ValueNotifier<int> rebuildNotifier = ValueNotifier(0);
 
   static GardenState get state => _state;
 
@@ -38,6 +43,9 @@ class GardenService {
     if (stageAdvanced && onStageAdvanced != null) {
       onStageAdvanced!(newStage, _state.stageName);
     }
+
+    // Signal ZenGardenScene to do a gentle setState (preserves animation controllers)
+    rebuildNotifier.value++;
 
     return stageAdvanced;
   }

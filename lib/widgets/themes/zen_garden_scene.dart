@@ -57,7 +57,10 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     if (widget.enableMilestones) {
       GardenService.onStageAdvanced = _onStageAdvanced;
     }
-    
+
+    // Listen for gentle rebuild signals from GardenService (avoids KeyedSubtree teardown)
+    GardenService.rebuildNotifier.addListener(_onGardenRebuild);
+
     // Initialize with current stage
     _lastStage = gardenState.currentStage;
 
@@ -120,8 +123,13 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     }
   }
 
+  void _onGardenRebuild() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    GardenService.rebuildNotifier.removeListener(_onGardenRebuild);
     _ambientController.dispose();
     if (widget.enableAudio) {
       _audioService.stopAmbience();
