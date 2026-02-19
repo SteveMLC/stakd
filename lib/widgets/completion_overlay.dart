@@ -9,6 +9,7 @@ class CompletionOverlay extends StatefulWidget {
   final Duration time;
   final int? par;
   final int stars;
+  final int coinsEarned;
   final bool isNewRecord;
   final VoidCallback onNextPuzzle;
   final VoidCallback onHome;
@@ -19,6 +20,7 @@ class CompletionOverlay extends StatefulWidget {
     required this.time,
     this.par,
     required this.stars,
+    this.coinsEarned = 0,
     this.isNewRecord = false,
     required this.onNextPuzzle,
     required this.onHome,
@@ -276,6 +278,26 @@ class _CompletionOverlayState extends State<CompletionOverlay>
                                 ),
                               ],
                             ),
+                            // Coin reward display
+                            if (widget.coinsEarned > 0) ...[
+                              const SizedBox(height: 16),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.monetization_on,
+                                      color: Color(0xFFFFD700), size: 24),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '+${widget.coinsEarned} coins',
+                                    style: const TextStyle(
+                                      color: Color(0xFFFFD700),
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                             const SizedBox(height: 32),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,

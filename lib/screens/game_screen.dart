@@ -11,6 +11,7 @@ import '../services/tutorial_service.dart';
 import '../services/haptic_service.dart';
 import '../services/achievement_service.dart';
 import '../services/leaderboard_service.dart';
+import '../services/currency_service.dart';
 import '../utils/constants.dart';
 import '../widgets/game_board.dart';
 import '../widgets/game_button.dart';
@@ -51,6 +52,7 @@ class _GameScreenState extends State<GameScreen> {
   DateTime? _levelStartTime;
   Duration? _completionDuration;
   int _earnedStars = 0;
+  int _coinsEarned = 0;
   bool _isNewStarRecord = false;
 
   // Power-up state
@@ -234,10 +236,15 @@ class _GameScreenState extends State<GameScreen> {
       
       // Check for star-based achievements
       await AchievementService().checkStarAchievements();
+
+      // Award coins based on stars earned (10 coins per star)
+      final coinsEarned = stars * 10;
+      await CurrencyService().addCoins(coinsEarned);
       
       setState(() {
         _completionDuration = DateTime.now().difference(startTime);
         _earnedStars = stars;
+        _coinsEarned = coinsEarned;
         _isNewStarRecord = isNewRecord;
       });
       // Play win sound
@@ -992,6 +999,7 @@ class _GameScreenState extends State<GameScreen> {
                       time: _completionDuration ?? Duration.zero,
                       par: gameState.par,
                       stars: _earnedStars,
+                      coinsEarned: _coinsEarned,
                       isNewRecord: _isNewStarRecord,
                       onNextPuzzle: () {
                         _onLevelComplete();
