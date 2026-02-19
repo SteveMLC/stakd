@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'storage_service.dart';
+import 'currency_service.dart';
 
 /// Power-up types available in the game
 enum PowerUpType {
@@ -142,5 +143,17 @@ class PowerUpService extends ChangeNotifier {
       final extra = i < remainder ? 1 : 0;
       await addPowerUp(PowerUpType.values[i], perType + extra);
     }
+  }
+
+  /// Buy a power-up with coins (50 coins each)
+  Future<bool> buyPowerUp(PowerUpType type) async {
+    const int cost = 50;
+    final currency = CurrencyService();
+    final success = await currency.spendCoins(cost);
+    if (success) {
+      await addPowerUp(type, 1);
+      return true;
+    }
+    return false;
   }
 }

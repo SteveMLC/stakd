@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/power_up_service.dart';
+import '../services/ad_service.dart';
 import '../utils/constants.dart';
 
 /// Horizontal bar displaying power-up buttons
@@ -124,7 +125,7 @@ class _PowerUpButtonState extends State<_PowerUpButton>
   @override
   Widget build(BuildContext context) {
     final isDisabled = widget.count <= 0;
-    final isClickable = !isDisabled && !widget.isSelectionMode;
+    final isClickable = !widget.isSelectionMode;
 
     return AnimatedBuilder(
       animation: _pulseAnimation,
@@ -132,7 +133,15 @@ class _PowerUpButtonState extends State<_PowerUpButton>
         return Transform.scale(
           scale: widget.isActive ? _pulseAnimation.value : 1.0,
           child: GestureDetector(
-            onTap: isClickable ? widget.onTap : null,
+            onTap: isClickable
+                ? () {
+                    if (isDisabled) {
+                      _showGetPowerUpDialog(context);
+                    } else {
+                      widget.onTap?.call();
+                    }
+                  }
+                : null,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               width: 60,
@@ -216,6 +225,64 @@ class _PowerUpButtonState extends State<_PowerUpButton>
           ),
         );
       },
+    );
+  }
+
+  void _showGetPowerUpDialog(BuildContext context) {
+    final name = widget.type.name;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: GameColors.surface,
+        title: Text('Get ${widget.type.icon} $name',
+            style: const TextStyle(color: GameColors.text)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Watch ad option
+            ListTile(
+              leading: const Icon(Icons.ondemand_video, color: GameColors.accent),
+              title: const Text('Watch ad for free',
+                  style: TextStyle(color: GameColors.text)),
+              onTap: () async {
+                Navigator.pop(ctx);
+                final rewarded = await AdService().showRewardedAd();
+                if (rewarded) {
+                  await PowerUpService().addPowerUp(widget.type, 1);
+                }
+              },
+            ),
+            const Divider(color: GameColors.textMuted),
+            // Buy with coins option
+            ListTile(
+              leading: const Icon(Icons.monetization_on,
+                  color: Color(0xFFFFD700)),
+              title: const Text('Buy for 50 coins',
+                  style: TextStyle(color: GameColors.text)),
+              onTap: () async {
+                Navigator.pop(ctx);
+                final success =
+                    await PowerUpService().buyPowerUp(widget.type);
+                if (!success && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Not enough coins!'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel',
+                style: TextStyle(color: GameColors.textMuted)),
+          ),
+        ],
+      ),
     );
   }
 }
