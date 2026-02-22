@@ -349,7 +349,7 @@ class LevelGenerator {
     LevelParams params,
     Random random, {
     int maxAttempts = 50,
-    int maxSolvableStates = 10000,
+    int maxSolvableStates = 100000,
   }) {
     final blocks = <int>[];
     for (int color = 0; color < params.colors; color++) {
@@ -358,7 +358,6 @@ class LevelGenerator {
       }
     }
 
-    List<List<int>>? lastCandidate;
     for (int attempt = 0; attempt < maxAttempts; attempt++) {
       final shuffled = List<int>.from(blocks);
       _fisherYatesShuffle(shuffled, random);
@@ -376,15 +375,16 @@ class LevelGenerator {
         tubes.add([]);
       }
 
-      lastCandidate = tubes;
       if (_hasSolvedTube(tubes, params.depth)) continue;
-      if (_sameColorAdjacencyRatio(tubes) > 0.6) continue;
+      if (_sameColorAdjacencyRatio(tubes) > 0.35) continue;
       if (!_isSolvableState(tubes, params.depth, maxSolvableStates)) continue;
 
       return tubes;
     }
 
-    return lastCandidate ?? [];
+    // Fallback: shuffle from solved state (always solvable)
+    final solved = _createSolvedState(params.colors, params.emptySlots, params.depth);
+    return _shuffleState(solved, params.depth, 200, random);
   }
 
   void _fisherYatesShuffle(List<int> list, Random random) {
@@ -430,6 +430,65 @@ class LevelGenerator {
   }
 
   bool _isSolvableState(List<List<int>> tubes, int depth, int maxStates) {
+    // Try greedy heuristic first (fast path)
+    if (_greedySolve(tubes, depth)) return true;
+    // Fall back to BFS with higher limit
+    return _bfsSolvableState(tubes, depth, maxStates);
+  }
+
+  bool _greedySolve(List<List<int>> tubes, int depth) {
+    var state = tubes.map((t) => List<int>.from(t)).toList();
+    var visited = <String>{};
+    return _greedyDFS(state, depth, visited, 0, 500);
+  }
+
+  bool _greedyDFS(List<List<int>> state, int depth, Set<String> visited,
+      int moves, int maxMoves) {
+    if (moves > maxMoves) return false;
+    final key = _serializeState(state);
+    if (visited.contains(key)) return false;
+    visited.add(key);
+    if (_isSolvedState(state, depth)) return true;
+
+    var movesList = <(int, int, int)>[];
+    for (int from = 0; from < state.length; from++) {
+      if (state[from].isEmpty) continue;
+      final block = state[from].last;
+      for (int to = 0; to < state.length; to++) {
+        if (from == to) continue;
+        if (state[to].length >= depth) continue;
+        if (state[to].isNotEmpty && state[to].last != block) continue;
+
+        int priority = 0;
+        if (state[to].length == depth - 1 &&
+            state[to].isNotEmpty &&
+            state[to].every((c) => c == block)) {
+          priority = 100;
+        } else if (state[to].isNotEmpty && state[to].last == block) {
+          priority = 50;
+        } else if (state[to].isEmpty) {
+          priority = 10;
+        }
+
+        movesList.add((from, to, priority));
+      }
+    }
+
+    movesList.sort((a, b) => b.$3.compareTo(a.$3));
+
+    for (final (from, to, _) in movesList) {
+      final block = state[from].removeLast();
+      state[to].add(block);
+      if (_greedyDFS(state, depth, visited, moves + 1, maxMoves)) return true;
+      state[to].removeLast();
+      state[from].add(block);
+    }
+
+    visited.remove(key);
+    return false;
+  }
+
+  bool _bfsSolvableState(List<List<int>> tubes, int depth, int maxStates) {
     final visited = <String>{};
     final queue = Queue<List<List<int>>>();
     queue.add(tubes.map((t) => List<int>.from(t)).toList());
@@ -462,6 +521,39 @@ class LevelGenerator {
     }
 
     return false;
+  }
+
+  List<List<int>> _createSolvedState(int colors, int emptySlots, int depth) {
+    final tubes = <List<int>>[];
+    for (int c = 0; c < colors; c++) {
+      tubes.add(List<int>.filled(depth, c));
+    }
+    for (int i = 0; i < emptySlots; i++) {
+      tubes.add([]);
+    }
+    return tubes;
+  }
+
+  List<List<int>> _shuffleState(
+      List<List<int>> tubes, int depth, int moves, Random random) {
+    final state = tubes.map((t) => List<int>.from(t)).toList();
+    for (int m = 0; m < moves; m++) {
+      final validMoves = <(int, int)>[];
+      for (int from = 0; from < state.length; from++) {
+        if (state[from].isEmpty) continue;
+        final block = state[from].last;
+        for (int to = 0; to < state.length; to++) {
+          if (from == to) continue;
+          if (state[to].length >= depth) continue;
+          if (state[to].isNotEmpty && state[to].last != block) continue;
+          validMoves.add((from, to));
+        }
+      }
+      if (validMoves.isEmpty) break;
+      final (from, to) = validMoves[random.nextInt(validMoves.length)];
+      state[to].add(state[from].removeLast());
+    }
+    return state;
   }
 
   String _serializeState(List<List<int>> tubes) {
