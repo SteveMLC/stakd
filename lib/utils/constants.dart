@@ -166,11 +166,12 @@ class LevelParams {
         minDifficultyScore: level,
         multiColorProbability: 0.0,
         lockedBlockProbability: 0.0,
+        frozenBlockProbability: 0.0,
       );
     }
-    if (level <= 25) {
-      // Intermediate: 5 colors, introduce multi-color blocks gradually
-      final multiColorProb = ((level - 10) / 15).clamp(0.0, 0.15);
+    if (level <= 20) {
+      // Intermediate: 5 colors, introduce locked blocks
+      final lockedProb = ((level - 10) / 10 * 0.12).clamp(0.0, 0.12);
       return LevelParams(
         colors: 5,
         depth: 4,
@@ -178,58 +179,95 @@ class LevelParams {
         emptySlots: 2,
         shuffleMoves: 30 + ((level - 10) * 2),
         minDifficultyScore: 4 + (level - 10),
-        multiColorProbability: multiColorProb,
-        lockedBlockProbability: 0.0,
+        multiColorProbability: 0.0,
+        lockedBlockProbability: lockedProb,
+        frozenBlockProbability: 0.0,
       );
     }
-    if (level <= 50) {
-      // Advanced: 5-6 colors, more multi-color blocks, introduce locked blocks
-      final colors = level <= 35 ? 5 : 6;
-      final multiColorProb = 0.15 + ((level - 25) / 25 * 0.15).clamp(0.0, 0.3);
-      final lockedProb = level >= 35
-          ? ((level - 35) / 15).clamp(0.0, 0.1)
-          : 0.0;
+    if (level <= 30) {
+      // Advanced: 5-6 colors, locked + first frozen blocks
+      final colors = level <= 25 ? 5 : 6;
+      final lockedProb = 0.12 + ((level - 20) / 10 * 0.08).clamp(0.0, 0.2);
+      final frozenProb = ((level - 20) / 10 * 0.08).clamp(0.0, 0.08);
       return LevelParams(
         colors: colors,
         depth: 5,
         stacks: colors + 2,
         emptySlots: 2,
-        shuffleMoves: 45 + ((level - 25) * 2),
-        minDifficultyScore: 8 + (level - 25),
-        multiColorProbability: multiColorProb,
+        shuffleMoves: 45 + ((level - 20) * 2),
+        minDifficultyScore: 8 + (level - 20),
+        multiColorProbability: 0.0,
         lockedBlockProbability: lockedProb,
+        frozenBlockProbability: frozenProb,
         maxLockedMoves: 3,
       );
     }
-    if (level <= 100) {
-      // Expert: 6 colors, 1 empty slot, frequent multi-color and locked blocks
-      final multiColorProb = 0.3 + ((level - 50) / 50 * 0.15).clamp(0.0, 0.45);
-      final lockedProb = 0.1 + ((level - 50) / 50 * 0.1).clamp(0.0, 0.2);
+    if (level <= 40) {
+      // Expert: 6 colors, locked + frozen
+      final lockedProb = 0.15 + ((level - 30) / 10 * 0.05).clamp(0.0, 0.2);
+      final frozenProb = 0.08 + ((level - 30) / 10 * 0.07).clamp(0.0, 0.15);
       return LevelParams(
         colors: 6,
         depth: 5,
-        stacks: 7,
-        emptySlots: 1,
-        shuffleMoves: 60 + (level - 50),
-        minDifficultyScore: 15 + ((level - 50) ~/ 5),
+        stacks: 8,
+        emptySlots: 2,
+        shuffleMoves: 55 + ((level - 30) * 2),
+        minDifficultyScore: 12 + (level - 30),
+        multiColorProbability: 0.0,
+        lockedBlockProbability: lockedProb,
+        frozenBlockProbability: frozenProb,
+        maxLockedMoves: 3,
+      );
+    }
+    if (level <= 50) {
+      // Master: 7 colors, full mechanics
+      final lockedProb = 0.18;
+      final frozenProb = 0.12;
+      final multiColorProb = ((level - 40) / 10 * 0.1).clamp(0.0, 0.1);
+      return LevelParams(
+        colors: 7,
+        depth: 5,
+        stacks: 9,
+        emptySlots: 2,
+        shuffleMoves: 70 + ((level - 40) * 2),
+        minDifficultyScore: 18 + (level - 40),
         multiColorProbability: multiColorProb,
         lockedBlockProbability: lockedProb,
+        frozenBlockProbability: frozenProb,
         maxLockedMoves: 4,
       );
     }
-    // Master: 6-7 colors, 1 empty, deep, maximum difficulty
+    if (level <= 100) {
+      // Expert+: 7-8 colors, maximum difficulty
+      final extraColors = level >= 75 ? 1 : 0;
+      final multiColorProb = 0.1 + ((level - 50) / 50 * 0.2).clamp(0.0, 0.3);
+      final lockedProb = 0.2;
+      final frozenProb = 0.15;
+      return LevelParams(
+        colors: 7 + extraColors,
+        depth: 5,
+        stacks: 8 + extraColors,
+        emptySlots: 1,
+        shuffleMoves: 80 + (level - 50),
+        minDifficultyScore: 20 + ((level - 50) ~/ 5),
+        multiColorProbability: multiColorProb,
+        lockedBlockProbability: lockedProb,
+        frozenBlockProbability: frozenProb,
+        maxLockedMoves: 4,
+      );
+    }
+    // Master 100+: max difficulty
     final extraColors = ((level - 100) ~/ 25).clamp(0, 1);
-    final multiColorProb = 0.45 + (extraColors * 0.1);
-    final lockedProb = 0.2 + (extraColors * 0.05);
     return LevelParams(
-      colors: 6 + extraColors,
+      colors: (7 + extraColors).clamp(0, 8),
       depth: 6,
-      stacks: 7 + extraColors,
+      stacks: 8 + extraColors,
       emptySlots: 1,
       shuffleMoves: 80 + ((level - 100) ~/ 2),
       minDifficultyScore: 25,
-      multiColorProbability: multiColorProb.clamp(0.0, 0.6),
-      lockedBlockProbability: lockedProb.clamp(0.0, 0.3),
+      multiColorProbability: 0.3,
+      lockedBlockProbability: 0.2,
+      frozenBlockProbability: 0.15,
       maxLockedMoves: 5,
     );
   }
@@ -252,6 +290,7 @@ class ZenParams {
     emptySlots: 2,
     shuffleMoves: 55,
     minDifficultyScore: 10,
+    lockedBlockProbability: 0.1,
   );
 
   static const LevelParams hard = LevelParams(
@@ -261,6 +300,8 @@ class ZenParams {
     emptySlots: 2,
     shuffleMoves: 80,
     minDifficultyScore: 15,
+    lockedBlockProbability: 0.12,
+    frozenBlockProbability: 0.1,
   );
 
   static const LevelParams ultra = LevelParams(
@@ -270,5 +311,7 @@ class ZenParams {
     emptySlots: 2,
     shuffleMoves: 120,
     minDifficultyScore: 22,
+    lockedBlockProbability: 0.15,
+    frozenBlockProbability: 0.12,
   );
 }
