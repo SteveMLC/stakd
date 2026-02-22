@@ -32,10 +32,20 @@ class GameStack {
   /// Get the color index of the top layer
   int? get topColorIndex => topLayer?.colorIndex;
 
+  /// Check if the top layer can be picked up (not locked or frozen)
+  bool get canPickUpTop {
+    if (isEmpty) return false;
+    final top = topLayer!;
+    if (top.isLocked) return false;
+    if (top.isFrozen) return false;
+    return true;
+  }
+
   /// Check if a layer can be added to this stack
   bool canAccept(Layer layer) {
     if (isFull) return false;
     if (layer.isLocked) return false; // Can't move locked blocks
+    if (layer.isFrozen) return false; // Can't move frozen blocks
     if (isEmpty) return true;
     
     // Multi-color matching: check if layer can match with top layer
@@ -88,10 +98,19 @@ class GameStack {
     return group;
   }
 
+  /// Thaw the top layer if it's frozen, returns new stack or null if not frozen
+  GameStack? thawTopLayer() {
+    if (isEmpty || !topLayer!.isFrozen) return null;
+    final newLayers = [...layers];
+    newLayers[newLayers.length - 1] = newLayers.last.thaw();
+    return GameStack(layers: newLayers, maxDepth: maxDepth, id: id);
+  }
+
   /// Check if this stack can accept multiple layers (multi-grab drop validation)
   bool canAcceptMultiple(List<Layer> layersToAdd) {
     if (layersToAdd.isEmpty) return false;
     if (layersToAdd.any((l) => l.isLocked)) return false; // Can't move locked blocks
+    if (layersToAdd.any((l) => l.isFrozen)) return false; // Can't move frozen blocks
     final spaceAvailable = maxDepth - layers.length;
     if (layersToAdd.length > spaceAvailable) return false;
     if (isEmpty) return true;

@@ -10,41 +10,45 @@ List<List<int>> generateZenPuzzleInIsolate(List<int> args) {
   final colors = args[0];
   final emptySlots = args[2];
   final depth = args[3];
-  final shuffleMoves = args[4];
-  final minDifficultyScore = args[5];
   final seed = args.length > 6 ? args[6] : 0;
+  final random = seed == 0 ? Random() : Random(seed);
 
-  const maxAttempts = 5;
-  const maxSolvableStates = 2000;
+  const maxAttempts = 50;
+  const maxSolvableStates = 10000;
 
-  List<List<int>>? bestLevel;
-  int bestScore = -1;
-
+  List<List<int>>? lastCandidate;
   for (int attempt = 0; attempt < maxAttempts; attempt++) {
-    final r = Random(
-      (seed == 0 ? DateTime.now().millisecondsSinceEpoch : seed) + attempt,
-    );
-    var state = _createSolved(colors, emptySlots, depth, r);
-    state = _shuffle(state, depth, shuffleMoves, r);
-
-    if (!_isSolvable(state, depth, maxSolvableStates)) continue;
-    if (_isTooEasy(state, depth)) continue;
-
-    final score = _difficultyScore(state, depth);
-    if (score >= minDifficultyScore) return state;
-
-    if (score > bestScore) {
-      bestScore = score;
-      bestLevel = state.map((s) => s.toList()).toList();
+    final blocks = <int>[];
+    for (int color = 0; color < colors; color++) {
+      for (int i = 0; i < depth; i++) {
+        blocks.add(color);
+      }
     }
+
+    _fisherYatesShuffle(blocks, random);
+
+    final tubes = <List<int>>[];
+    int index = 0;
+    for (int t = 0; t < colors; t++) {
+      final tube = <int>[];
+      for (int i = 0; i < depth; i++) {
+        tube.add(blocks[index++]);
+      }
+      tubes.add(tube);
+    }
+    for (int i = 0; i < emptySlots; i++) {
+      tubes.add([]);
+    }
+
+    lastCandidate = tubes;
+    if (_hasSolvedTube(tubes, depth)) continue;
+    if (_sameColorAdjacencyRatio(tubes) > 0.6) continue;
+    if (!_isSolvable(tubes, depth, maxSolvableStates)) continue;
+
+    return tubes;
   }
 
-  // Fallback: shuffle a solved state rather than returning it solved
-  if (bestLevel != null) return bestLevel;
-  final fallbackR = seed == 0 ? Random() : Random(seed);
-  var fallback = _createSolved(colors, emptySlots, depth, fallbackR);
-  fallback = _shuffle(fallback, depth, shuffleMoves, fallbackR);
-  return fallback;
+  return lastCandidate ?? [];
 }
 
 List<List<int>> _createSolved(int colors, int emptySlots, int depth, Random r) {
@@ -121,103 +125,82 @@ List<List<int>> _shuffle(
   return state;
 }
 
-/// Check if puzzle has too many pre-sorted columns (> 1 single-color stack)
-bool _isTooEasy(List<List<int>> state, int depth) {
-  int singleColorStacks = 0;
-  for (final stack in state) {
-    if (stack.length < 2) continue;
-    if (stack.every((c) => c == stack.first)) singleColorStacks++;
+void _fisherYatesShuffle(List<int> list, Random random) {
+  for (int i = list.length - 1; i > 0; i--) {
+    final j = random.nextInt(i + 1);
+    final tmp = list[i];
+    list[i] = list[j];
+    list[j] = tmp;
   }
-  return singleColorStacks > 1;
 }
 
-bool _isSolved(List<List<int>> state, int depth) {
-  for (final stack in state) {
-    if (stack.isEmpty) continue;
-    if (stack.length != depth) return false;
-    final c = stack.first;
-    if (!stack.every((x) => x == c)) return false;
-  }
-  return true;
-}
-
-bool _isSolvable(List<List<int>> state, int depth, int maxStates) {
-  final visited = <String>{};
-  final queue = <List<List<int>>>[_deepCopy(state)];
-
-  while (queue.isNotEmpty && visited.length < maxStates) {
-    final current = queue.removeAt(0);
-    final key = _stateKey(current);
-    if (visited.contains(key)) continue;
-    visited.add(key);
-
-    if (_isSolved(current, depth)) return true;
-
-    for (int from = 0; from < current.length; from++) {
-      if (current[from].isEmpty) continue;
-      final topColor = current[from].last;
-      for (int to = 0; to < current.length; to++) {
-        if (from == to) continue;
-        if (!_stackCanAccept(current[to], topColor, depth)) continue;
-
-        final next = _deepCopy(current);
-        next[from].removeLast();
-        next[to].add(topColor);
-        final nextKey = _stateKey(next);
-        if (!visited.contains(nextKey)) queue.add(next);
-      }
+bool _hasSolvedTube(List<List<int>> tubes, int depth) {
+  for (final tube in tubes) {
+    if (tube.length == depth && tube.every((c) => c == tube.first)) {
+      return true;
     }
   }
   return false;
 }
 
-List<List<int>> _deepCopy(List<List<int>> s) {
-  return s.map((stack) => stack.toList()).toList();
+double _sameColorAdjacencyRatio(List<List<int>> tubes) {
+  int same = 0;
+  int total = 0;
+  for (final tube in tubes) {
+    for (int i = 1; i < tube.length; i++) {
+      total++;
+      if (tube[i] == tube[i - 1]) {
+        same++;
+      }
+    }
+  }
+  if (total == 0) return 0.0;
+  return same / total;
 }
 
-int _difficultyScore(List<List<int>> state, int depth) {
-  int score = 0;
+bool _isSolvedState(List<List<int>> tubes, int depth) {
+  for (final tube in tubes) {
+    if (tube.isEmpty) continue;
+    if (tube.length != depth) return false;
+    if (!tube.every((c) => c == tube.first)) return false;
+  }
+  return true;
+}
 
-  for (final stack in state) {
-    if (stack.isEmpty || stack.length <= 1) continue;
+bool _isSolvable(List<List<int>> tubes, int depth, int maxStates) {
+  final visited = <String>{};
+  final queue = <List<List<int>>>[tubes.map((t) => List<int>.from(t)).toList()];
 
-    int transitions = 0;
-    final uniqueColors = <int>{};
-    int buriedSingletons = 0;
+  while (queue.isNotEmpty && visited.length < maxStates) {
+    final current = queue.removeAt(0);
+    final key = _serializeState(current);
+    if (visited.contains(key)) continue;
+    visited.add(key);
 
-    for (int i = 0; i < stack.length; i++) {
-      final color = stack[i];
-      uniqueColors.add(color);
-      if (i > 0 && color != stack[i - 1]) {
-        transitions++;
-        if (i >= 2 && stack[i - 2] != stack[i - 1] && stack[i - 1] != color) {
-          buriedSingletons++;
+    if (_isSolvedState(current, depth)) return true;
+
+    for (int from = 0; from < current.length; from++) {
+      if (current[from].isEmpty) continue;
+      final block = current[from].last;
+      for (int to = 0; to < current.length; to++) {
+        if (from == to) continue;
+        if (current[to].length >= depth) continue;
+        if (current[to].isNotEmpty && current[to].last != block) continue;
+
+        final next = current.map((t) => List<int>.from(t)).toList();
+        next[from].removeLast();
+        next[to].add(block);
+        final nextKey = _serializeState(next);
+        if (!visited.contains(nextKey)) {
+          queue.add(next);
         }
       }
     }
-
-    score += transitions * 2;
-    score += buriedSingletons * 3;
-    if (uniqueColors.length >= 3) {
-      score += (uniqueColors.length - 2) * 2;
-    }
-    if (stack.length >= 4 && uniqueColors.length >= 2) {
-      score += stack.length - 3;
-    }
   }
 
-  int completed = 0;
-  int nearlyComplete = 0;
-  for (final stack in state) {
-    if (stack.length == depth && stack.every((c) => c == stack.first)) {
-      completed++;
-    }
-    if (stack.length >= 3 && stack.every((c) => c == stack.first)) {
-      nearlyComplete++;
-    }
-  }
-  score -= completed * 4;
-  score -= nearlyComplete * 2;
+  return false;
+}
 
-  return score.clamp(0, 100);
+String _serializeState(List<List<int>> tubes) {
+  return tubes.map((t) => t.join(',')).join('|');
 }

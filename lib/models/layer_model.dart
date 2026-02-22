@@ -15,6 +15,7 @@ class Layer {
   final BlockType type;
   final List<int>? colors; // For multi-color blocks (contains 2-3 colors)
   final int lockedUntil;   // For locked blocks: number of moves before unlocking (0 = not locked)
+  final bool isFrozen;     // Frozen block: must be tapped once to thaw before moving
 
   Layer({
     required this.colorIndex,
@@ -22,6 +23,7 @@ class Layer {
     this.type = BlockType.normal,
     this.colors,
     this.lockedUntil = 0,
+    this.isFrozen = false,
   }) : id = id ?? UniqueKey().toString();
 
   /// Get the primary color for this layer
@@ -62,6 +64,7 @@ class Layer {
     BlockType? type,
     List<int>? colors,
     int? lockedUntil,
+    bool? isFrozen,
   }) {
     return Layer(
       colorIndex: colorIndex ?? this.colorIndex,
@@ -69,7 +72,13 @@ class Layer {
       type: type ?? this.type,
       colors: colors ?? this.colors,
       lockedUntil: lockedUntil ?? this.lockedUntil,
+      isFrozen: isFrozen ?? this.isFrozen,
     );
+  }
+
+  /// Create a thawed copy of this layer (removes frozen state)
+  Layer thaw() {
+    return copyWith(isFrozen: false);
   }
 
   /// Decrement lock counter (for locked blocks)
@@ -95,6 +104,7 @@ class Layer {
     'type': type.name,
     'colors': colors,
     'lockedUntil': lockedUntil,
+    'isFrozen': isFrozen,
   };
 
   factory Layer.fromJson(Map<String, Object?> json) {
@@ -107,6 +117,7 @@ class Layer {
       ),
       colors: (json['colors'] as List<dynamic>?)?.cast<int>(),
       lockedUntil: (json['lockedUntil'] as int?) ?? 0,
+      isFrozen: (json['isFrozen'] as bool?) ?? false,
     );
   }
 
@@ -135,6 +146,18 @@ class Layer {
       id: id,
       type: BlockType.locked,
       lockedUntil: lockedFor,
+    );
+  }
+
+  /// Factory: Create a frozen layer
+  factory Layer.frozen({
+    required int colorIndex,
+    String? id,
+  }) {
+    return Layer(
+      colorIndex: colorIndex,
+      id: id,
+      isFrozen: true,
     );
   }
 }

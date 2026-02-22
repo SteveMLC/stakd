@@ -138,6 +138,7 @@ class LevelParams {
   multiColorProbability; // 0.0 to 1.0: chance of multi-color blocks
   final double lockedBlockProbability; // 0.0 to 1.0: chance of locked blocks
   final int maxLockedMoves; // Maximum moves a block can be locked for
+  final double frozenBlockProbability; // 0.0 to 1.0: chance of frozen blocks
 
   const LevelParams({
     required this.colors,
@@ -149,6 +150,7 @@ class LevelParams {
     this.multiColorProbability = 0.0,
     this.lockedBlockProbability = 0.0,
     this.maxLockedMoves = 3,
+    this.frozenBlockProbability = 0.0,
   });
 
   /// Get parameters for a given level number with progressive difficulty

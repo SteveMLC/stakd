@@ -68,6 +68,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   bool _showMoveCounter = false;
   bool _isTransitioning = false;
   bool _isLoading = false;
+  bool _showGardenView = false;
   int _puzzleSeed = 0;
 
   // Fade animation for puzzle transitions
@@ -371,36 +372,41 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                 // Difficulty slider
                 _buildDifficultySlider(),
 
-                // Game board (with fade animation)
+                // Game board or Garden view (with fade animation)
                 Expanded(
-                  child: FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: Consumer<GameState>(
-                      builder: (context, gameState, child) {
-                        // Check for puzzle completion
-                        if (gameState.isComplete && !_isTransitioning) {
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (!mounted) return;
-                            _showCompletion(gameState);
-                          });
-                        }
+                  child: _showGardenView
+                      ? _buildGardenFullView()
+                      : FadeTransition(
+                          opacity: _fadeAnimation,
+                          child: Consumer<GameState>(
+                            builder: (context, gameState, child) {
+                              // Check for puzzle completion
+                              if (gameState.isComplete &&
+                                  !_isTransitioning &&
+                                  !_showCompletionOverlay) {
+                                WidgetsBinding.instance
+                                    .addPostFrameCallback((_) {
+                                  if (!mounted) return;
+                                  _showCompletion(gameState);
+                                });
+                              }
 
-                        return GameBoard(
-                          gameState: gameState,
-                          stackKeys: _stackKeys,
-                          onTap: () => AudioService().playTap(),
-                          onMove: () => AudioService().playSlide(),
-                          onClear: () => AudioService().playClear(),
-                        );
-                      },
-                    ),
-                  ),
+                              return GameBoard(
+                                gameState: gameState,
+                                stackKeys: _stackKeys,
+                                onTap: () => AudioService().playTap(),
+                                onMove: () => AudioService().playSlide(),
+                                onClear: () => AudioService().playClear(),
+                              );
+                            },
+                          ),
+                        ),
                 ),
 
                 // Optional move counter
-                if (_showMoveCounter) _buildMoveCounter(),
+                if (_showMoveCounter && !_showGardenView) _buildMoveCounter(),
 
-                // Undo + Hint buttons
+                // Undo + Hint + Garden toggle buttons
                 _buildBottomButtons(),
 
                 const SizedBox(height: 16),
@@ -592,40 +598,75 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     );
   }
 
+  Widget _buildGardenFullView() {
+    final state = GardenService.state;
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          '${state.stageIcon} ${state.stageName}',
+          style: TextStyle(
+            color: GameColors.text,
+            fontSize: 22,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '${state.totalPuzzlesSolved} puzzles solved this session',
+          style: TextStyle(
+            color: GameColors.textMuted.withValues(alpha: 0.7),
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '${state.unlockedElements.length} garden elements unlocked',
+          style: TextStyle(
+            color: GameColors.textMuted.withValues(alpha: 0.5),
+            fontSize: 12,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildBottomButtons() {
     return Consumer<GameState>(
       builder: (context, gameState, _) {
         return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              IconButton(
+              // Undo button
+              _ZenActionButton(
+                icon: Icons.undo,
+                label: 'Undo',
+                badgeCount: gameState.undosRemaining,
+                enabled: gameState.canUndo,
                 onPressed: gameState.canUndo ? () => gameState.undo() : null,
-                icon: Badge(
-                  isLabelVisible: gameState.undosRemaining > 0,
-                  label: Text('${gameState.undosRemaining}'),
-                  child: Icon(
-                    Icons.undo,
-                    color: gameState.canUndo
-                        ? GameColors.text
-                        : GameColors.textMuted.withValues(alpha: 0.4),
-                  ),
-                ),
               ),
-              const SizedBox(width: 16),
-              IconButton(
+
+              // Garden toggle button
+              _ZenActionButton(
+                icon: _showGardenView ? Icons.grid_view : Icons.park_outlined,
+                label: _showGardenView ? 'Puzzle' : 'Garden',
+                enabled: true,
+                onPressed: () {
+                  setState(() {
+                    _showGardenView = !_showGardenView;
+                  });
+                },
+              ),
+
+              // Hint button
+              _ZenActionButton(
+                icon: Icons.lightbulb_outline,
+                label: 'Hint',
+                badgeCount: _hintsRemaining,
+                enabled: _hintsRemaining > 0,
                 onPressed: _hintsRemaining > 0 ? _showHint : null,
-                icon: Badge(
-                  isLabelVisible: true,
-                  label: Text('$_hintsRemaining'),
-                  child: Icon(
-                    Icons.lightbulb_outline,
-                    color: _hintsRemaining > 0
-                        ? GameColors.text
-                        : GameColors.textMuted.withValues(alpha: 0.4),
-                  ),
-                ),
               ),
             ],
           ),
@@ -767,6 +808,68 @@ class _ZenModeScreenState extends State<ZenModeScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Action button for the bottom bar (undo, garden, hint)
+class _ZenActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final int? badgeCount;
+  final bool enabled;
+  final VoidCallback? onPressed;
+
+  const _ZenActionButton({
+    required this.icon,
+    required this.label,
+    this.badgeCount,
+    required this.enabled,
+    this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = enabled
+        ? GameColors.text
+        : GameColors.textMuted.withValues(alpha: 0.4);
+
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        decoration: BoxDecoration(
+          color: enabled
+              ? GameColors.surface.withValues(alpha: 0.5)
+              : GameColors.surface.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: enabled
+                ? GameColors.zen.withValues(alpha: 0.3)
+                : Colors.transparent,
+            width: 1,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Badge(
+              isLabelVisible: badgeCount != null && badgeCount! > 0,
+              label: badgeCount != null ? Text('$badgeCount') : null,
+              child: Icon(icon, color: color, size: 24),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

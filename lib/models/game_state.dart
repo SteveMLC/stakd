@@ -141,6 +141,7 @@ class GameState extends ChangeNotifier {
     _isZenMode = false;
     _unstackSlotIndex = null;
     _unstakedLayers = [];
+    _addTubeUsed = false;
     _resetPowerUpTracking();
     notifyListeners();
   }
@@ -166,16 +167,58 @@ class GameState extends ChangeNotifier {
     _isZenMode = true;
     _unstackSlotIndex = null;
     _unstakedLayers = [];
+    _addTubeUsed = false;
     notifyListeners();
+  }
+
+  // Add Tube power-up tracking
+  bool _addTubeUsed = false;
+  bool get addTubeUsed => _addTubeUsed;
+
+  /// Add an empty tube to the puzzle (Add Tube power-up)
+  /// Returns true if successful
+  bool addEmptyTube() {
+    if (_addTubeUsed) return false;
+    final maxDepth = _stacks.isNotEmpty ? _stacks.first.maxDepth : 4;
+    _stacks.add(GameStack(layers: [], maxDepth: maxDepth));
+    _addTubeUsed = true;
+    notifyListeners();
+    return true;
+  }
+
+  /// Attempt to thaw a frozen top block. Returns true if thawed.
+  bool tryThawBlock(int stackIndex) {
+    if (stackIndex < 0 || stackIndex >= _stacks.length) return false;
+    final stack = _stacks[stackIndex];
+    if (stack.isEmpty) return false;
+    final top = stack.topLayer!;
+    if (!top.isFrozen) return false;
+
+    final thawed = stack.thawTopLayer();
+    if (thawed != null) {
+      _stacks[stackIndex] = thawed;
+      notifyListeners();
+      return true;
+    }
+    return false;
   }
 
   /// Handle tap on a stack
   void onStackTap(int stackIndex) {
     if (_isComplete || _animatingLayer != null) return;
 
+    // Check for frozen block tap-to-thaw
+    if (_selectedStackIndex == -1) {
+      final stack = _stacks[stackIndex];
+      if (!stack.isEmpty && stack.topLayer!.isFrozen) {
+        tryThawBlock(stackIndex);
+        return;
+      }
+    }
+
     if (_selectedStackIndex == -1) {
       // No stack selected - try to select this one
-      if (!_stacks[stackIndex].isEmpty) {
+      if (!_stacks[stackIndex].isEmpty && _stacks[stackIndex].canPickUpTop) {
         _selectedStackIndex = stackIndex;
         _isMultiGrabMode = false;
         _multiGrabLayers = null;

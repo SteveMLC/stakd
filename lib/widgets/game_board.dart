@@ -522,6 +522,8 @@ class _StackWidgetState extends State<_StackWidget>
   late Animation<double> _multiGrabPulseAnimation;
   late AnimationController _multiGrabIndicatorController;
   late Animation<double> _multiGrabIndicatorAnimation;
+  late AnimationController _completionGlowController;
+  late Animation<double> _completionGlowAnimation;
   bool _isLongPressing = false;
 
   @override
@@ -568,6 +570,25 @@ class _StackWidgetState extends State<_StackWidget>
         curve: Curves.easeInOut,
       ),
     );
+
+    // Completion glow pulse (1.0 → 1.5 → 1.0 over 500ms)
+    _completionGlowController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _completionGlowAnimation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: 1.5)
+            .chain(CurveTween(curve: Curves.easeOut)),
+        weight: 50,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.5, end: 1.0)
+            .chain(CurveTween(curve: Curves.easeIn)),
+        weight: 50,
+      ),
+    ]).animate(_completionGlowController);
+
     _syncMultiGrabIndicator();
   }
 
@@ -576,6 +597,10 @@ class _StackWidgetState extends State<_StackWidget>
     super.didUpdateWidget(oldWidget);
     if (widget.isRecentlyCleared && !oldWidget.isRecentlyCleared) {
       _controller.forward().then((_) => _controller.reverse());
+      // Trigger completion glow pulse
+      _completionGlowController.forward(from: 0);
+      // Haptic: medium impact on column completion
+      haptics.mediumImpact();
     }
 
     // Start/stop pulsing based on nearing completion
@@ -629,6 +654,7 @@ class _StackWidgetState extends State<_StackWidget>
     _pulseController.dispose();
     _multiGrabPulseController.dispose();
     _multiGrabIndicatorController.dispose();
+    _completionGlowController.dispose();
     super.dispose();
   }
 
@@ -1154,72 +1180,72 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
       curve: Curves.easeOutQuad,
     );
 
-    // Horizontal scale: squash wide on pickup (1.1), stretch narrow on drop (0.85)
+    // Horizontal scale: squash wide on pickup (1.08), stretch narrow on drop (0.92)
     _scaleXAnimation = TweenSequence<double>([
-      // Pickup: squash wide (1.0 → 1.1)
+      // Pickup: squash wide (1.0 → 1.08)
       TweenSequenceItem(
         tween: Tween<double>(
           begin: 1.0,
-          end: 1.1,
+          end: 1.08,
         ).chain(CurveTween(curve: Curves.easeOut)),
         weight: 15,
       ),
-      // Travel: back to normal (1.1 → 1.0)
+      // Travel: back to normal (1.08 → 1.0)
       TweenSequenceItem(
         tween: Tween<double>(
-          begin: 1.1,
+          begin: 1.08,
           end: 1.0,
         ).chain(CurveTween(curve: Curves.linear)),
         weight: 50,
       ),
-      // Drop: stretch narrow (1.0 → 0.85)
+      // Drop: stretch narrow (1.0 → 0.92)
       TweenSequenceItem(
         tween: Tween<double>(
           begin: 1.0,
-          end: 0.85,
+          end: 0.92,
         ).chain(CurveTween(curve: Curves.easeIn)),
         weight: 15,
       ),
-      // Bounce back: elasticOut (0.85 → 1.0)
+      // Bounce back: elasticOut (0.92 → 1.0)
       TweenSequenceItem(
         tween: Tween<double>(
-          begin: 0.85,
+          begin: 0.92,
           end: 1.0,
         ).chain(CurveTween(curve: Curves.elasticOut)),
         weight: 20,
       ),
     ]).animate(_controller);
 
-    // Vertical scale: squash short on pickup (0.85), stretch tall on drop (1.1)
+    // Vertical scale: squash short on pickup (0.92), stretch tall on drop (1.08)
     _scaleYAnimation = TweenSequence<double>([
-      // Pickup: squash short (1.0 → 0.85)
+      // Pickup: squash short (1.0 → 0.92)
       TweenSequenceItem(
         tween: Tween<double>(
           begin: 1.0,
-          end: 0.85,
+          end: 0.92,
         ).chain(CurveTween(curve: Curves.easeOut)),
         weight: 15,
       ),
-      // Travel: back to normal (0.85 → 1.0)
+      // Travel: back to normal (0.92 → 1.0)
       TweenSequenceItem(
         tween: Tween<double>(
-          begin: 0.85,
+          begin: 0.92,
           end: 1.0,
         ).chain(CurveTween(curve: Curves.linear)),
         weight: 50,
       ),
-      // Drop: stretch tall (1.0 → 1.15)
+      // Drop: stretch tall (1.0 → 1.08)
       TweenSequenceItem(
         tween: Tween<double>(
           begin: 1.0,
-          end: 1.15,
+          end: 1.08,
         ).chain(CurveTween(curve: Curves.easeIn)),
         weight: 15,
       ),
-      // Bounce back: elasticOut (1.15 → 1.0)
+      // Bounce back: elasticOut (1.08 → 1.0)
       TweenSequenceItem(
         tween: Tween<double>(
-          begin: 1.15,
+          begin: 1.08,
           end: 1.0,
         ).chain(CurveTween(curve: Curves.elasticOut)),
         weight: 20,

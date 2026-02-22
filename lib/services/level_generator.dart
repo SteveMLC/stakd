@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:math';
 import '../models/stack_model.dart';
 import '../models/layer_model.dart';
@@ -40,13 +41,8 @@ class LevelGenerator {
     // Use level number as seed for reproducibility
     final levelRandom = Random(levelNumber * 12345 + _seedOffset);
 
-    // Create solved state first
-    List<GameStack> stacks = _createSolvedState(params, levelRandom);
-
-    // Shuffle by making valid moves in reverse
-    stacks = _shuffleLevel(stacks, params.shuffleMoves, levelRandom);
-
-    return stacks;
+    final state = _generateShuffledSolvableState(params, levelRandom);
+    return _buildStacksFromState(state, params.depth);
   }
 
   /// Create a solved puzzle state with special blocks
@@ -372,11 +368,8 @@ class LevelGenerator {
     for (int attempt = 0; attempt < 10; attempt++) {
       final seedMultiplier = attempt == 0 ? 12345 : 12345 + attempt * 67890;
       final altRandom = Random(levelNumber * seedMultiplier + _seedOffset);
-      var level = _createSolvedState(params, altRandom);
-      level = _shuffleLevel(level, params.shuffleMoves, altRandom);
-
-      // Check solvability first
-      if (!isSolvable(level, maxStates: 5000)) continue;
+      final state = _generateShuffledSolvableState(params, altRandom);
+      final level = _buildStacksFromState(state, params.depth);
 
       // Check difficulty score
       final score = difficultyScore(level);
@@ -420,10 +413,13 @@ class LevelGenerator {
 
     for (int attempt = 0; attempt < maxAttempts; attempt++) {
       final random = Random(DateTime.now().millisecondsSinceEpoch + attempt);
-      var level = _createSolvedState(params, random);
-      level = _shuffleLevel(level, params.shuffleMoves, random);
-
-      if (!isSolvable(level, maxStates: maxSolvableStates)) continue;
+      final state = _generateShuffledSolvableState(
+        params,
+        random,
+        maxAttempts: 1,
+        maxSolvableStates: maxSolvableStates,
+      );
+      final level = _buildStacksFromState(state, params.depth);
 
       final score = difficultyScore(level);
       if (score >= params.minDifficultyScore) {
@@ -437,11 +433,7 @@ class LevelGenerator {
     }
 
     // Fallback: generate a shuffled puzzle even if it doesn't meet difficulty threshold
-    if (bestLevel != null) return bestLevel;
-    final fallbackRandom = Random();
-    var fallback = _createSolvedState(params, fallbackRandom);
-    fallback = _shuffleLevel(fallback, params.shuffleMoves, fallbackRandom);
-    return fallback;
+    return bestLevel ?? generateLevel(1);
   }
 
   /// Generate a level with par information
@@ -461,14 +453,13 @@ class LevelGenerator {
     final colors = (baseParams.colors + 1).clamp(3, GameConfig.maxColors);
     final emptySlots = max(1, baseParams.emptySlots - 1);
     final depth = min(GameConfig.maxStackDepth, baseParams.depth);
-    final shuffleMoves = baseParams.shuffleMoves + 12;
 
     final params = LevelParams(
       colors: colors,
       stacks: colors + emptySlots,
       emptySlots: emptySlots,
       depth: depth,
-      shuffleMoves: shuffleMoves,
+      shuffleMoves: baseParams.shuffleMoves + 12,
     );
 
     final minDifficulty = params.minDifficultyScore;
@@ -478,13 +469,10 @@ class LevelGenerator {
 
     for (int attempt = 0; attempt < 10; attempt++) {
       final levelRandom = Random(seed + attempt * 997);
-      var level = _createSolvedState(params, levelRandom);
-      level = _shuffleLevel(level, params.shuffleMoves, levelRandom);
-
-      if (!isSolvable(level, maxStates: 5000)) continue;
+      final state = _generateShuffledSolvableState(params, levelRandom);
+      final level = _buildStacksFromState(state, params.depth);
 
       final score = difficultyScore(level);
-      bestLevel ??= level;
       if (score >= minDifficulty) {
         return level;
       }
@@ -495,10 +483,7 @@ class LevelGenerator {
       }
     }
 
-    final fallbackRandom = Random(seed);
-    var fallback = _createSolvedState(params, fallbackRandom);
-    fallback = _shuffleLevel(fallback, params.shuffleMoves, fallbackRandom);
-    return bestLevel ?? fallback;
+    return bestLevel ?? generateLevel(1);
   }
 
   /// Generate the daily challenge level with par information
@@ -506,6 +491,140 @@ class LevelGenerator {
     final level = generateDailyChallenge(date: date);
     final par = calculatePar(level);
     return (level, par);
+  }
+
+  List<List<int>> _generateShuffledSolvableState(
+    LevelParams params,
+    Random random, {
+    int maxAttempts = 50,
+    int maxSolvableStates = 10000,
+  }) {
+    final blocks = <int>[];
+    for (int color = 0; color < params.colors; color++) {
+      for (int i = 0; i < params.depth; i++) {
+        blocks.add(color);
+      }
+    }
+
+    List<List<int>>? lastCandidate;
+    for (int attempt = 0; attempt < maxAttempts; attempt++) {
+      final shuffled = List<int>.from(blocks);
+      _fisherYatesShuffle(shuffled, random);
+
+      final tubes = <List<int>>[];
+      int index = 0;
+      for (int t = 0; t < params.colors; t++) {
+        final tube = <int>[];
+        for (int i = 0; i < params.depth; i++) {
+          tube.add(shuffled[index++]);
+        }
+        tubes.add(tube);
+      }
+      for (int i = 0; i < params.emptySlots; i++) {
+        tubes.add([]);
+      }
+
+      lastCandidate = tubes;
+      if (_hasSolvedTube(tubes, params.depth)) continue;
+      if (_sameColorAdjacencyRatio(tubes) > 0.6) continue;
+      if (!_isSolvableState(tubes, params.depth, maxSolvableStates)) continue;
+
+      return tubes;
+    }
+
+    return lastCandidate ?? [];
+  }
+
+  void _fisherYatesShuffle(List<int> list, Random random) {
+    for (int i = list.length - 1; i > 0; i--) {
+      final j = random.nextInt(i + 1);
+      final tmp = list[i];
+      list[i] = list[j];
+      list[j] = tmp;
+    }
+  }
+
+  bool _hasSolvedTube(List<List<int>> tubes, int depth) {
+    for (final tube in tubes) {
+      if (tube.length == depth && tube.every((c) => c == tube.first)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  double _sameColorAdjacencyRatio(List<List<int>> tubes) {
+    int same = 0;
+    int total = 0;
+    for (final tube in tubes) {
+      for (int i = 1; i < tube.length; i++) {
+        total++;
+        if (tube[i] == tube[i - 1]) {
+          same++;
+        }
+      }
+    }
+    if (total == 0) return 0.0;
+    return same / total;
+  }
+
+  bool _isSolvedState(List<List<int>> tubes, int depth) {
+    for (final tube in tubes) {
+      if (tube.isEmpty) continue;
+      if (tube.length != depth) return false;
+      if (!tube.every((c) => c == tube.first)) return false;
+    }
+    return true;
+  }
+
+  bool _isSolvableState(List<List<int>> tubes, int depth, int maxStates) {
+    final visited = <String>{};
+    final queue = Queue<List<List<int>>>();
+    queue.add(tubes.map((t) => List<int>.from(t)).toList());
+
+    while (queue.isNotEmpty && visited.length < maxStates) {
+      final current = queue.removeFirst();
+      final key = _serializeState(current);
+      if (visited.contains(key)) continue;
+      visited.add(key);
+
+      if (_isSolvedState(current, depth)) return true;
+
+      for (int from = 0; from < current.length; from++) {
+        if (current[from].isEmpty) continue;
+        final block = current[from].last;
+        for (int to = 0; to < current.length; to++) {
+          if (from == to) continue;
+          if (current[to].length >= depth) continue;
+          if (current[to].isNotEmpty && current[to].last != block) continue;
+
+          final next = current.map((t) => List<int>.from(t)).toList();
+          next[from].removeLast();
+          next[to].add(block);
+          final nextKey = _serializeState(next);
+          if (!visited.contains(nextKey)) {
+            queue.add(next);
+          }
+        }
+      }
+    }
+
+    return false;
+  }
+
+  String _serializeState(List<List<int>> tubes) {
+    return tubes.map((t) => t.join(',')).join('|');
+  }
+
+  List<GameStack> _buildStacksFromState(List<List<int>> state, int maxDepth) {
+    return state
+        .map(
+          (layers) => GameStack(
+            layers: layers.map((i) => Layer(colorIndex: i)).toList(),
+            maxDepth: maxDepth,
+          ),
+        )
+        .toList();
   }
 
   int _dateSeed(DateTime date) {

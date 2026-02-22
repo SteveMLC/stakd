@@ -130,54 +130,54 @@ class JuiceAnimations {
     Animation<double> scaleY,
   }) squashStretchPickupDrop(AnimationController controller) {
     final scaleX = TweenSequence<double>([
-      // Pickup: squash wide (1.0 → 1.1)
+      // Pickup: squash wide (1.0 → 1.08)
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.0, end: 1.1)
+        tween: Tween<double>(begin: 1.0, end: 1.08)
             .chain(CurveTween(curve: Curves.easeOut)),
         weight: 15,
       ),
-      // Travel: back to normal (1.1 → 1.0)
+      // Travel: back to normal (1.08 → 1.0)
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.1, end: 1.0)
+        tween: Tween<double>(begin: 1.08, end: 1.0)
             .chain(CurveTween(curve: Curves.linear)),
         weight: 50,
       ),
-      // Drop: stretch narrow (1.0 → 0.85)
+      // Drop: stretch narrow (1.0 → 0.92)
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.0, end: 0.85)
+        tween: Tween<double>(begin: 1.0, end: 0.92)
             .chain(CurveTween(curve: Curves.easeIn)),
         weight: 15,
       ),
-      // Bounce back: elasticOut (0.85 → 1.0)
+      // Bounce back: elasticOut (0.92 → 1.0)
       TweenSequenceItem(
-        tween: Tween<double>(begin: 0.85, end: 1.0)
+        tween: Tween<double>(begin: 0.92, end: 1.0)
             .chain(CurveTween(curve: Curves.elasticOut)),
         weight: 20,
       ),
     ]).animate(controller);
 
     final scaleY = TweenSequence<double>([
-      // Pickup: squash short (1.0 → 0.85)
+      // Pickup: squash short (1.0 → 0.92)
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.0, end: 0.85)
+        tween: Tween<double>(begin: 1.0, end: 0.92)
             .chain(CurveTween(curve: Curves.easeOut)),
         weight: 15,
       ),
-      // Travel: back to normal (0.85 → 1.0)
+      // Travel: back to normal (0.92 → 1.0)
       TweenSequenceItem(
-        tween: Tween<double>(begin: 0.85, end: 1.0)
+        tween: Tween<double>(begin: 0.92, end: 1.0)
             .chain(CurveTween(curve: Curves.linear)),
         weight: 50,
       ),
-      // Drop: stretch tall (1.0 → 1.15)
+      // Drop: stretch tall (1.0 → 1.08)
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.0, end: 1.15)
+        tween: Tween<double>(begin: 1.0, end: 1.08)
             .chain(CurveTween(curve: Curves.easeIn)),
         weight: 15,
       ),
-      // Bounce back: elasticOut (1.15 → 1.0)
+      // Bounce back: elasticOut (1.08 → 1.0)
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.15, end: 1.0)
+        tween: Tween<double>(begin: 1.08, end: 1.0)
             .chain(CurveTween(curve: Curves.elasticOut)),
         weight: 20,
       ),
