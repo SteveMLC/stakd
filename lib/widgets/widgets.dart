@@ -14,3 +14,4 @@ export 'daily_rewards_popup.dart';
 export 'name_entry_dialog.dart';
 export 'power_up_bar.dart';
 export 'power_up_effects.dart';
+export 'achievement_detail_sheet.dart';

@@ -6,3 +6,4 @@ export 'settings_screen.dart';
 export 'zen_screen.dart';
 export 'leaderboard_screen.dart';
 export 'theme_store_screen.dart';
+export 'achievements_screen.dart';
