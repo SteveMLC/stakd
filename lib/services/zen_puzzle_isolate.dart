@@ -28,6 +28,7 @@ List<List<int>> generateZenPuzzleInIsolate(List<int> args) {
     state = _shuffle(state, depth, shuffleMoves, r);
 
     if (!_isSolvable(state, depth, maxSolvableStates)) continue;
+    if (_isTooEasy(state, depth)) continue;
 
     final score = _difficultyScore(state, depth);
     if (score >= minDifficultyScore) return state;
@@ -38,8 +39,12 @@ List<List<int>> generateZenPuzzleInIsolate(List<int> args) {
     }
   }
 
-  final fallback = _createSolved(colors, emptySlots, depth, seed == 0 ? Random() : Random(seed));
-  return bestLevel ?? fallback;
+  // Fallback: shuffle a solved state rather than returning it solved
+  if (bestLevel != null) return bestLevel;
+  final fallbackR = seed == 0 ? Random() : Random(seed);
+  var fallback = _createSolved(colors, emptySlots, depth, fallbackR);
+  fallback = _shuffle(fallback, depth, shuffleMoves, fallbackR);
+  return fallback;
 }
 
 List<List<int>> _createSolved(int colors, int emptySlots, int depth, Random r) {
@@ -109,6 +114,16 @@ List<List<int>> _shuffle(List<List<int>> state, int depth, int moves, Random ran
   }
 
   return state;
+}
+
+/// Check if puzzle has too many pre-sorted columns (> 1 single-color stack)
+bool _isTooEasy(List<List<int>> state, int depth) {
+  int singleColorStacks = 0;
+  for (final stack in state) {
+    if (stack.length < 2) continue;
+    if (stack.every((c) => c == stack.first)) singleColorStacks++;
+  }
+  return singleColorStacks > 1;
 }
 
 bool _isSolved(List<List<int>> state, int depth) {

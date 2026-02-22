@@ -13,6 +13,8 @@ import '../utils/constants.dart';
 import '../widgets/game_board.dart';
 import '../widgets/loading_text.dart';
 import '../widgets/themes/zen_garden_scene.dart';
+import '../widgets/achievement_toast_overlay.dart';
+import '../services/achievement_service.dart';
 
 /// Zen Mode difficulty levels
 enum ZenDifficulty {
@@ -38,7 +40,7 @@ class ZenModeScreen extends StatefulWidget {
 }
 
 class _ZenModeScreenState extends State<ZenModeScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, AchievementToastMixin {
   final Map<int, GlobalKey> _stackKeys = {};
 
   ZenDifficulty _difficulty = ZenDifficulty.medium;
@@ -116,7 +118,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
         .then((encodedStacks) {
       if (!mounted) return;
       final stacks = decodeStacksFromIsolate(encodedStacks, params.depth);
-      context.read<GameState>().initGame(stacks, 0); // Level 0 = zen mode
+      context.read<GameState>().initZenGame(stacks);
       setState(() {
         _isLoading = false;
         _stackKeys.clear();
@@ -140,6 +142,9 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     final storage = StorageService();
     await storage.addZenPuzzle();
     GardenService.recordPuzzleSolved();
+
+    // Check for achievements
+    await AchievementService().checkStarAchievements();
 
     // Fade out current puzzle
     await _fadeController.animateTo(0.0);

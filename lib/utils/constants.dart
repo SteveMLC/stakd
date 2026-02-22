@@ -122,7 +122,7 @@ class LevelParams {
         depth: 4,
         stacks: 6,
         emptySlots: 2,
-        shuffleMoves: 15 + (level * 3),
+        shuffleMoves: 25 + (level * 3),
         minDifficultyScore: level,
         multiColorProbability: 0.0,
         lockedBlockProbability: 0.0,

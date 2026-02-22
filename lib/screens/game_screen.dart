@@ -22,6 +22,7 @@ import '../widgets/tutorial_overlay.dart';
 import '../widgets/power_up_bar.dart';
 import '../widgets/power_up_effects.dart';
 import '../services/power_up_service.dart';
+import '../widgets/achievement_toast_overlay.dart';
 import 'settings_screen.dart';
 
 /// Main gameplay screen
@@ -34,7 +35,7 @@ class GameScreen extends StatefulWidget {
   State<GameScreen> createState() => _GameScreenState();
 }
 
-class _GameScreenState extends State<GameScreen> {
+class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
   late int _currentLevel;
   final LevelGenerator _levelGenerator = LevelGenerator();
   final TutorialService _tutorialService = TutorialService();

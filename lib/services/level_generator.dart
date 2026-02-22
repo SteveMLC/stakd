@@ -152,16 +152,29 @@ class LevelGenerator {
       movesRemaining--;
     }
 
-    // Verify the result isn't already solved
+    // Verify the result isn't already solved or too easy
     const maxRecursionDepth = 5;
     if (recursionDepth < maxRecursionDepth &&
-        (_isSolved(current) || difficultyScore(current) < 4)) {
+        (_isSolved(current) || _isTooEasy(current) || difficultyScore(current) < 4)) {
       // Do a few more shuffles
       return _shuffleLevel(stacks, moves + 10, random,
           recursionDepth: recursionDepth + 1);
     }
 
     return current;
+  }
+
+  /// Check if a puzzle has too many pre-sorted columns (nearly solved)
+  bool _isTooEasy(List<GameStack> stacks) {
+    int singleColorStacks = 0;
+    for (final stack in stacks) {
+      if (stack.isEmpty) continue;
+      if (stack.layers.length >= 2 &&
+          stack.layers.every((l) => l.colorIndex == stack.layers.first.colorIndex)) {
+        singleColorStacks++;
+      }
+    }
+    return singleColorStacks > 1;
   }
 
   /// Check if a puzzle state is solved
@@ -406,7 +419,12 @@ class LevelGenerator {
       }
     }
 
-    return bestLevel ?? _createSolvedState(params, Random());
+    // Fallback: generate a shuffled puzzle even if it doesn't meet difficulty threshold
+    if (bestLevel != null) return bestLevel;
+    final fallbackRandom = Random();
+    var fallback = _createSolvedState(params, fallbackRandom);
+    fallback = _shuffleLevel(fallback, params.shuffleMoves, fallbackRandom);
+    return fallback;
   }
 
   /// Generate a level with par information
