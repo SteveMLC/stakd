@@ -7,6 +7,7 @@ import '../models/game_state.dart';
 import '../services/level_generator.dart';
 import '../services/zen_puzzle_isolate.dart';
 import '../services/audio_service.dart';
+import '../services/haptic_service.dart';
 import '../services/storage_service.dart';
 import '../services/garden_service.dart';
 import '../utils/constants.dart';
@@ -15,6 +16,7 @@ import '../widgets/hint_overlay.dart';
 import '../widgets/loading_text.dart';
 import '../widgets/themes/zen_garden_scene.dart';
 import '../widgets/achievement_toast_overlay.dart';
+import '../widgets/completion_overlay.dart';
 import '../services/achievement_service.dart';
 
 /// Zen Mode difficulty levels
@@ -48,6 +50,12 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   int _hintSourceIndex = -1;
   int _hintDestIndex = -1;
   int _hintsRemaining = 3;
+
+  bool _showCompletionOverlay = false;
+  Duration _completionDuration = Duration.zero;
+  int _completionMoves = 0;
+  int _completionStars = 0;
+  int _coinsEarned = 0;
 
   ZenDifficulty _difficulty = ZenDifficulty.medium;
   int _puzzlesSolved = 0;
@@ -166,6 +174,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
             _puzzleSeed++;
             _hintsRemaining = 3;
             _showingHint = false;
+            _showCompletionOverlay = false;
           });
         })
         .catchError((e, st) {
@@ -173,7 +182,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
         });
   }
 
-  void _onPuzzleComplete() async {
+  Future<void> _onPuzzleComplete() async {
     if (_isTransitioning) return;
     _isTransitioning = true;
 
@@ -200,6 +209,33 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     await _fadeController.animateTo(1.0);
 
     _isTransitioning = false;
+  }
+
+  void _showCompletion(GameState gameState) {
+    if (_showCompletionOverlay) return;
+    final start = _puzzleStart;
+    final duration = start != null
+        ? DateTime.now().difference(start)
+        : Duration.zero;
+
+    setState(() {
+      _completionDuration = duration;
+      _completionMoves = gameState.moveCount;
+      _completionStars = gameState.calculateStars();
+      _coinsEarned = 0;
+      _showCompletionOverlay = true;
+    });
+
+    AudioService().playWin();
+    HapticService.instance.levelWinPattern();
+  }
+
+  void _advanceAfterCompletion() {
+    if (_isTransitioning) return;
+    setState(() {
+      _showCompletionOverlay = false;
+    });
+    _onPuzzleComplete();
   }
 
   void _setDifficulty(ZenDifficulty difficulty) {
@@ -344,7 +380,8 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                         // Check for puzzle completion
                         if (gameState.isComplete && !_isTransitioning) {
                           WidgetsBinding.instance.addPostFrameCallback((_) {
-                            _onPuzzleComplete();
+                            if (!mounted) return;
+                            _showCompletion(gameState);
                           });
                         }
 
@@ -395,6 +432,19 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                 sourceKey: _stackKeys[_hintSourceIndex]!,
                 destKey: _stackKeys[_hintDestIndex]!,
                 onDismiss: _dismissHint,
+              ),
+            ),
+          if (_showCompletionOverlay)
+            Positioned.fill(
+              child: CompletionOverlay(
+                moves: _completionMoves,
+                time: _completionDuration,
+                par: null,
+                stars: _completionStars,
+                coinsEarned: _coinsEarned,
+                isNewRecord: false,
+                onNextPuzzle: _advanceAfterCompletion,
+                onHome: () => Navigator.of(context).pop(),
               ),
             ),
           if (_isLoading)
