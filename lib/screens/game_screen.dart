@@ -13,6 +13,7 @@ import '../services/achievement_service.dart';
 import '../services/leaderboard_service.dart';
 import '../services/currency_service.dart';
 import '../utils/constants.dart';
+import '../utils/route_transitions.dart';
 import '../widgets/game_board.dart';
 import '../widgets/game_button.dart';
 import '../widgets/completion_overlay.dart';
@@ -380,10 +381,16 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
     Navigator.of(context).pop();
   }
 
+  void _retriggerTutorial() {
+    setState(() {
+      _showTutorial = true;
+      _tutorialInitialized = false;
+    });
+    _initTutorial();
+  }
+
   void _goToSettings() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (context) => const SettingsScreen()));
+    Navigator.of(context).push(fadeSlideRoute(const SettingsScreen()));
   }
 
   void _showHint() {
@@ -1192,6 +1199,13 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
             ],
           ),
           const SizedBox(width: 12),
+
+          // Tutorial help button
+          GameIconButton(
+            icon: Icons.help_outline,
+            onPressed: _retriggerTutorial,
+          ),
+          const SizedBox(width: 8),
 
           // Settings button
           GameIconButton(icon: Icons.settings, onPressed: _goToSettings),
