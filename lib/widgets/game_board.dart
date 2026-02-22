@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../models/game_state.dart';
+import '../models/layer_model.dart';
 import '../models/stack_model.dart';
 import '../services/haptic_service.dart';
 import '../services/storage_service.dart';
@@ -50,12 +51,22 @@ class _GameBoardState extends State<GameBoard>
   bool _showConfetti = false;
   late AnimationController _shakeController;
   late Animation<double> _shakeAnimation;
+  bool _textureSkinsEnabled = false;
+
+  // Drag-and-drop state
+  bool _isDragging = false;
+  int _dragSourceTube = -1;
+  Offset _dragPosition = Offset.zero;
+  List<Layer>? _dragLayers;
+  bool _dragIsMultiGrab = false;
+  int? _dragHoverTube;
 
   @override
   void initState() {
     super.initState();
     // Use provided keys or create new ones
     _stackKeys = widget.stackKeys ?? {};
+    _textureSkinsEnabled = StorageService().getTextureSkinsEnabled();
 
     // Initialize shake animation
     _shakeController = AnimationController(
@@ -347,6 +358,136 @@ class _GameBoardState extends State<GameBoard>
     );
   }
 
+  // ── Drag-and-drop handlers ──
+
+  void _onDragStart(int tubeIndex, Offset globalPosition) {
+    if (widget.gameState.isComplete || widget.gameState.animatingLayer != null) return;
+    final stack = widget.gameState.stacks[tubeIndex];
+    if (stack.isEmpty || !stack.canPickUpTop) return;
+
+    // Grab top group (multi-grab) automatically
+    final topGroup = stack.getTopGroup();
+    final isMulti = topGroup.length > 1;
+
+    setState(() {
+      _isDragging = true;
+      _dragSourceTube = tubeIndex;
+      _dragPosition = globalPosition;
+      _dragLayers = topGroup;
+      _dragIsMultiGrab = isMulti;
+      _dragHoverTube = null;
+    });
+
+    haptics.mediumImpact();
+    if (isMulti) {
+      StorageService().setMultiGrabUsed();
+      StorageService().incrementMultiGrabUsage();
+    }
+  }
+
+  void _onDragUpdate(Offset globalPosition) {
+    if (!_isDragging) return;
+
+    // Determine which tube the finger is over
+    int? hoverTube;
+    final stacks = widget.gameState.stacks;
+    for (int i = 0; i < stacks.length; i++) {
+      if (i == _dragSourceTube) continue;
+      final key = _stackKeys[i];
+      if (key?.currentContext == null) continue;
+      final box = key!.currentContext!.findRenderObject() as RenderBox?;
+      if (box == null) continue;
+      final pos = box.localToGlobal(Offset.zero);
+      final size = box.size;
+      // Expand hit area slightly for easier targeting
+      final rect = Rect.fromLTWH(
+        pos.dx - 8,
+        pos.dy - 8,
+        size.width + 16,
+        size.height + 16,
+      );
+      if (rect.contains(globalPosition)) {
+        hoverTube = i;
+        break;
+      }
+    }
+
+    setState(() {
+      _dragPosition = globalPosition;
+      _dragHoverTube = hoverTube;
+    });
+  }
+
+  void _onDragEnd() {
+    if (!_isDragging) return;
+
+    final targetTube = _dragHoverTube;
+    final sourceTube = _dragSourceTube;
+    final layers = _dragLayers;
+
+    // Clear drag state first
+    setState(() {
+      _isDragging = false;
+      _dragSourceTube = -1;
+      _dragLayers = null;
+      _dragIsMultiGrab = false;
+      _dragHoverTube = null;
+    });
+
+    if (targetTube == null || layers == null) {
+      // Dropped on nothing — cancelled
+      haptics.lightTap();
+      return;
+    }
+
+    // Use existing game state move logic
+    // First select the source, then tap the target
+    final gs = widget.gameState;
+    if (layers.length > 1) {
+      gs.activateMultiGrab(sourceTube);
+    } else {
+      gs.onStackTap(sourceTube); // select source
+    }
+
+    final previousMoveCount = gs.moveCount;
+    final previousCleared = List<int>.from(gs.recentlyCleared);
+
+    gs.onStackTap(targetTube); // attempt move
+
+    final moveMade = gs.moveCount > previousMoveCount;
+    if (moveMade) {
+      widget.onTap?.call();
+      widget.onMove?.call();
+    } else {
+      // Invalid move
+      AudioService().playError();
+      haptics.error();
+      _shakeController.forward(from: 0);
+      // Deselect
+      if (gs.selectedStackIndex >= 0) {
+        gs.onStackTap(gs.selectedStackIndex);
+      }
+    }
+
+    final currentCleared = gs.recentlyCleared;
+    if (currentCleared.isNotEmpty && !listEquals(previousCleared, currentCleared)) {
+      widget.onClear?.call();
+      final chainLevel = gs.currentChainLevel;
+      _triggerChainEffects(currentCleared, chainLevel);
+    }
+  }
+
+  bool _isValidDropTarget(int tubeIndex) {
+    if (_dragLayers == null || _dragSourceTube < 0) return false;
+    if (tubeIndex == _dragSourceTube) return false;
+    final targetStack = widget.gameState.stacks[tubeIndex];
+    if (_dragLayers!.length > 1) {
+      return targetStack.canAcceptMultiple(_dragLayers!);
+    } else {
+      return targetStack.canAccept(_dragLayers!.first);
+    }
+  }
+
   int _getStacksPerRow(int total, double maxWidth) {
     final stackWidth = GameSizes.stackWidth + GameSizes.stackSpacing;
     final maxFit = (maxWidth / stackWidth).floor();
@@ -489,6 +630,13 @@ class _StackWidget extends StatefulWidget {
   final VoidCallback onTap;
   final VoidCallback onMultiGrab;
   final bool isPowerUpHighlighted;
+  final bool textureSkinsEnabled;
+  final void Function(int tubeIndex, Offset globalPosition)? onDragStart;
+  final void Function(Offset globalPosition)? onDragUpdate;
+  final VoidCallback? onDragEnd;
+  final bool isDragSource;
+  final bool isDragValidTarget;
+  final bool isDragInvalidHover;
 
   const _StackWidget({
     super.key,
@@ -501,6 +649,13 @@ class _StackWidget extends StatefulWidget {
     required this.onTap,
     required this.onMultiGrab,
     this.isPowerUpHighlighted = false,
+    this.textureSkinsEnabled = false,
+    this.onDragStart,
+    this.onDragUpdate,
+    this.onDragEnd,
+    this.isDragSource = false,
+    this.isDragValidTarget = false,
+    this.isDragInvalidHover = false,
   });
 
   @override
@@ -509,6 +664,7 @@ class _StackWidget extends StatefulWidget {
 
 class _StackWidgetState extends State<_StackWidget>
     with TickerProviderStateMixin {
+  static const _textureImage = AssetImage('assets/images/textures/cherry_blossom.png');
   late AnimationController _controller;
   late Animation<double> _bounceAnimation;
   late Animation<double> _glowAnimation;
@@ -688,33 +844,42 @@ class _StackWidgetState extends State<_StackWidget>
   void _onLongPressStart(LongPressStartDetails details) {
     if (widget.stack.isEmpty) return;
     _setLongPressing(true);
-    haptics.mediumImpact();
+    // Start drag via parent callback
+    widget.onDragStart?.call(widget.index, details.globalPosition);
+  }
+
+  void _onLongPressMoveUpdate(LongPressMoveUpdateDetails details) {
+    widget.onDragUpdate?.call(details.globalPosition);
   }
 
   void _onLongPress() {
+    // Drag is handled via start/move/end — no-op here if dragging
+    if (widget.onDragStart != null) {
+      _setLongPressing(false);
+      return;
+    }
     if (widget.stack.isEmpty) return;
     final topGroup = widget.stack.getTopGroup();
     if (topGroup.length > 1) {
-      // Multi-grab activated!
       haptics.successPattern();
       widget.onMultiGrab();
       StorageService().setMultiGrabUsed();
       StorageService().incrementMultiGrabUsage();
     } else {
-      // Only one layer, treat as normal tap
       widget.onTap();
     }
     _setLongPressing(false);
   }
 
   void _onLongPressEnd(LongPressEndDetails details) {
-    // Long press completed
     _setLongPressing(false);
+    widget.onDragEnd?.call();
   }
 
   void _onLongPressCancel() {
-    // Long press cancelled
     _setLongPressing(false);
+    // Cancel drag too
+    widget.onDragEnd?.call();
   }
 
   @override
@@ -786,6 +951,7 @@ class _StackWidgetState extends State<_StackWidget>
                 },
                 onLongPressStart: _onLongPressStart,
                 onLongPress: _onLongPress,
+                onLongPressMoveUpdate: _onLongPressMoveUpdate,
                 onLongPressEnd: _onLongPressEnd,
                 onLongPressCancel: _onLongPressCancel,
                 child: SizedBox(
@@ -949,8 +1115,7 @@ class _StackWidgetState extends State<_StackWidget>
         ? _multiGrabPulseAnimation.value
         : 0.0;
 
-    // Check if texture skins are enabled
-    final textureSkinsEnabled = StorageService().getTextureSkinsEnabled();
+    final textureSkinsEnabled = widget.textureSkinsEnabled;
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
@@ -973,9 +1138,7 @@ class _StackWidgetState extends State<_StackWidget>
           // Texture skin overlay when enabled
           image: textureSkinsEnabled
               ? const DecorationImage(
-                  image: AssetImage(
-                    'assets/images/textures/cherry_blossom.png',
-                  ),
+                  image: _textureImage,
                   fit: BoxFit.cover,
                   opacity: 0.3,
                 )

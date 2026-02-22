@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/game_state.dart';
+import '../models/stack_model.dart';
 import '../services/level_generator.dart';
 import '../services/zen_puzzle_isolate.dart';
 import '../services/audio_service.dart';
@@ -68,6 +69,10 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   bool _isLoading = false;
   bool _showGardenView = false;
   int _puzzleSeed = 0;
+
+  // Pre-generated next puzzle (generated during completion celebration)
+  List<GameStack>? _preGeneratedStacks;
+  bool _isPreGenerating = false;
 
   // Fade animation for puzzle transitions
   late AnimationController _fadeController;
@@ -181,32 +186,63 @@ class _ZenModeScreenState extends State<ZenModeScreen>
         });
   }
 
-  Future<void> _onPuzzleComplete() async {
-    if (_isTransitioning) return;
-    _isTransitioning = true;
+  void _preGenerateNextPuzzle() {
+    if (_isPreGenerating) return;
+    _isPreGenerating = true;
+    // Use puzzlesSolved + 1 since we'll increment on advance
+    final nextPuzzleNumber = _puzzlesSolved + 1;
+    final savedDifficulty = _difficulty;
+    final savedSeed = _puzzleSeed;
 
-    setState(() {
-      _puzzlesSolved++;
-    });
+    // Calculate params for the NEXT puzzle
+    final params = _getAdaptiveDifficultyFor(nextPuzzleNumber, savedDifficulty);
+    final encoded = encodeParamsForIsolate(params, seed: savedSeed);
+    compute<List<int>, List<List<int>>>(generateZenPuzzleInIsolate, encoded)
+        .then((encodedStacks) {
+          if (!mounted) return;
+          final stacks = decodeStacksFromIsolate(encodedStacks, params.depth);
+          _preGeneratedStacks = stacks;
+          _isPreGenerating = false;
+        })
+        .catchError((e, st) {
+          _isPreGenerating = false;
+        });
+  }
 
-    // Save progress
-    final storage = StorageService();
-    await storage.addZenPuzzle();
-    GardenService.recordPuzzleSolved();
+  /// Get adaptive difficulty for a specific puzzle number and difficulty level
+  LevelParams _getAdaptiveDifficultyFor(int puzzleNumber, ZenDifficulty difficulty) {
+    switch (difficulty) {
+      case ZenDifficulty.easy:
+        if (puzzleNumber <= 2)
+          return const LevelParams(colors: 2, depth: 3, stacks: 4, emptySlots: 2, shuffleMoves: 25);
+        else if (puzzleNumber <= 5)
+          return const LevelParams(colors: 3, depth: 3, stacks: 5, emptySlots: 2, shuffleMoves: 35);
+        else if (puzzleNumber <= 8)
+          return const LevelParams(colors: 3, depth: 4, stacks: 5, emptySlots: 2, shuffleMoves: 40);
+        else
+          return ZenParams.easy;
 
-    // Check for achievements
-    await AchievementService().checkStarAchievements();
+      case ZenDifficulty.medium:
+        if (puzzleNumber <= 2)
+          return const LevelParams(colors: 3, depth: 3, stacks: 5, emptySlots: 2, shuffleMoves: 30);
+        else if (puzzleNumber <= 4)
+          return const LevelParams(colors: 3, depth: 4, stacks: 5, emptySlots: 2, shuffleMoves: 40);
+        else if (puzzleNumber <= 7)
+          return const LevelParams(colors: 4, depth: 4, stacks: 6, emptySlots: 2, shuffleMoves: 45);
+        else
+          return ZenParams.medium;
 
-    // Fade out current puzzle
-    await _fadeController.animateTo(0.0);
+      case ZenDifficulty.hard:
+        if (puzzleNumber <= 2)
+          return const LevelParams(colors: 3, depth: 4, stacks: 5, emptySlots: 2, shuffleMoves: 40);
+        else if (puzzleNumber <= 5)
+          return const LevelParams(colors: 4, depth: 4, stacks: 6, emptySlots: 2, shuffleMoves: 50);
+        else
+          return ZenParams.hard;
 
-    // Load new puzzle
-    _loadNewPuzzle();
-
-    // Fade in new puzzle
-    await _fadeController.animateTo(1.0);
-
-    _isTransitioning = false;
+      case ZenDifficulty.ultra:
+        return ZenParams.ultra;
+    }
   }
 
   void _showCompletion(GameState gameState) {
@@ -226,14 +262,52 @@ class _ZenModeScreenState extends State<ZenModeScreen>
 
     AudioService().playWin();
     HapticService.instance.levelWinPattern();
+
+    // Pre-generate the next puzzle while the player celebrates
+    _preGenerateNextPuzzle();
   }
 
   void _advanceAfterCompletion() {
     if (_isTransitioning) return;
+    _isTransitioning = true;
+
     setState(() {
+      _puzzlesSolved++;
       _showCompletionOverlay = false;
     });
-    _onPuzzleComplete();
+
+    // Save progress
+    StorageService().addZenPuzzle();
+    GardenService.recordPuzzleSolved();
+    AchievementService().checkStarAchievements();
+
+    if (_preGeneratedStacks != null) {
+      // Use the pre-generated puzzle — no loading screen!
+      _fadeController.animateTo(0.0).then((_) {
+        if (!mounted) return;
+        context.read<GameState>().initZenGame(_preGeneratedStacks!);
+        setState(() {
+          _stackKeys.clear();
+          _puzzleSeed++;
+          _hintsRemaining = 3;
+          _showingHint = false;
+          _preGeneratedStacks = null;
+        });
+        _puzzleStart = DateTime.now();
+        _fadeController.animateTo(1.0).then((_) {
+          _isTransitioning = false;
+        });
+      });
+    } else {
+      // Fallback: pre-generation not ready yet, load normally
+      _fadeController.animateTo(0.0).then((_) {
+        if (!mounted) return;
+        _loadNewPuzzle();
+        _fadeController.animateTo(1.0).then((_) {
+          _isTransitioning = false;
+        });
+      });
+    }
   }
 
   void _setDifficulty(ZenDifficulty difficulty) {
@@ -259,39 +333,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   }
 
   LevelParams _getAdaptiveDifficulty() {
-    final puzzleNumber = _puzzlesSolved;
-
-    switch (_difficulty) {
-      case ZenDifficulty.easy:
-        if (puzzleNumber <= 3) {
-          return const LevelParams(colors: 3, depth: 3, stacks: 5, emptySlots: 2, shuffleMoves: 35);
-        } else if (puzzleNumber <= 6) {
-          return const LevelParams(colors: 3, depth: 4, stacks: 5, emptySlots: 2, shuffleMoves: 40);
-        } else if (puzzleNumber <= 10) {
-          return const LevelParams(colors: 4, depth: 4, stacks: 6, emptySlots: 2, shuffleMoves: 45);
-        } else {
-          return ZenParams.easy;
-        }
-
-      case ZenDifficulty.medium:
-        if (puzzleNumber <= 3) {
-          return const LevelParams(colors: 4, depth: 4, stacks: 6, emptySlots: 2, shuffleMoves: 40);
-        } else if (puzzleNumber <= 6) {
-          return const LevelParams(colors: 4, depth: 5, stacks: 6, emptySlots: 2, shuffleMoves: 50);
-        } else {
-          return ZenParams.medium;
-        }
-
-      case ZenDifficulty.hard:
-        if (puzzleNumber <= 3) {
-          return const LevelParams(colors: 5, depth: 4, stacks: 7, emptySlots: 2, shuffleMoves: 50);
-        } else {
-          return ZenParams.hard;
-        }
-
-      case ZenDifficulty.ultra:
-        return ZenParams.ultra;
-    }
+    return _getAdaptiveDifficultyFor(_puzzlesSolved, _difficulty);
   }
 
   @override
