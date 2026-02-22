@@ -122,25 +122,12 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
     if (!_tutorialInitialized && _showTutorial) {
       _tutorialInitialized = true;
 
-      // Wait for first frame to get stack keys
+      // Wait for first frame so stack keys are ready
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        // Find first non-empty stack
+        if (!mounted) return;
         final gameState = context.read<GameState>();
-        int? firstNonEmptyStack;
-        for (int i = 0; i < gameState.stacks.length; i++) {
-          if (gameState.stacks[i].layers.isNotEmpty) {
-            firstNonEmptyStack = i;
-            break;
-          }
-        }
-
-        if (firstNonEmptyStack != null && mounted) {
-          _tutorialService.setTarget(
-            firstNonEmptyStack,
-            _stackKeys[firstNonEmptyStack],
-          );
-          _tutorialService.start();
-        }
+        _tutorialService.start();
+        _updateTutorialTargets(gameState);
       });
     }
   }
