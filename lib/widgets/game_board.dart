@@ -87,6 +87,12 @@ class _GameBoardState extends State<GameBoard>
   }
 
   @override
+  void didUpdateWidget(covariant GameBoard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _textureSkinsEnabled = StorageService().getTextureSkinsEnabled();
+  }
+
+  @override
   void dispose() {
     _shakeController.dispose();
     super.dispose();
@@ -265,6 +271,13 @@ class _GameBoardState extends State<GameBoard>
                                         actualIndex,
                                       ) ??
                                       false,
+                                  textureSkinsEnabled: _textureSkinsEnabled,
+                                  onDragStart: _onDragStart,
+                                  onDragUpdate: _onDragUpdate,
+                                  onDragEnd: _onDragEnd,
+                                  isDragSource: _isDragging && _dragSourceTube == actualIndex,
+                                  isDragValidTarget: _isDragging && _dragSourceTube != actualIndex && _isValidDropTarget(actualIndex),
+                                  isDragInvalidHover: _isDragging && _dragHoverTube == actualIndex && !_isValidDropTarget(actualIndex),
                                 ),
                               );
                             }),
@@ -287,6 +300,11 @@ class _GameBoardState extends State<GameBoard>
                                 .animatingLayer!
                                 .toStackIndex]!,
                         onComplete: () {
+                          // Trigger landing particle burst
+                          final destIndex = widget.gameState.animatingLayer!.toStackIndex;
+                          final layer = widget.gameState.animatingLayer!.layer;
+                          _triggerLandingBurst(destIndex, layer.colorIndex);
+
                           widget.gameState.completeMove();
                           widget.onMove?.call();
                           // Show combo popup for consecutive correct moves (3+)
@@ -347,6 +365,13 @@ class _GameBoardState extends State<GameBoard>
                           confettiCount: 60,
                           duration: const Duration(seconds: 2),
                         ),
+                      ),
+                    // Drag-and-drop overlay
+                    if (_isDragging && _dragLayers != null)
+                      _DragOverlay(
+                        layers: _dragLayers!,
+                        globalPosition: _dragPosition,
+                        boardContext: context,
                       ),
                   ],
                 );
@@ -932,7 +957,7 @@ class _StackWidgetState extends State<_StackWidget>
           // Enhanced lift effect for multi-grab
           final liftOffset = isMultiGrabActive
               ? -12.0 - (multiGrabPulse * 4)
-              : (widget.isSelected ? -8.0 : _bounceAnimation.value);
+              : (widget.isSelected ? -25.0 : _bounceAnimation.value);
 
           final scale = isMultiGrabActive
               ? 1.04 + (multiGrabPulse * 0.01)
@@ -1375,18 +1400,18 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
         ).chain(CurveTween(curve: Curves.linear)),
         weight: 50,
       ),
-      // Drop: stretch narrow (1.0 → 0.92)
+      // Drop: stretch narrow (1.0 → 0.85)
       TweenSequenceItem(
         tween: Tween<double>(
           begin: 1.0,
-          end: 0.92,
+          end: 0.85,
         ).chain(CurveTween(curve: Curves.easeIn)),
         weight: 15,
       ),
-      // Bounce back: elasticOut (0.92 → 1.0)
+      // Bounce back: elasticOut (0.85 → 1.0)
       TweenSequenceItem(
         tween: Tween<double>(
-          begin: 0.92,
+          begin: 0.85,
           end: 1.0,
         ).chain(CurveTween(curve: Curves.elasticOut)),
         weight: 20,
@@ -1411,18 +1436,18 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
         ).chain(CurveTween(curve: Curves.linear)),
         weight: 50,
       ),
-      // Drop: stretch tall (1.0 → 1.08)
+      // Drop: stretch tall (1.0 → 1.15)
       TweenSequenceItem(
         tween: Tween<double>(
           begin: 1.0,
-          end: 1.08,
+          end: 1.15,
         ).chain(CurveTween(curve: Curves.easeIn)),
         weight: 15,
       ),
-      // Bounce back: elasticOut (1.08 → 1.0)
+      // Bounce back: elasticOut (1.15 → 1.0)
       TweenSequenceItem(
         tween: Tween<double>(
-          begin: 1.08,
+          begin: 1.15,
           end: 1.0,
         ).chain(CurveTween(curve: Curves.elasticOut)),
         weight: 20,

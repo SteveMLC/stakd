@@ -65,6 +65,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final storage = StorageService();
     final nextValue = !_textureSkinsEnabled;
 
+    if (nextValue) {
+      // Pre-cache texture image before enabling to avoid freeze
+      await precacheImage(
+        const AssetImage('assets/images/textures/cherry_blossom.png'),
+        context,
+      );
+    }
+
     setState(() => _textureSkinsEnabled = nextValue);
     await storage.setTextureSkinsEnabled(nextValue);
 
