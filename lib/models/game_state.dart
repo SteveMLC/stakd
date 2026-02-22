@@ -604,8 +604,9 @@ class GameState extends ChangeNotifier {
   bool unstackFrom(int stackIndex, int count) {
     if (_animatingLayer != null) return false;
     if (stackIndex < 0 || stackIndex >= _stacks.length) return false;
-    if (hasUnstakedLayers)
+    if (hasUnstakedLayers) {
       return false; // Can only have one unstack operation at a time
+    }
 
     final stack = _stacks[stackIndex];
     if (stack.isEmpty || count > stack.layers.length) return false;
@@ -829,8 +830,9 @@ class GameState extends ChangeNotifier {
 
     for (int stackIdx = 0; stackIdx < _stacks.length; stackIdx++) {
       final stack = _stacks[stackIdx];
-      if (stack.isEmpty || stack.isComplete || stack.layers.length < 2)
+      if (stack.isEmpty || stack.isComplete || stack.layers.length < 2) {
         continue;
+      }
 
       // Count colors in this stack
       final colorCounts = <int, int>{};
