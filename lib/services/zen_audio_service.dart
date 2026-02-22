@@ -2,7 +2,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 
 /// Layered ambient audio service for Zen Garden
-/// 
+///
 /// Manages multiple audio layers that can play simultaneously:
 /// - Wind ambient (base layer, always on)
 /// - Birds (day mode)
@@ -29,10 +29,10 @@ class ZenAudioService {
   double _masterVolume = 0.7;
 
   // Individual layer volumes
-  double _windVolume = 0.5;
-  double _birdsVolume = 0.4;
-  double _cricketsVolume = 0.35;
-  double _waterVolume = 0.3;
+  final double _windVolume = 0.5;
+  final double _birdsVolume = 0.4;
+  final double _cricketsVolume = 0.35;
+  final double _waterVolume = 0.3;
 
   /// Initialize the audio service
   Future<void> init() async {
@@ -48,7 +48,9 @@ class ZenAudioService {
       // Pre-load ambient sources
       await _windPlayer.setSource(AssetSource('sounds/zen/wind_ambient.mp3'));
       await _birdsPlayer.setSource(AssetSource('sounds/zen/birds_ambient.mp3'));
-      await _cricketsPlayer.setSource(AssetSource('sounds/zen/crickets_night.mp3'));
+      await _cricketsPlayer.setSource(
+        AssetSource('sounds/zen/crickets_night.mp3'),
+      );
       await _waterPlayer.setSource(AssetSource('sounds/zen/water_stream.mp3'));
 
       _initialized = true;
@@ -59,7 +61,10 @@ class ZenAudioService {
   }
 
   /// Start the ambient soundscape
-  Future<void> startAmbience({bool isNight = false, bool hasWater = false}) async {
+  Future<void> startAmbience({
+    bool isNight = false,
+    bool hasWater = false,
+  }) async {
     if (!_initialized) await init();
 
     _isNightMode = isNight;
@@ -110,24 +115,34 @@ class ZenAudioService {
       // Fade out birds, fade in crickets
       await _cricketsPlayer.setVolume(0);
       await _cricketsPlayer.resume();
-      
+
       for (int i = 0; i <= steps; i++) {
         final progress = i / steps;
-        await _birdsPlayer.setVolume(_birdsVolume * _masterVolume * (1 - progress));
-        await _cricketsPlayer.setVolume(_cricketsVolume * _masterVolume * progress);
-        await Future.delayed(Duration(milliseconds: stepDuration.inMilliseconds));
+        await _birdsPlayer.setVolume(
+          _birdsVolume * _masterVolume * (1 - progress),
+        );
+        await _cricketsPlayer.setVolume(
+          _cricketsVolume * _masterVolume * progress,
+        );
+        await Future.delayed(
+          Duration(milliseconds: stepDuration.inMilliseconds),
+        );
       }
       await _birdsPlayer.pause();
     } else {
       // Fade out crickets, fade in birds
       await _birdsPlayer.setVolume(0);
       await _birdsPlayer.resume();
-      
+
       for (int i = 0; i <= steps; i++) {
         final progress = i / steps;
-        await _cricketsPlayer.setVolume(_cricketsVolume * _masterVolume * (1 - progress));
+        await _cricketsPlayer.setVolume(
+          _cricketsVolume * _masterVolume * (1 - progress),
+        );
         await _birdsPlayer.setVolume(_birdsVolume * _masterVolume * progress);
-        await Future.delayed(Duration(milliseconds: stepDuration.inMilliseconds));
+        await Future.delayed(
+          Duration(milliseconds: stepDuration.inMilliseconds),
+        );
       }
       await _cricketsPlayer.pause();
     }
@@ -191,7 +206,7 @@ class ZenAudioService {
   /// Set master volume (0.0 - 1.0)
   Future<void> setMasterVolume(double volume) async {
     _masterVolume = volume.clamp(0.0, 1.0);
-    
+
     // Update all playing layers
     await _windPlayer.setVolume(_windVolume * _masterVolume);
     if (!_isNightMode) {

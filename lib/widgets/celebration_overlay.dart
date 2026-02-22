@@ -58,9 +58,9 @@ class _CelebrationOverlayState extends State<CelebrationOverlay>
       child: Stack(
         children: [
           // Confetti behind everything
-          const Positioned.fill(
+          Positioned.fill(
             child: ConfettiOverlay(
-              duration: Duration(seconds: 3),
+              duration: const Duration(seconds: 3),
               colors: GameColors.palette,
               confettiCount: 50,
             ),

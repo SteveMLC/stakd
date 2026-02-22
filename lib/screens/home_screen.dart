@@ -5,7 +5,6 @@ import '../services/storage_service.dart';
 import '../services/daily_challenge_service.dart';
 import '../services/daily_rewards_service.dart';
 import '../services/currency_service.dart';
-import '../services/leaderboard_service.dart';
 import '../widgets/game_button.dart';
 import '../widgets/daily_streak_badge.dart';
 import '../widgets/daily_rewards_popup.dart';
@@ -80,17 +79,17 @@ class _HomeScreenState extends State<HomeScreen>
     final currencyService = CurrencyService();
     await rewardsService.init();
     await currencyService.init();
-    
+
     final canClaim = await rewardsService.canClaimToday();
     final coins = await currencyService.getCoins();
-    
+
     if (!mounted) return;
-    
+
     setState(() {
       _hasUnclaimedReward = canClaim;
       _coinBalance = coins;
     });
-    
+
     // Show popup automatically if reward is available
     if (canClaim) {
       // Small delay to let the screen build first
@@ -270,7 +269,7 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
           ),
-          
+
           // Daily rewards button
           GestureDetector(
             onTap: _openDailyRewards,
@@ -283,7 +282,7 @@ class _HomeScreenState extends State<HomeScreen>
                     color: GameColors.surface.withValues(alpha: 0.7),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: _hasUnclaimedReward 
+                      color: _hasUnclaimedReward
                           ? GameColors.accent.withValues(alpha: 0.5)
                           : GameColors.textMuted.withValues(alpha: 0.2),
                     ),
@@ -299,8 +298,8 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                   child: Icon(
                     Icons.card_giftcard,
-                    color: _hasUnclaimedReward 
-                        ? GameColors.accent 
+                    color: _hasUnclaimedReward
+                        ? GameColors.accent
                         : GameColors.textMuted,
                     size: 24,
                   ),
@@ -387,10 +386,7 @@ class _HomeScreenState extends State<HomeScreen>
                   decoration: BoxDecoration(
                     color: GameColors.errorGlow,
                     shape: BoxShape.circle,
-                    border: Border.all(
-                      color: GameColors.background,
-                      width: 2,
-                    ),
+                    border: Border.all(color: GameColors.background, width: 2),
                   ),
                 ),
               ),
@@ -514,9 +510,7 @@ class _HomeScreenState extends State<HomeScreen>
   void _startZen(String difficulty) {
     Navigator.of(context).pop();
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ZenScreen(difficulty: difficulty),
-      ),
+      MaterialPageRoute(builder: (_) => ZenScreen(difficulty: difficulty)),
     );
   }
 
@@ -541,9 +535,7 @@ class _HomeScreenState extends State<HomeScreen>
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
             color: GameColors.surface,
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(24),
-            ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -697,13 +689,6 @@ class _HomeScreenState extends State<HomeScreen>
           ),
       ],
     );
-  }
-
-  String _formatDateKey(DateTime date) {
-    final year = date.year.toString().padLeft(4, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    final day = date.day.toString().padLeft(2, '0');
-    return '$year$month$day';
   }
 }
 

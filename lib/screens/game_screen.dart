@@ -89,9 +89,7 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
       _iapService = context.read<IapService>();
       _iapService!.addListener(_onIapChanged);
     }
-    if (_powerUpService == null) {
-      _powerUpService = context.read<PowerUpService>();
-    }
+    _powerUpService ??= context.read<PowerUpService>();
   }
 
   @override
@@ -106,9 +104,9 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
     final message = iap.errorMessage;
     if (message != null && mounted) {
       iap.clearError();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
@@ -229,19 +227,19 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
     if (startTime == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted || _completionDuration != null) return;
-      
+
       // Calculate stars
       final stars = gameState.calculateStars();
       final storage = StorageService();
       final isNewRecord = await storage.setLevelStars(_currentLevel, stars);
-      
+
       // Check for star-based achievements
       await AchievementService().checkStarAchievements();
 
       // Award coins based on stars earned (10 coins per star)
       final coinsEarned = stars * 10;
       await CurrencyService().addCoins(coinsEarned);
-      
+
       setState(() {
         _completionDuration = DateTime.now().difference(startTime);
         _earnedStars = stars;
@@ -344,7 +342,7 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
     final storage = StorageService();
     storage.updateMaxChain(chainLevel);
     storage.incrementTotalChains();
-    
+
     // Check and unlock chain achievements
     final gameState = context.read<GameState>();
     AchievementService().checkChainAchievements(
@@ -383,9 +381,9 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
   }
 
   void _goToSettings() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => const SettingsScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => const SettingsScreen()));
   }
 
   void _showHint() {
@@ -422,9 +420,9 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
 
   void _showHintPurchaseDialog(IapService iap) {
     if (!iap.isAvailable) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Store unavailable.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Store unavailable.')));
       return;
     }
 
@@ -474,8 +472,9 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
     if (!storage.getMultiGrabHintsEnabled()) return;
     if (storage.hasSeenMultiGrabHint() || storage.hasUsedMultiGrab()) return;
 
-    final hasOpportunity =
-        gameState.stacks.any((stack) => stack.topGroupSize >= 2);
+    final hasOpportunity = gameState.stacks.any(
+      (stack) => stack.topGroupSize >= 2,
+    );
     if (!hasOpportunity) return;
 
     _multiGrabHintScheduled = true;
@@ -497,7 +496,8 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
 
   void _onColorBombPressed() {
     final powerUpService = _powerUpService;
-    if (powerUpService == null || !powerUpService.isAvailable(PowerUpType.colorBomb)) {
+    if (powerUpService == null ||
+        !powerUpService.isAvailable(PowerUpType.colorBomb)) {
       _showPowerUpPurchaseDialog();
       return;
     }
@@ -513,9 +513,9 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
   void _onColorBombColorSelected(int colorIndex) async {
     final powerUpService = _powerUpService;
     final gameState = context.read<GameState>();
-    
+
     if (powerUpService == null) return;
-    
+
     // Consume the power-up
     final success = await powerUpService.usePowerUp(PowerUpType.colorBomb);
     if (!success) return;
@@ -526,20 +526,26 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
       final stack = gameState.stacks[stackIdx];
       final stackKey = _stackKeys[stackIdx];
       if (stackKey?.currentContext == null) continue;
-      
-      final renderBox = stackKey!.currentContext!.findRenderObject() as RenderBox?;
+
+      final renderBox =
+          stackKey!.currentContext!.findRenderObject() as RenderBox?;
       if (renderBox == null) continue;
-      
+
       final stackPos = renderBox.localToGlobal(Offset.zero);
-      
+
       for (int layerIdx = 0; layerIdx < stack.layers.length; layerIdx++) {
         final layer = stack.layers[layerIdx];
         if (layer.colorIndex == colorIndex && !layer.isLocked) {
-          final layerY = stackPos.dy + (stack.layers.length - 1 - layerIdx) * (GameSizes.layerHeight + GameSizes.layerMargin);
-          positions.add(Offset(
-            stackPos.dx + GameSizes.stackWidth / 2,
-            layerY + GameSizes.layerHeight / 2,
-          ));
+          final layerY =
+              stackPos.dy +
+              (stack.layers.length - 1 - layerIdx) *
+                  (GameSizes.layerHeight + GameSizes.layerMargin);
+          positions.add(
+            Offset(
+              stackPos.dx + GameSizes.stackWidth / 2,
+              layerY + GameSizes.layerHeight / 2,
+            ),
+          );
         }
       }
     }
@@ -575,8 +581,9 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
   void _onShufflePressed() async {
     final powerUpService = _powerUpService;
     final gameState = context.read<GameState>();
-    
-    if (powerUpService == null || !powerUpService.isAvailable(PowerUpType.shuffle)) {
+
+    if (powerUpService == null ||
+        !powerUpService.isAvailable(PowerUpType.shuffle)) {
       _showPowerUpPurchaseDialog();
       return;
     }
@@ -588,24 +595,30 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
     // Collect current block positions and colors for animation
     final positions = <Offset>[];
     final colors = <Color>[];
-    
+
     for (int stackIdx = 0; stackIdx < gameState.stacks.length; stackIdx++) {
       final stack = gameState.stacks[stackIdx];
       final stackKey = _stackKeys[stackIdx];
       if (stackKey?.currentContext == null) continue;
-      
-      final renderBox = stackKey!.currentContext!.findRenderObject() as RenderBox?;
+
+      final renderBox =
+          stackKey!.currentContext!.findRenderObject() as RenderBox?;
       if (renderBox == null) continue;
-      
+
       final stackPos = renderBox.localToGlobal(Offset.zero);
-      
+
       for (int layerIdx = 0; layerIdx < stack.layers.length; layerIdx++) {
         final layer = stack.layers[layerIdx];
-        final layerY = stackPos.dy + (stack.layers.length - 1 - layerIdx) * (GameSizes.layerHeight + GameSizes.layerMargin);
-        positions.add(Offset(
-          stackPos.dx + GameSizes.stackWidth / 2,
-          layerY + GameSizes.layerHeight / 2,
-        ));
+        final layerY =
+            stackPos.dy +
+            (stack.layers.length - 1 - layerIdx) *
+                (GameSizes.layerHeight + GameSizes.layerMargin);
+        positions.add(
+          Offset(
+            stackPos.dx + GameSizes.stackWidth / 2,
+            layerY + GameSizes.layerHeight / 2,
+          ),
+        );
         colors.add(layer.color);
       }
     }
@@ -623,21 +636,22 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
   void _onShuffleEffectComplete() {
     final gameState = context.read<GameState>();
     gameState.activateShuffle();
-    
+
     setState(() {
       _showShuffleEffect = false;
       _shuffleBlockPositions = [];
       _shuffleBlockColors = [];
     });
-    
+
     AudioService().playClear();
   }
 
   void _onMagnetPressed() {
     final powerUpService = _powerUpService;
     final gameState = context.read<GameState>();
-    
-    if (powerUpService == null || !powerUpService.isAvailable(PowerUpType.magnet)) {
+
+    if (powerUpService == null ||
+        !powerUpService.isAvailable(PowerUpType.magnet)) {
       _showPowerUpPurchaseDialog();
       return;
     }
@@ -646,7 +660,11 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
     final eligible = gameState.findMagnetEligibleStacks();
     if (eligible.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No stacks eligible for Magnet. Need stacks with only 1 mismatched block.')),
+        const SnackBar(
+          content: Text(
+            'No stacks eligible for Magnet. Need stacks with only 1 mismatched block.',
+          ),
+        ),
       );
       return;
     }
@@ -662,7 +680,7 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
   void _onMagnetStackSelected(int stackIndex) async {
     final powerUpService = _powerUpService;
     final gameState = context.read<GameState>();
-    
+
     if (powerUpService == null) return;
     if (!_magnetEligibleStacks.contains(stackIndex)) return;
 
@@ -673,9 +691,10 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
     // Get source position for animation
     final stackKey = _stackKeys[stackIndex];
     Offset? sourcePos;
-    
+
     if (stackKey?.currentContext != null) {
-      final renderBox = stackKey!.currentContext!.findRenderObject() as RenderBox?;
+      final renderBox =
+          stackKey!.currentContext!.findRenderObject() as RenderBox?;
       if (renderBox != null) {
         final stackPos = renderBox.localToGlobal(Offset.zero);
         sourcePos = Offset(
@@ -687,14 +706,17 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
 
     // Apply the magnet (get removed layer info)
     final result = gameState.activateMagnet(stackIndex);
-    
+
     if (result != null && sourcePos != null) {
       setState(() {
         _magnetSelectionMode = false;
         _magnetEligibleStacks = [];
         _showMagnetEffect = true;
         _magnetSourcePos = sourcePos;
-        _magnetTargetPos = Offset(sourcePos!.dx, sourcePos.dy - 150); // Fly away
+        _magnetTargetPos = Offset(
+          sourcePos!.dx,
+          sourcePos.dy - 150,
+        ); // Fly away
         _magnetBlockColor = result.$2.color;
       });
       AudioService().playClear();
@@ -725,7 +747,8 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
 
   void _onEnhancedHintPressed() {
     final powerUpService = _powerUpService;
-    if (powerUpService == null || !powerUpService.isAvailable(PowerUpType.hint)) {
+    if (powerUpService == null ||
+        !powerUpService.isAvailable(PowerUpType.hint)) {
       _showPowerUpPurchaseDialog();
       return;
     }
@@ -754,9 +777,9 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
   void _showPowerUpPurchaseDialog() {
     final iap = context.read<IapService>();
     if (!iap.isAvailable) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Store unavailable.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Store unavailable.')));
       return;
     }
 
@@ -765,56 +788,87 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
       builder: (context) {
         return AlertDialog(
           backgroundColor: GameColors.surface,
-          title: const Text('Get More Power-Ups', style: TextStyle(color: GameColors.text)),
+          title: const Text(
+            'Get More Power-Ups',
+            style: TextStyle(color: GameColors.text),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildPackOption('5 Power-Ups', iap.powerUpPack5Price ?? '\$0.99', () {
-                Navigator.of(context).pop();
-                iap.buyPowerUpPack5();
-              }),
+              _buildPackOption(
+                '5 Power-Ups',
+                iap.powerUpPack5Price ?? '\$0.99',
+                () {
+                  Navigator.of(context).pop();
+                  iap.buyPowerUpPack5();
+                },
+              ),
               const SizedBox(height: 8),
-              _buildPackOption('20 Power-Ups', iap.powerUpPack20Price ?? '\$2.99', () {
-                Navigator.of(context).pop();
-                iap.buyPowerUpPack20();
-              }),
+              _buildPackOption(
+                '20 Power-Ups',
+                iap.powerUpPack20Price ?? '\$2.99',
+                () {
+                  Navigator.of(context).pop();
+                  iap.buyPowerUpPack20();
+                },
+              ),
               const SizedBox(height: 8),
-              _buildPackOption('50 Power-Ups', iap.powerUpPack50Price ?? '\$4.99', () {
-                Navigator.of(context).pop();
-                iap.buyPowerUpPack50();
-              }),
+              _buildPackOption(
+                '50 Power-Ups',
+                iap.powerUpPack50Price ?? '\$4.99',
+                () {
+                  Navigator.of(context).pop();
+                  iap.buyPowerUpPack50();
+                },
+              ),
               const SizedBox(height: 16),
               TextButton.icon(
                 onPressed: () async {
                   Navigator.of(context).pop();
+                  final messenger = ScaffoldMessenger.of(context);
                   final adService = AdService();
                   if (adService.isRewardedAdReady()) {
                     final rewarded = await adService.showRewardedAd();
-                    if (rewarded && mounted) {
-                      final awarded = await _powerUpService?.awardRandomPowerUp();
-                      if (awarded != null && mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('You earned 1 ${awarded.name}!')),
+                    if (!mounted) return;
+                    if (rewarded) {
+                      final awarded = await _powerUpService
+                          ?.awardRandomPowerUp();
+                      if (!mounted) return;
+                      if (awarded != null) {
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text('You earned 1 ${awarded.name}!'),
+                          ),
                         );
                       }
                     }
                   } else {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('No ad available right now.')),
-                      );
-                    }
+                    if (!mounted) return;
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('No ad available right now.'),
+                      ),
+                    );
                   }
                 },
-                icon: const Icon(Icons.play_circle_outline, color: GameColors.accent),
-                label: const Text('Watch Ad for 1 Free', style: TextStyle(color: GameColors.accent)),
+                icon: const Icon(
+                  Icons.play_circle_outline,
+                  color: GameColors.accent,
+                ),
+                label: const Text(
+                  'Watch Ad for 1 Free',
+                  style: TextStyle(color: GameColors.accent),
+                ),
               ),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text('Cancel', style: TextStyle(color: GameColors.textMuted)),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: GameColors.textMuted),
+              ),
             ),
           ],
         );
@@ -831,13 +885,27 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
         decoration: BoxDecoration(
           color: GameColors.backgroundLight,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: GameColors.textMuted.withValues(alpha: 0.3)),
+          border: Border.all(
+            color: GameColors.textMuted.withValues(alpha: 0.3),
+          ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(title, style: TextStyle(color: GameColors.text, fontWeight: FontWeight.w500)),
-            Text(price, style: TextStyle(color: GameColors.accent, fontWeight: FontWeight.bold)),
+            Text(
+              title,
+              style: TextStyle(
+                color: GameColors.text,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Text(
+              price,
+              style: TextStyle(
+                color: GameColors.accent,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ],
         ),
       ),
@@ -847,12 +915,12 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
   // Handle stack tap for power-up selection modes
   void _handlePowerUpStackTap(int stackIndex) {
     final gameState = context.read<GameState>();
-    
+
     if (_colorBombSelectionMode) {
       // Get the color of the tapped stack's top block
       final stack = gameState.stacks[stackIndex];
       if (stack.isEmpty) return;
-      
+
       final topLayer = stack.topLayer!;
       if (!topLayer.isLocked) {
         _onColorBombColorSelected(topLayer.colorIndex);
@@ -901,30 +969,34 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                           onMove: () => AudioService().playSlide(),
                           onClear: () => AudioService().playClear(),
                           onChain: _onChainReaction,
-                          onStackTapOverride: (_colorBombSelectionMode || _magnetSelectionMode) 
-                              ? _handlePowerUpStackTap 
+                          onStackTapOverride:
+                              (_colorBombSelectionMode || _magnetSelectionMode)
+                              ? _handlePowerUpStackTap
                               : null,
-                          highlightedStacks: _magnetSelectionMode ? _magnetEligibleStacks : null,
+                          highlightedStacks: _magnetSelectionMode
+                              ? _magnetEligibleStacks
+                              : null,
                         ),
                       ),
-                      
+
                       // Power-up bar
                       PowerUpBar(
                         onColorBomb: _onColorBombPressed,
                         onShuffle: _onShufflePressed,
                         onMagnet: _onMagnetPressed,
                         onHint: _onEnhancedHintPressed,
-                        isSelectionMode: _colorBombSelectionMode || _magnetSelectionMode,
-                        activeSelection: _colorBombSelectionMode 
-                            ? PowerUpType.colorBomb 
-                            : _magnetSelectionMode 
-                                ? PowerUpType.magnet 
-                                : null,
+                        isSelectionMode:
+                            _colorBombSelectionMode || _magnetSelectionMode,
+                        activeSelection: _colorBombSelectionMode
+                            ? PowerUpType.colorBomb
+                            : _magnetSelectionMode
+                            ? PowerUpType.magnet
+                            : null,
                       ),
-                      
+
                       // Banner ad
                       _buildBannerAd(),
-                      
+
                       // Bottom controls
                       _buildBottomControls(gameState, iap),
                     ],
@@ -936,9 +1008,7 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                       onCancel: _cancelColorBombSelection,
                     ),
                   if (_magnetSelectionMode)
-                    MagnetSelectionOverlay(
-                      onCancel: _cancelMagnetSelection,
-                    ),
+                    MagnetSelectionOverlay(onCancel: _cancelMagnetSelection),
 
                   // Power-up effects
                   if (_showColorBombEffect && _colorBombEffectColor != null)
@@ -957,7 +1027,9 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                         onComplete: _onShuffleEffectComplete,
                       ),
                     ),
-                  if (_showMagnetEffect && _magnetSourcePos != null && _magnetTargetPos != null)
+                  if (_showMagnetEffect &&
+                      _magnetSourcePos != null &&
+                      _magnetTargetPos != null)
                     Positioned.fill(
                       child: MagnetEffect(
                         sourcePos: _magnetSourcePos!,
@@ -1064,8 +1136,10 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: GameColors.surface,
                   borderRadius: BorderRadius.circular(20),
@@ -1074,8 +1148,8 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                           color: gameState.isUnderPar
                               ? Colors.green.withValues(alpha: 0.6)
                               : gameState.moveCount > (gameState.par! + 5)
-                                  ? Colors.red.withValues(alpha: 0.4)
-                                  : Colors.transparent,
+                              ? Colors.red.withValues(alpha: 0.4)
+                              : Colors.transparent,
                           width: 2,
                         )
                       : null,
@@ -1105,10 +1179,7 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                 children: [
                   Text(
                     '${gameState.completedStackCount}/${gameState.totalStacks}',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: GameColors.textMuted,
-                    ),
+                    style: TextStyle(fontSize: 14, color: GameColors.textMuted),
                   ),
                   const SizedBox(width: 4),
                   Icon(
@@ -1149,7 +1220,12 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
   Widget _buildBottomControls(GameState gameState, IapService iap) {
     final bottomPad = MediaQuery.of(context).padding.bottom;
     return Padding(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, bottomPad > 0 ? bottomPad + 16 : 16),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        16,
+        16,
+        bottomPad > 0 ? bottomPad + 16 : 16,
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [

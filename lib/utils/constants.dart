@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 /// Game color palette - vibrant, high contrast
 class GameColors {
-  // Primary palette - richer, more saturated
-  static const List<Color> palette = [
+  // Default palette - richer, more saturated
+  static const List<Color> _defaultPalette = [
     Color(0xFFFF4757), // Coral Red
     Color(0xFF3742FA), // Electric Blue
     Color(0xFF2ED573), // Emerald Green
@@ -14,8 +14,20 @@ class GameColors {
     Color(0xFF1E90FF), // Dodger Blue
   ];
 
+  // Ultra palette - high contrast and distinct even when desaturated
+  static const List<Color> _ultraPalette = [
+    Color(0xFFE69F00), // Orange
+    Color(0xFF56B4E9), // Sky Blue
+    Color(0xFF009E73), // Bluish Green
+    Color(0xFFF0E442), // Yellow
+    Color(0xFF0072B2), // Blue
+    Color(0xFFD55E00), // Vermillion
+    Color(0xFFCC79A7), // Reddish Purple
+    Color(0xFF000000), // Black
+  ];
+
   // Gradients for layers (top to bottom)
-  static const List<List<Color>> layerGradients = [
+  static const List<List<Color>> _defaultGradients = [
     [Color(0xFFFF4757), Color(0xFFE74C3C)], // Red gradient
     [Color(0xFF3742FA), Color(0xFF2C3E50)], // Blue gradient
     [Color(0xFF2ED573), Color(0xFF27AE60)], // Green gradient
@@ -25,6 +37,29 @@ class GameColors {
     [Color(0xFFFF6B81), Color(0xFFE91E63)], // Pink gradient
     [Color(0xFF1E90FF), Color(0xFF2980B9)], // Blue 2 gradient
   ];
+
+  static const List<List<Color>> _ultraGradients = [
+    [Color(0xFFE69F00), Color(0xFFCC8F00)], // Orange
+    [Color(0xFF56B4E9), Color(0xFF4698C5)], // Sky Blue
+    [Color(0xFF009E73), Color(0xFF00855F)], // Bluish Green
+    [Color(0xFFF0E442), Color(0xFFD6CC3A)], // Yellow
+    [Color(0xFF0072B2), Color(0xFF005D91)], // Blue
+    [Color(0xFFD55E00), Color(0xFFB84F00)], // Vermillion
+    [Color(0xFFCC79A7), Color(0xFFB36A90)], // Reddish Purple
+    [Color(0xFF2B2B2B), Color(0xFF000000)], // Black
+  ];
+
+  static bool _useUltraPalette = false;
+
+  static void setUltraPalette(bool enabled) {
+    _useUltraPalette = enabled;
+  }
+
+  static List<Color> get palette =>
+      _useUltraPalette ? _ultraPalette : _defaultPalette;
+
+  static List<List<Color>> get layerGradients =>
+      _useUltraPalette ? _ultraGradients : _defaultGradients;
 
   // Background enhancement
   static const Color backgroundDark = Color(0xFF0D1117);
@@ -97,7 +132,8 @@ class LevelParams {
   final int depth;
   final int shuffleMoves;
   final int minDifficultyScore;
-  final double multiColorProbability; // 0.0 to 1.0: chance of multi-color blocks
+  final double
+  multiColorProbability; // 0.0 to 1.0: chance of multi-color blocks
   final double lockedBlockProbability; // 0.0 to 1.0: chance of locked blocks
   final int maxLockedMoves; // Maximum moves a block can be locked for
 
@@ -146,7 +182,9 @@ class LevelParams {
       // Advanced: 5-6 colors, more multi-color blocks, introduce locked blocks
       final colors = level <= 35 ? 5 : 6;
       final multiColorProb = 0.15 + ((level - 25) / 25 * 0.15).clamp(0.0, 0.3);
-      final lockedProb = level >= 35 ? ((level - 35) / 15).clamp(0.0, 0.1) : 0.0;
+      final lockedProb = level >= 35
+          ? ((level - 35) / 15).clamp(0.0, 0.1)
+          : 0.0;
       return LevelParams(
         colors: colors,
         depth: 5,

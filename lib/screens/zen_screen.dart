@@ -21,8 +21,7 @@ class ZenScreen extends StatefulWidget {
   State<ZenScreen> createState() => _ZenScreenState();
 }
 
-class _ZenScreenState extends State<ZenScreen>
-    with TickerProviderStateMixin {
+class _ZenScreenState extends State<ZenScreen> with TickerProviderStateMixin {
   final Map<int, GlobalKey> _stackKeys = {};
 
   int _puzzlesSolved = 0;
@@ -47,6 +46,7 @@ class _ZenScreenState extends State<ZenScreen>
   void initState() {
     super.initState();
     GardenService.startFreshSession();
+    GameColors.setUltraPalette(widget.difficulty == 'ultra');
     _sessionTimer = Stopwatch()..start();
 
     _fadeController = AnimationController(
@@ -76,6 +76,7 @@ class _ZenScreenState extends State<ZenScreen>
 
   @override
   void dispose() {
+    GameColors.setUltraPalette(false);
     _sessionTicker?.cancel();
     _fadeController.dispose();
     _particleController.dispose();
@@ -89,17 +90,18 @@ class _ZenScreenState extends State<ZenScreen>
     final encoded = encodeParamsForIsolate(params);
     compute<List<int>, List<List<int>>>(generateZenPuzzleInIsolate, encoded)
         .then((encodedStacks) {
-      if (!mounted) return;
-      final stacks = decodeStacksFromIsolate(encodedStacks, params.depth);
-      context.read<GameState>().initZenGame(stacks);
-      setState(() {
-        _isLoading = false;
-        _stackKeys.clear();
-        _particleSeed++;
-      });
-    }).catchError((e, st) {
-      if (mounted) setState(() => _isLoading = false);
-    });
+          if (!mounted) return;
+          final stacks = decodeStacksFromIsolate(encodedStacks, params.depth);
+          context.read<GameState>().initZenGame(stacks);
+          setState(() {
+            _isLoading = false;
+            _stackKeys.clear();
+            _particleSeed++;
+          });
+        })
+        .catchError((e, st) {
+          if (mounted) setState(() => _isLoading = false);
+        });
   }
 
   Future<void> _onPuzzleSolved() async {
@@ -205,11 +207,7 @@ class _ZenScreenState extends State<ZenScreen>
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF0D1117),
-              Color(0xFF161B22),
-              Color(0xFF1A1F26),
-            ],
+            colors: [Color(0xFF0D1117), Color(0xFF161B22), Color(0xFF1A1F26)],
           ),
         ),
         child: Stack(
@@ -256,11 +254,7 @@ class _ZenScreenState extends State<ZenScreen>
               ),
             ),
             if (_showStats)
-              Positioned(
-                bottom: 28,
-                right: 16,
-                child: _buildSessionStats(),
-              ),
+              Positioned(bottom: 28, right: 16, child: _buildSessionStats()),
             if (_isLoading)
               Positioned.fill(
                 child: Container(

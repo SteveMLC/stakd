@@ -3,18 +3,16 @@
 
 import 'dart:math';
 
-/// Args: [colors, stacks, emptySlots, depth, shuffleMoves, minDifficultyScore, seed].
-/// Returns encoded stacks: List<List<int>> for decodeStacksFromIsolate on main.
+/// Args: `[colors, stacks, emptySlots, depth, shuffleMoves, minDifficultyScore, seed]`.
+/// Returns encoded stacks: `List<List<int>>` for decodeStacksFromIsolate on main.
 List<List<int>> generateZenPuzzleInIsolate(List<int> args) {
   if (args.length < 6) throw ArgumentError('Need at least 6 params');
   final colors = args[0];
-  final numStacks = args[1];
   final emptySlots = args[2];
   final depth = args[3];
   final shuffleMoves = args[4];
   final minDifficultyScore = args[5];
   final seed = args.length > 6 ? args[6] : 0;
-  final random = seed == 0 ? Random() : Random(seed);
 
   const maxAttempts = 5;
   const maxSolvableStates = 2000;
@@ -23,7 +21,9 @@ List<List<int>> generateZenPuzzleInIsolate(List<int> args) {
   int bestScore = -1;
 
   for (int attempt = 0; attempt < maxAttempts; attempt++) {
-    final r = Random((seed == 0 ? DateTime.now().millisecondsSinceEpoch : seed) + attempt);
+    final r = Random(
+      (seed == 0 ? DateTime.now().millisecondsSinceEpoch : seed) + attempt,
+    );
     var state = _createSolved(colors, emptySlots, depth, r);
     state = _shuffle(state, depth, shuffleMoves, r);
 
@@ -68,7 +68,12 @@ bool _stackCanAccept(List<int> stack, int color, int depth) {
   return stack.last == color;
 }
 
-List<List<int>> _shuffle(List<List<int>> state, int depth, int moves, Random random) {
+List<List<int>> _shuffle(
+  List<List<int>> state,
+  int depth,
+  int moves,
+  Random random,
+) {
   state = state.map((s) => s.toList()).toList();
   int remaining = moves;
   int attempts = 0;
@@ -193,15 +198,23 @@ int _difficultyScore(List<List<int>> state, int depth) {
 
     score += transitions * 2;
     score += buriedSingletons * 3;
-    if (uniqueColors.length >= 3) score += (uniqueColors.length - 2) * 2;
-    if (stack.length >= 4 && uniqueColors.length >= 2) score += stack.length - 3;
+    if (uniqueColors.length >= 3) {
+      score += (uniqueColors.length - 2) * 2;
+    }
+    if (stack.length >= 4 && uniqueColors.length >= 2) {
+      score += stack.length - 3;
+    }
   }
 
   int completed = 0;
   int nearlyComplete = 0;
   for (final stack in state) {
-    if (stack.length == depth && stack.every((c) => c == stack.first)) completed++;
-    if (stack.length >= 3 && stack.every((c) => c == stack.first)) nearlyComplete++;
+    if (stack.length == depth && stack.every((c) => c == stack.first)) {
+      completed++;
+    }
+    if (stack.length >= 3 && stack.every((c) => c == stack.first)) {
+      nearlyComplete++;
+    }
   }
   score -= completed * 4;
   score -= nearlyComplete * 2;

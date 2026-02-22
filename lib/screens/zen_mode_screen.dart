@@ -67,6 +67,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   void initState() {
     super.initState();
     GardenService.startFreshSession();
+    GameColors.setUltraPalette(_difficulty == ZenDifficulty.ultra);
     _sessionStart = DateTime.now();
     _puzzleSeed = DateTime.now().millisecondsSinceEpoch;
 
@@ -102,6 +103,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
 
   @override
   void dispose() {
+    GameColors.setUltraPalette(false);
     _sessionTimer?.cancel();
     _fadeController.dispose();
     _particleController.dispose();
@@ -116,17 +118,18 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     final encoded = encodeParamsForIsolate(params, seed: seed);
     compute<List<int>, List<List<int>>>(generateZenPuzzleInIsolate, encoded)
         .then((encodedStacks) {
-      if (!mounted) return;
-      final stacks = decodeStacksFromIsolate(encodedStacks, params.depth);
-      context.read<GameState>().initZenGame(stacks);
-      setState(() {
-        _isLoading = false;
-        _stackKeys.clear();
-        _puzzleSeed++;
-      });
-    }).catchError((e, st) {
-      if (mounted) setState(() => _isLoading = false);
-    });
+          if (!mounted) return;
+          final stacks = decodeStacksFromIsolate(encodedStacks, params.depth);
+          context.read<GameState>().initZenGame(stacks);
+          setState(() {
+            _isLoading = false;
+            _stackKeys.clear();
+            _puzzleSeed++;
+          });
+        })
+        .catchError((e, st) {
+          if (mounted) setState(() => _isLoading = false);
+        });
   }
 
   void _onPuzzleComplete() async {
@@ -163,6 +166,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     setState(() {
       _difficulty = difficulty;
     });
+    GameColors.setUltraPalette(_difficulty == ZenDifficulty.ultra);
     // Load new puzzle with new difficulty
     _loadNewPuzzle();
   }
@@ -267,9 +271,13 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    const Color(0xFF0B0F14).withValues(alpha: 0.15),  // Much lighter
-                    Colors.transparent,                         // Middle is clear
-                    const Color(0xFF0B0F14).withValues(alpha: 0.15),  // Much lighter
+                    const Color(
+                      0xFF0B0F14,
+                    ).withValues(alpha: 0.15), // Much lighter
+                    Colors.transparent, // Middle is clear
+                    const Color(
+                      0xFF0B0F14,
+                    ).withValues(alpha: 0.15), // Much lighter
                   ],
                 ),
               ),
@@ -413,8 +421,10 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                 onTap: () => _setDifficulty(diff),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? GameColors.accent.withValues(alpha: 0.3)
@@ -429,8 +439,9 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                           ? GameColors.text
                           : GameColors.textMuted.withValues(alpha: 0.6),
                       fontSize: 13,
-                      fontWeight:
-                          isSelected ? FontWeight.w600 : FontWeight.w400,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.w400,
                     ),
                   ),
                 ),
@@ -568,10 +579,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                state.stageIcon,
-                style: const TextStyle(fontSize: 14),
-              ),
+              Text(state.stageIcon, style: const TextStyle(fontSize: 14)),
               const SizedBox(width: 6),
               Text(
                 state.stageName,
@@ -584,7 +592,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
             ],
           ),
           const SizedBox(height: 6),
-          
+
           // Progress bar
           SizedBox(
             width: 120,
@@ -624,10 +632,10 @@ class _ZenModeScreenState extends State<ZenModeScreen>
             ),
           ),
           const SizedBox(height: 4),
-          
+
           // Progress text
           Text(
-            state.currentStage >= 9 
+            state.currentStage >= 9
                 ? '∞ Infinite'
                 : '$puzzlesInStage / $puzzlesNeeded to next',
             style: TextStyle(

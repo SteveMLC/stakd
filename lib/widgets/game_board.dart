@@ -164,8 +164,10 @@ class _GameBoardState extends State<GameBoard>
                                   index: actualIndex,
                                   isSelected: isSelected,
                                   isRecentlyCleared: isRecentlyCleared,
-                                  isMultiGrabMode: widget.gameState.isMultiGrabMode,
-                                  multiGrabCount: widget.gameState.multiGrabCount,
+                                  isMultiGrabMode:
+                                      widget.gameState.isMultiGrabMode,
+                                  multiGrabCount:
+                                      widget.gameState.multiGrabCount,
                                   onTap: () {
                                     // Check if there's an override handler (for power-up selection)
                                     if (widget.onStackTapOverride != null) {
@@ -173,7 +175,7 @@ class _GameBoardState extends State<GameBoard>
                                       widget.onTap?.call();
                                       return;
                                     }
-                                    
+
                                     final previousMoveCount =
                                         widget.gameState.moveCount;
                                     final previousCleared = List<int>.from(
@@ -186,22 +188,31 @@ class _GameBoardState extends State<GameBoard>
                                     widget.onTap?.call();
 
                                     // Check if move was made
-                                    final moveMade = widget.gameState.moveCount > previousMoveCount;
-                                    
+                                    final moveMade =
+                                        widget.gameState.moveCount >
+                                        previousMoveCount;
+
                                     if (moveMade) {
                                       widget.onMove?.call();
                                     } else {
                                       // Check if this was an invalid move attempt
                                       // (tried to move to a stack that can't accept the layer)
-                                      final wasSourceSelected = previousSelectedStack >= 0 && 
-                                                               previousSelectedStack != actualIndex;
+                                      final wasSourceSelected =
+                                          previousSelectedStack >= 0 &&
+                                          previousSelectedStack != actualIndex;
                                       if (wasSourceSelected) {
-                                        final sourceStack = widget.gameState.stacks[previousSelectedStack];
-                                        final targetStack = widget.gameState.stacks[actualIndex];
-                                        
+                                        final sourceStack = widget
+                                            .gameState
+                                            .stacks[previousSelectedStack];
+                                        final targetStack = widget
+                                            .gameState
+                                            .stacks[actualIndex];
+
                                         // Invalid move: has source layer but target can't accept it
-                                        if (!sourceStack.isEmpty && 
-                                            !targetStack.canAccept(sourceStack.topLayer!)) {
+                                        if (!sourceStack.isEmpty &&
+                                            !targetStack.canAccept(
+                                              sourceStack.topLayer!,
+                                            )) {
                                           // Play error sound
                                           AudioService().playError();
                                           // Haptic feedback for invalid move
@@ -220,19 +231,29 @@ class _GameBoardState extends State<GameBoard>
                                           currentCleared,
                                         )) {
                                       widget.onClear?.call();
-                                      
+
                                       // Get chain level (number of stacks cleared in one move)
-                                      final chainLevel = widget.gameState.currentChainLevel;
-                                      
+                                      final chainLevel =
+                                          widget.gameState.currentChainLevel;
+
                                       // Trigger appropriate effects based on chain level
-                                      _triggerChainEffects(currentCleared, chainLevel);
+                                      _triggerChainEffects(
+                                        currentCleared,
+                                        chainLevel,
+                                      );
                                     }
                                   },
                                   onMultiGrab: () {
-                                    widget.gameState.activateMultiGrab(actualIndex);
+                                    widget.gameState.activateMultiGrab(
+                                      actualIndex,
+                                    );
                                     widget.onTap?.call();
                                   },
-                                  isPowerUpHighlighted: widget.highlightedStacks?.contains(actualIndex) ?? false,
+                                  isPowerUpHighlighted:
+                                      widget.highlightedStacks?.contains(
+                                        actualIndex,
+                                      ) ??
+                                      false,
                                 ),
                               );
                             }),
@@ -332,12 +353,12 @@ class _GameBoardState extends State<GameBoard>
 
   void _triggerParticleBursts(List<int> clearedIndices, [int chainLevel = 1]) {
     if (clearedIndices.isEmpty) return;
-    
+
     // Skip particles if theme has them disabled
     if (!ThemeColors.hasParticles) return;
 
     final bursts = <ParticleBurstData>[];
-    
+
     // Scale particle count and lifetime based on chain level
     final particleCount = 24 + (chainLevel - 1) * 12; // 24, 36, 48, 60...
     final lifetime = Duration(milliseconds: 600 + (chainLevel - 1) * 100);
@@ -385,21 +406,6 @@ class _GameBoardState extends State<GameBoard>
     }
   }
 
-  Color _getComboFlashColor(int comboMultiplier) {
-    switch (comboMultiplier) {
-      case 2:
-        return const Color(0xFFFFD700); // Gold
-      case 3:
-        return const Color(0xFFFF8C00); // Orange
-      case 4:
-        return const Color(0xFFFF4500); // Red-Orange
-      case 5:
-        return const Color(0xFF9370DB); // Purple
-      default:
-        return GameColors.accent; // Pink
-    }
-  }
-
   Color _getChainFlashColor(int chainLevel) {
     switch (chainLevel) {
       case 2:
@@ -420,33 +426,33 @@ class _GameBoardState extends State<GameBoard>
   void _triggerChainEffects(List<int> clearedIndices, int chainLevel) {
     // Always trigger particle bursts
     _triggerParticleBursts(clearedIndices, chainLevel);
-    
+
     // Basic haptic for single clear
     if (chainLevel <= 1) {
       haptics.successPattern();
       return;
     }
-    
+
     // Notify parent about chain for achievements
     widget.onChain?.call(chainLevel);
-    
+
     // Chain level 2+: Show chain popup and enhanced effects
     setState(() {
       _showChainLevel = chainLevel;
       _flashColor = _getChainFlashColor(chainLevel);
     });
-    
+
     // Play chain sound
     AudioService().playChain(chainLevel);
-    
+
     // Chain-specific haptic
     haptics.chainReaction(chainLevel);
-    
+
     // Screen shake - intensity based on chain level
     if (chainLevel >= 2) {
       _shakeController.forward(from: 0);
     }
-    
+
     // Confetti for mega chains (4+)
     if (chainLevel >= 4) {
       setState(() {
@@ -461,7 +467,7 @@ class _GameBoardState extends State<GameBoard>
         }
       });
     }
-    
+
     // Also show combo popup if combo > 1 (time-based)
     final currentCombo = widget.gameState.currentCombo;
     if (currentCombo > 1) {
@@ -546,7 +552,10 @@ class _StackWidgetState extends State<_StackWidget>
       duration: GameDurations.multiGrabPulse,
     );
     _multiGrabPulseAnimation = Tween<double>(begin: 0.6, end: 1.0).animate(
-      CurvedAnimation(parent: _multiGrabPulseController, curve: Curves.easeInOut),
+      CurvedAnimation(
+        parent: _multiGrabPulseController,
+        curve: Curves.easeInOut,
+      ),
     );
 
     _multiGrabIndicatorController = AnimationController(
@@ -554,7 +563,10 @@ class _StackWidgetState extends State<_StackWidget>
       duration: const Duration(milliseconds: 1400),
     );
     _multiGrabIndicatorAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _multiGrabIndicatorController, curve: Curves.easeInOut),
+      CurvedAnimation(
+        parent: _multiGrabIndicatorController,
+        curve: Curves.easeInOut,
+      ),
     );
     _syncMultiGrabIndicator();
   }
@@ -710,18 +722,24 @@ class _StackWidgetState extends State<_StackWidget>
       button: true,
       selected: widget.isSelected,
       label: semanticsLabel.toString(),
-      hint: widget.isSelected 
+      hint: widget.isSelected
           ? (isMultiGrabActive ? 'Multi-grab active' : 'Selected')
           : 'Tap to select, hold for multi-grab',
       child: AnimatedBuilder(
-        animation: Listenable.merge([_controller, _pulseController, _multiGrabPulseController]),
+        animation: Listenable.merge([
+          _controller,
+          _pulseController,
+          _multiGrabPulseController,
+        ]),
         builder: (context, child) {
           final pulseValue = nearingCompletion ? _pulseAnimation.value : 0.0;
-          final multiGrabPulse = isMultiGrabActive ? _multiGrabPulseAnimation.value : 0.0;
+          final multiGrabPulse = isMultiGrabActive
+              ? _multiGrabPulseAnimation.value
+              : 0.0;
 
           // Enhanced lift effect for multi-grab
-          final liftOffset = isMultiGrabActive 
-              ? -12.0 - (multiGrabPulse * 4) 
+          final liftOffset = isMultiGrabActive
+              ? -12.0 - (multiGrabPulse * 4)
               : (widget.isSelected ? -8.0 : _bounceAnimation.value);
 
           final scale = isMultiGrabActive
@@ -769,15 +787,27 @@ class _StackWidgetState extends State<_StackWidget>
                             color: widget.isPowerUpHighlighted
                                 ? GameColors.zen.withValues(alpha: 0.9)
                                 : isMultiGrabActive
-                                    ? glowColor.withValues(alpha: 0.8 + multiGrabPulse * 0.2)
-                                    : widget.isSelected
-                                        ? GameColors.accent
-                                        : widget.isRecentlyCleared
-                                            ? GameColors.palette[2]
+                                ? glowColor.withValues(
+                                    alpha: 0.8 + multiGrabPulse * 0.2,
+                                  )
+                                : widget.isSelected
+                                ? GameColors.accent
+                                : widget.isRecentlyCleared
+                                ? GameColors.palette[2]
+                                : nearingCompletion
+                                ? glowColor.withValues(
+                                    alpha: 0.6 + pulseValue * 0.4,
+                                  )
+                                : GameColors.empty,
+                            width: widget.isPowerUpHighlighted
+                                ? 3
+                                : (isMultiGrabActive
+                                      ? 4
+                                      : (widget.isSelected
+                                            ? 3
                                             : nearingCompletion
-                                                ? glowColor.withValues(alpha: 0.6 + pulseValue * 0.4)
-                                                : GameColors.empty,
-                            width: widget.isPowerUpHighlighted ? 3 : (isMultiGrabActive ? 4 : (widget.isSelected ? 3 : nearingCompletion ? 2.5 : 2)),
+                                            ? 2.5
+                                            : 2)),
                           ),
                           boxShadow: [
                             // Power-up highlight glow (magnet eligible)
@@ -790,7 +820,9 @@ class _StackWidgetState extends State<_StackWidget>
                             // Multi-grab glow effect (strongest)
                             if (isMultiGrabActive)
                               BoxShadow(
-                                color: glowColor.withValues(alpha: 0.5 + multiGrabPulse * 0.3),
+                                color: glowColor.withValues(
+                                  alpha: 0.5 + multiGrabPulse * 0.3,
+                                ),
                                 blurRadius: 16 + multiGrabPulse * 8,
                                 spreadRadius: 4 + multiGrabPulse * 2,
                               ),
@@ -809,10 +841,15 @@ class _StackWidgetState extends State<_StackWidget>
                                 spreadRadius: 4,
                               ),
                             // Glow effect for nearing completion (3+ matching layers)
-                            if (nearingCompletion && !widget.isSelected && !widget.isRecentlyCleared && !isMultiGrabActive)
+                            if (nearingCompletion &&
+                                !widget.isSelected &&
+                                !widget.isRecentlyCleared &&
+                                !isMultiGrabActive)
                               BoxShadow(
                                 color: glowColor.withValues(
-                                  alpha: (0.2 + pulseValue * 0.3) * completionProgress,
+                                  alpha:
+                                      (0.2 + pulseValue * 0.3) *
+                                      completionProgress,
                                 ),
                                 blurRadius: 8 + completionProgress * 8,
                                 spreadRadius: completionProgress * 3,
@@ -868,8 +905,10 @@ class _StackWidgetState extends State<_StackWidget>
 
     final isMultiGrabActive = widget.isMultiGrabMode && widget.isSelected;
     final topGroupSize = widget.stack.topGroupSize;
-    final multiGrabPulse = isMultiGrabActive ? _multiGrabPulseAnimation.value : 0.0;
-    
+    final multiGrabPulse = isMultiGrabActive
+        ? _multiGrabPulseAnimation.value
+        : 0.0;
+
     // Check if texture skins are enabled
     final textureSkinsEnabled = StorageService().getTextureSkinsEnabled();
 
@@ -879,11 +918,11 @@ class _StackWidgetState extends State<_StackWidget>
         final index = entry.key;
         final layer = entry.value;
         final gradientColors = GameColors.getGradient(layer.colorIndex);
-        
+
         // Check if this layer is part of the grab zone (top N layers)
-        final isInGrabZone = isMultiGrabActive && 
-            index >= layers.length - topGroupSize;
-        
+        final isInGrabZone =
+            isMultiGrabActive && index >= layers.length - topGroupSize;
+
         // Visual indicator for layers being grabbed
         final grabZoneDecoration = BoxDecoration(
           gradient: LinearGradient(
@@ -894,7 +933,9 @@ class _StackWidgetState extends State<_StackWidget>
           // Texture skin overlay when enabled
           image: textureSkinsEnabled
               ? const DecorationImage(
-                  image: AssetImage('assets/images/textures/cherry_blossom.png'),
+                  image: AssetImage(
+                    'assets/images/textures/cherry_blossom.png',
+                  ),
                   fit: BoxFit.cover,
                   opacity: 0.3,
                 )
@@ -968,10 +1009,7 @@ class _LongPressRing extends StatefulWidget {
   final Color color;
   final double borderRadius;
 
-  const _LongPressRing({
-    required this.color,
-    required this.borderRadius,
-  });
+  const _LongPressRing({required this.color, required this.borderRadius});
 
   @override
   State<_LongPressRing> createState() => _LongPressRingState();
@@ -989,9 +1027,10 @@ class _LongPressRingState extends State<_LongPressRing>
       vsync: this,
       duration: const Duration(milliseconds: 500),
     )..repeat(reverse: true);
-    _scale = Tween<double>(begin: 0.95, end: 1.08).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _scale = Tween<double>(
+      begin: 0.95,
+      end: 1.08,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -1027,10 +1066,7 @@ class _MultiGrabIndicator extends StatelessWidget {
   final int count;
   final Animation<double> animation;
 
-  const _MultiGrabIndicator({
-    required this.count,
-    required this.animation,
-  });
+  const _MultiGrabIndicator({required this.count, required this.animation});
 
   @override
   Widget build(BuildContext context) {
@@ -1106,14 +1142,11 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
     super.initState();
 
     // Slightly longer animation for multi-grab
-    final duration = widget.animatingLayer.isMultiGrab 
+    final duration = widget.animatingLayer.isMultiGrab
         ? const Duration(milliseconds: 320)
         : const Duration(milliseconds: 280);
 
-    _controller = AnimationController(
-      vsync: this,
-      duration: duration,
-    );
+    _controller = AnimationController(vsync: this, duration: duration);
 
     // Main curve for position - ease out for natural arc
     _curveAnimation = CurvedAnimation(
@@ -1125,26 +1158,34 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
     _scaleXAnimation = TweenSequence<double>([
       // Pickup: squash wide (1.0 → 1.1)
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.0, end: 1.1)
-            .chain(CurveTween(curve: Curves.easeOut)),
+        tween: Tween<double>(
+          begin: 1.0,
+          end: 1.1,
+        ).chain(CurveTween(curve: Curves.easeOut)),
         weight: 15,
       ),
       // Travel: back to normal (1.1 → 1.0)
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.1, end: 1.0)
-            .chain(CurveTween(curve: Curves.linear)),
+        tween: Tween<double>(
+          begin: 1.1,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.linear)),
         weight: 50,
       ),
       // Drop: stretch narrow (1.0 → 0.85)
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.0, end: 0.85)
-            .chain(CurveTween(curve: Curves.easeIn)),
+        tween: Tween<double>(
+          begin: 1.0,
+          end: 0.85,
+        ).chain(CurveTween(curve: Curves.easeIn)),
         weight: 15,
       ),
       // Bounce back: elasticOut (0.85 → 1.0)
       TweenSequenceItem(
-        tween: Tween<double>(begin: 0.85, end: 1.0)
-            .chain(CurveTween(curve: Curves.elasticOut)),
+        tween: Tween<double>(
+          begin: 0.85,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.elasticOut)),
         weight: 20,
       ),
     ]).animate(_controller);
@@ -1153,26 +1194,34 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
     _scaleYAnimation = TweenSequence<double>([
       // Pickup: squash short (1.0 → 0.85)
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.0, end: 0.85)
-            .chain(CurveTween(curve: Curves.easeOut)),
+        tween: Tween<double>(
+          begin: 1.0,
+          end: 0.85,
+        ).chain(CurveTween(curve: Curves.easeOut)),
         weight: 15,
       ),
       // Travel: back to normal (0.85 → 1.0)
       TweenSequenceItem(
-        tween: Tween<double>(begin: 0.85, end: 1.0)
-            .chain(CurveTween(curve: Curves.linear)),
+        tween: Tween<double>(
+          begin: 0.85,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.linear)),
         weight: 50,
       ),
       // Drop: stretch tall (1.0 → 1.15)
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.0, end: 1.15)
-            .chain(CurveTween(curve: Curves.easeIn)),
+        tween: Tween<double>(
+          begin: 1.0,
+          end: 1.15,
+        ).chain(CurveTween(curve: Curves.easeIn)),
         weight: 15,
       ),
       // Bounce back: elasticOut (1.15 → 1.0)
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.15, end: 1.0)
-            .chain(CurveTween(curve: Curves.elasticOut)),
+        tween: Tween<double>(
+          begin: 1.15,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.elasticOut)),
         weight: 20,
       ),
     ]).animate(_controller);
@@ -1208,19 +1257,18 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
 
     // For multi-grab, account for multiple layers height
     final layerCount = widget.animatingLayer.layerCount;
-    final totalHeight = GameSizes.layerHeight * layerCount + (2 * (layerCount - 1));
+    final totalHeight =
+        GameSizes.layerHeight * layerCount + (2 * (layerCount - 1));
 
     // Use actual rendered stack height (dynamic based on maxDepth)
     final fromStackHeight = fromBox.size.height;
     final toStackHeight = toBox.size.height;
 
     // Calculate position of top layer on source stack
-    final fromLayerY =
-        fromGlobal.dy + fromStackHeight - totalHeight - 2;
+    final fromLayerY = fromGlobal.dy + fromStackHeight - totalHeight - 2;
 
     // Calculate position where layers should land on destination stack
-    final toLayerY =
-        toGlobal.dy + toStackHeight - totalHeight - 2;
+    final toLayerY = toGlobal.dy + toStackHeight - totalHeight - 2;
 
     setState(() {
       _startPos = Offset(fromGlobal.dx, fromLayerY);
@@ -1269,7 +1317,7 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
         final pos = _quadraticBezier(_startPos, controlPoint, _endPos, t);
 
         // Get the layer color for glow effect (use top layer color)
-          final layerColor = GameColors.getColor(
+        final layerColor = GameColors.getColor(
           widget.animatingLayer.layer.colorIndex,
         );
 
@@ -1278,8 +1326,9 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
         if (isMultiGrab) {
           // Multi-layer animation - stack them together
           final layerCount = allLayers.length;
-          final totalHeight = GameSizes.layerHeight * layerCount + (2 * (layerCount - 1));
-          
+          final totalHeight =
+              GameSizes.layerHeight * layerCount + (2 * (layerCount - 1));
+
           layerWidget = SizedBox(
             width: GameSizes.stackWidth,
             height: totalHeight,
@@ -1289,53 +1338,55 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
                 children: allLayers.toList().asMap().entries.map((entry) {
                   final layer = entry.value;
                   final isLast = entry.key == allLayers.length - 1;
-                  final gradientColors = GameColors.getGradient(layer.colorIndex);
+                  final gradientColors = GameColors.getGradient(
+                    layer.colorIndex,
+                  );
                   return Container(
                     width: GameSizes.stackWidth,
                     height: GameSizes.layerHeight,
                     margin: EdgeInsets.only(bottom: isLast ? 0 : 2),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: gradientColors,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: gradientColors,
+                      ),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.3 * (1 - t)),
+                        width: 1,
+                      ),
                     ),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.3 * (1 - t)),
-                      width: 1,
-                    ),
-                  ),
-                  child: Stack(
-                    children: [
-                      Positioned(
-                        top: 2,
-                        left: 4,
-                        right: 4,
-                        height: 3,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(2),
+                    child: Stack(
+                      children: [
+                        Positioned(
+                          top: 2,
+                          left: 4,
+                          right: 4,
+                          height: 3,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
                           ),
                         ),
-                      ),
-                      Positioned(
-                        bottom: 1,
-                        left: 3,
-                        right: 3,
-                        height: 2,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.14),
-                            borderRadius: BorderRadius.circular(2),
+                        Positioned(
+                          bottom: 1,
+                          left: 3,
+                          right: 3,
+                          height: 2,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
+                      ],
+                    ),
+                  );
+                }).toList(),
               ),
             ),
           );
@@ -1401,13 +1452,17 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
                 boxShadow: [
                   // Drop shadow - bigger for multi-grab
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: isMultiGrab ? 0.4 : 0.3),
+                    color: Colors.black.withValues(
+                      alpha: isMultiGrab ? 0.4 : 0.3,
+                    ),
                     blurRadius: isMultiGrab ? 12 : 8,
                     offset: Offset(0, isMultiGrab ? 6 : 4),
                   ),
                   // Color glow while moving - stronger for multi-grab
                   BoxShadow(
-                    color: layerColor.withValues(alpha: (isMultiGrab ? 0.6 : 0.4) * (1 - t)),
+                    color: layerColor.withValues(
+                      alpha: (isMultiGrab ? 0.6 : 0.4) * (1 - t),
+                    ),
                     blurRadius: isMultiGrab ? 16 : 12,
                     spreadRadius: isMultiGrab ? 4 : 2,
                   ),

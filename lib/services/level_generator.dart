@@ -3,19 +3,27 @@ import '../models/stack_model.dart';
 import '../models/layer_model.dart';
 import '../utils/constants.dart';
 
-/// Encode LevelParams + optional seed for isolate. [colors, stacks, emptySlots, depth, shuffleMoves, minDifficultyScore, seed].
-List<int> encodeParamsForIsolate(LevelParams params, {int seed = 0}) =>
-    [params.colors, params.stacks, params.emptySlots, params.depth, params.shuffleMoves, params.minDifficultyScore, seed];
+/// Encode LevelParams + optional seed for isolate.
+/// `[colors, stacks, emptySlots, depth, shuffleMoves, minDifficultyScore, seed]`
+List<int> encodeParamsForIsolate(LevelParams params, {int seed = 0}) => [
+  params.colors,
+  params.stacks,
+  params.emptySlots,
+  params.depth,
+  params.shuffleMoves,
+  params.minDifficultyScore,
+  seed,
+];
 
-/// Decode isolate result + maxDepth into List<GameStack>.
+/// Decode isolate result + maxDepth into `List<GameStack>`.
 List<GameStack> decodeStacksFromIsolate(List<List<int>> encoded, int maxDepth) {
   return encoded
-      .map((layerIndices) => GameStack(
-            layers: layerIndices
-                .map((i) => Layer(colorIndex: i))
-                .toList(),
-            maxDepth: maxDepth,
-          ))
+      .map(
+        (layerIndices) => GameStack(
+          layers: layerIndices.map((i) => Layer(colorIndex: i)).toList(),
+          maxDepth: maxDepth,
+        ),
+      )
       .toList();
 }
 
@@ -48,13 +56,14 @@ class LevelGenerator {
     // Create color stacks (filled with one color each)
     for (int colorIndex = 0; colorIndex < params.colors; colorIndex++) {
       final layers = <Layer>[];
-      
+
       for (int i = 0; i < params.depth; i++) {
         // Decide if this should be a special block
         final multiColorRoll = random.nextDouble();
         final lockedRoll = random.nextDouble();
-        
-        if (params.multiColorProbability > 0 && multiColorRoll < params.multiColorProbability) {
+
+        if (params.multiColorProbability > 0 &&
+            multiColorRoll < params.multiColorProbability) {
           // Create multi-color block
           final availableColors = List.generate(params.colors, (i) => i);
           availableColors.shuffle(random);
@@ -64,16 +73,19 @@ class LevelGenerator {
             colors[0] = colorIndex; // Ensure primary color is included
           }
           layers.add(Layer.multiColor(colors: colors));
-        } else if (params.lockedBlockProbability > 0 && lockedRoll < params.lockedBlockProbability) {
+        } else if (params.lockedBlockProbability > 0 &&
+            lockedRoll < params.lockedBlockProbability) {
           // Create locked block
           final lockedFor = random.nextInt(params.maxLockedMoves) + 1;
-          layers.add(Layer.locked(colorIndex: colorIndex, lockedFor: lockedFor));
+          layers.add(
+            Layer.locked(colorIndex: colorIndex, lockedFor: lockedFor),
+          );
         } else {
           // Normal block
           layers.add(Layer(colorIndex: colorIndex));
         }
       }
-      
+
       stacks.add(GameStack(layers: layers, maxDepth: params.depth));
     }
 
@@ -155,10 +167,16 @@ class LevelGenerator {
     // Verify the result isn't already solved or too easy
     const maxRecursionDepth = 5;
     if (recursionDepth < maxRecursionDepth &&
-        (_isSolved(current) || _isTooEasy(current) || difficultyScore(current) < 4)) {
+        (_isSolved(current) ||
+            _isTooEasy(current) ||
+            difficultyScore(current) < 4)) {
       // Do a few more shuffles
-      return _shuffleLevel(stacks, moves + 10, random,
-          recursionDepth: recursionDepth + 1);
+      return _shuffleLevel(
+        stacks,
+        moves + 10,
+        random,
+        recursionDepth: recursionDepth + 1,
+      );
     }
 
     return current;
@@ -170,7 +188,9 @@ class LevelGenerator {
     for (final stack in stacks) {
       if (stack.isEmpty) continue;
       if (stack.layers.length >= 2 &&
-          stack.layers.every((l) => l.colorIndex == stack.layers.first.colorIndex)) {
+          stack.layers.every(
+            (l) => l.colorIndex == stack.layers.first.colorIndex,
+          )) {
         singleColorStacks++;
       }
     }
@@ -236,9 +256,7 @@ class LevelGenerator {
         .where(
           (s) =>
               s.layers.length >= 3 &&
-              s.layers.every(
-                (l) => l.colorIndex == s.layers.first.colorIndex,
-              ),
+              s.layers.every((l) => l.colorIndex == s.layers.first.colorIndex),
         )
         .length;
 
@@ -255,7 +273,7 @@ class LevelGenerator {
 
     final visited = <String, int>{};
     final queue = <(List<GameStack>, int)>[
-      (stacks.map((s) => s.copy()).toList(), 0)
+      (stacks.map((s) => s.copy()).toList(), 0),
     ];
 
     while (queue.isNotEmpty && visited.length < maxStates) {
@@ -348,7 +366,6 @@ class LevelGenerator {
     final minDifficulty = params.minDifficultyScore;
 
     List<GameStack>? bestLevel;
-    List<GameStack>? bestSolvable;
     int bestScore = -1;
 
     // Try multiple seeds to find a level that's both solvable and difficult enough
@@ -457,7 +474,6 @@ class LevelGenerator {
     final minDifficulty = params.minDifficultyScore;
 
     List<GameStack>? bestLevel;
-    List<GameStack>? bestSolvable;
     int bestScore = -1;
 
     for (int attempt = 0; attempt < 10; attempt++) {
@@ -468,7 +484,7 @@ class LevelGenerator {
       if (!isSolvable(level, maxStates: 5000)) continue;
 
       final score = difficultyScore(level);
-      bestSolvable ??= level;
+      bestLevel ??= level;
       if (score >= minDifficulty) {
         return level;
       }
@@ -482,7 +498,7 @@ class LevelGenerator {
     final fallbackRandom = Random(seed);
     var fallback = _createSolvedState(params, fallbackRandom);
     fallback = _shuffleLevel(fallback, params.shuffleMoves, fallbackRandom);
-    return bestLevel ?? bestSolvable ?? fallback;
+    return bestLevel ?? fallback;
   }
 
   /// Generate the daily challenge level with par information
