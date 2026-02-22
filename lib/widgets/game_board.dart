@@ -58,7 +58,6 @@ class _GameBoardState extends State<GameBoard>
   int _dragSourceTube = -1;
   Offset _dragPosition = Offset.zero;
   List<Layer>? _dragLayers;
-  bool _dragIsMultiGrab = false;
   int? _dragHoverTube;
 
   @override
@@ -186,6 +185,8 @@ class _GameBoardState extends State<GameBoard>
                                   multiGrabCount:
                                       widget.gameState.multiGrabCount,
                                   onTap: () {
+                                    // Don't process taps during drag
+                                    if (_isDragging) return;
                                     // Check if there's an override handler (for power-up selection)
                                     if (widget.onStackTapOverride != null) {
                                       widget.onStackTapOverride!(actualIndex);
@@ -399,7 +400,6 @@ class _GameBoardState extends State<GameBoard>
       _dragSourceTube = tubeIndex;
       _dragPosition = globalPosition;
       _dragLayers = topGroup;
-      _dragIsMultiGrab = isMulti;
       _dragHoverTube = null;
     });
 
@@ -455,7 +455,6 @@ class _GameBoardState extends State<GameBoard>
       _isDragging = false;
       _dragSourceTube = -1;
       _dragLayers = null;
-      _dragIsMultiGrab = false;
       _dragHoverTube = null;
     });
 
@@ -522,6 +521,29 @@ class _GameBoardState extends State<GameBoard>
     if (total <= 6) return 3;
     if (total <= 9) return 5;
     return maxFit.clamp(4, 6);
+  }
+
+  /// Small particle burst on block landing (3-5 particles, subtle)
+  void _triggerLandingBurst(int stackIndex, int colorIndex) {
+    if (!ThemeColors.hasParticles) return;
+    final stackKey = _stackKeys[stackIndex];
+    if (stackKey?.currentContext == null) return;
+    final renderBox = stackKey!.currentContext!.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+    final position = renderBox.localToGlobal(Offset.zero);
+    final size = renderBox.size;
+    final center = Offset(position.dx + size.width / 2, position.dy + size.height - 10);
+    final color = ThemeColors.getColor(colorIndex);
+    setState(() {
+      _currentBursts = [
+        ParticleBurstData(
+          center: center,
+          color: color,
+          particleCount: 5,
+          lifetime: const Duration(milliseconds: 200),
+        ),
+      ];
+    });
   }
 
   void _triggerParticleBursts(List<int> clearedIndices, [int chainLevel = 1]) {
@@ -969,7 +991,9 @@ class _StackWidgetState extends State<_StackWidget>
               scale: scale,
               duration: GameDurations.buttonPress,
               curve: Curves.easeOutCubic,
-              child: GestureDetector(
+              child: Opacity(
+                opacity: widget.isDragSource ? 0.4 : 1.0,
+                child: GestureDetector(
                 onTap: () {
                   haptics.lightTap();
                   widget.onTap();
@@ -1002,7 +1026,13 @@ class _StackWidgetState extends State<_StackWidget>
                             GameSizes.stackBorderRadius,
                           ),
                           border: Border.all(
-                            color: widget.isPowerUpHighlighted
+                            color: widget.isDragValidTarget
+                                ? const Color(0xFF2ED573).withValues(alpha: 0.9)
+                                : widget.isDragInvalidHover
+                                ? const Color(0xFFFF4757).withValues(alpha: 0.7)
+                                : widget.isDragSource
+                                ? Colors.white.withValues(alpha: 0.3)
+                                : widget.isPowerUpHighlighted
                                 ? GameColors.zen.withValues(alpha: 0.9)
                                 : isMultiGrabActive
                                 ? glowColor.withValues(
@@ -1017,7 +1047,11 @@ class _StackWidgetState extends State<_StackWidget>
                                     alpha: 0.6 + pulseValue * 0.4,
                                   )
                                 : GameColors.empty,
-                            width: widget.isPowerUpHighlighted
+                            width: widget.isDragValidTarget
+                                ? 3
+                                : widget.isDragInvalidHover
+                                ? 3
+                                : widget.isPowerUpHighlighted
                                 ? 3
                                 : (isMultiGrabActive
                                       ? 4
@@ -1028,6 +1062,20 @@ class _StackWidgetState extends State<_StackWidget>
                                             : 2)),
                           ),
                           boxShadow: [
+                            // Drag valid target glow
+                            if (widget.isDragValidTarget)
+                              BoxShadow(
+                                color: const Color(0xFF2ED573).withValues(alpha: 0.5),
+                                blurRadius: 16,
+                                spreadRadius: 4,
+                              ),
+                            // Drag invalid hover
+                            if (widget.isDragInvalidHover)
+                              BoxShadow(
+                                color: const Color(0xFFFF4757).withValues(alpha: 0.3),
+                                blurRadius: 12,
+                                spreadRadius: 2,
+                              ),
                             // Power-up highlight glow (magnet eligible)
                             if (widget.isPowerUpHighlighted)
                               BoxShadow(
@@ -1120,6 +1168,7 @@ class _StackWidgetState extends State<_StackWidget>
                     ],
                   ),
                 ),
+              ),
               ),
             ),
           );
@@ -1321,7 +1370,7 @@ class _MultiGrabIndicator extends StatelessWidget {
               ),
               const SizedBox(width: 2),
               Text(
-                'x$count',
+                '🔥$count',
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
@@ -1701,6 +1750,122 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
           ),
         );
       },
+    );
+  }
+}
+
+/// Overlay widget that renders dragged block(s) following the finger
+class _DragOverlay extends StatelessWidget {
+  final List<Layer> layers;
+  final Offset globalPosition;
+  final BuildContext boardContext;
+
+  const _DragOverlay({
+    required this.layers,
+    required this.globalPosition,
+    required this.boardContext,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Convert global position to local position within the board's Stack
+    final renderBox = boardContext.findRenderObject() as RenderBox?;
+    if (renderBox == null) return const SizedBox.shrink();
+
+    final localPos = renderBox.globalToLocal(globalPosition);
+    final totalHeight = GameSizes.layerHeight * layers.length + (2 * (layers.length - 1));
+    final layerColor = GameColors.getColor(layers.last.colorIndex);
+
+    // Check if texture skins are enabled
+    final textureSkinsEnabled = StorageService().getTextureSkinsEnabled();
+
+    return Positioned(
+      left: localPos.dx - GameSizes.stackWidth / 2,
+      top: localPos.dy - totalHeight - 16, // Offset above finger
+      child: IgnorePointer(
+        child: Transform.scale(
+          scale: 1.1,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.4),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+                BoxShadow(
+                  color: layerColor.withValues(alpha: 0.4),
+                  blurRadius: 16,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: layers.asMap().entries.map((entry) {
+                final layer = entry.value;
+                final isLast = entry.key == layers.length - 1;
+                final gradientColors = GameColors.getGradient(layer.colorIndex);
+                return Container(
+                  width: GameSizes.stackWidth,
+                  height: GameSizes.layerHeight,
+                  margin: EdgeInsets.only(bottom: isLast ? 0 : 2),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: gradientColors,
+                    ),
+                    image: textureSkinsEnabled
+                        ? const DecorationImage(
+                            image: AssetImage(
+                              'assets/images/textures/cherry_blossom.png',
+                            ),
+                            fit: BoxFit.cover,
+                            opacity: 0.3,
+                          )
+                        : null,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.4),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        top: 2,
+                        left: 4,
+                        right: 4,
+                        height: 3,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.22),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 1,
+                        left: 3,
+                        right: 3,
+                        height: 2,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.16),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
