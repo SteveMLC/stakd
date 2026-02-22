@@ -302,39 +302,41 @@ class _ZenModeScreenState extends State<ZenModeScreen>
         children: [
           const ZenGardenScene(showStats: false, interactive: false),
 
-          // Ambient particles background
-          Positioned.fill(
-            child: AnimatedBuilder(
-              animation: _particleController,
-              builder: (context, _) => CustomPaint(
-                painter: AmbientParticlesPainter(
-                  progress: _particleController.value,
-                  seed: _puzzleSeed,
+          // Ambient particles background (hidden in garden view)
+          if (!_showGardenView)
+            Positioned.fill(
+              child: AnimatedBuilder(
+                animation: _particleController,
+                builder: (context, _) => CustomPaint(
+                  painter: AmbientParticlesPainter(
+                    progress: _particleController.value,
+                    seed: _puzzleSeed,
+                  ),
                 ),
               ),
             ),
-          ),
 
-          // Subtle overlay for readability (reduced opacity so garden is visible)
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    const Color(
-                      0xFF0B0F14,
-                    ).withValues(alpha: 0.15), // Much lighter
-                    Colors.transparent, // Middle is clear
-                    const Color(
-                      0xFF0B0F14,
-                    ).withValues(alpha: 0.15), // Much lighter
-                  ],
+          // Subtle overlay for readability (hidden when garden view is active)
+          if (!_showGardenView)
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      const Color(
+                        0xFF0B0F14,
+                      ).withValues(alpha: 0.15),
+                      Colors.transparent,
+                      const Color(
+                        0xFF0B0F14,
+                      ).withValues(alpha: 0.15),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
 
           // Main content
           SafeArea(
@@ -380,27 +382,13 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                 // Optional move counter
                 if (_showMoveCounter && !_showGardenView) _buildMoveCounter(),
 
-                // Undo + Hint + Garden toggle buttons
-                _buildBottomButtons(),
-
-                const SizedBox(height: 16),
+                // Bottom bar: stats + action buttons
+                _buildBottomBar(),
               ],
             ),
           ),
 
-          // Garden progress indicator (bottom left)
-          Positioned(
-            bottom: MediaQuery.of(context).padding.bottom + 32,
-            left: 16,
-            child: _buildGardenProgress(),
-          ),
-
-          // Session stats overlay (bottom right)
-          Positioned(
-            bottom: MediaQuery.of(context).padding.bottom + 32,
-            right: 16,
-            child: _buildSessionStats(),
-          ),
+          // (Garden progress and session stats moved into bottom bar)
           // Hint overlay
           if (_showingHint &&
               _stackKeys.containsKey(_hintSourceIndex) &&
@@ -574,73 +562,100 @@ class _ZenModeScreenState extends State<ZenModeScreen>
 
   Widget _buildGardenFullView() {
     final state = GardenService.state;
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Stack(
+      fit: StackFit.expand,
       children: [
-        Text(
-          '${state.stageIcon} ${state.stageName}',
-          style: TextStyle(
-            color: GameColors.text,
-            fontSize: 22,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          '${state.totalPuzzlesSolved} puzzles solved this session',
-          style: TextStyle(
-            color: GameColors.textMuted.withValues(alpha: 0.7),
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          '${state.unlockedElements.length} garden elements unlocked',
-          style: TextStyle(
-            color: GameColors.textMuted.withValues(alpha: 0.5),
-            fontSize: 12,
+        // Full interactive garden scene
+        const ZenGardenScene(showStats: true, interactive: true),
+        // Stage info overlay at top
+        Positioned(
+          top: 16,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              decoration: BoxDecoration(
+                color: GameColors.surface.withValues(alpha: 0.7),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '${state.stageIcon} ${state.stageName}  •  ${state.totalPuzzlesSolved} puzzles solved',
+                style: TextStyle(
+                  color: GameColors.text,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildBottomButtons() {
+  Widget _buildBottomBar() {
     return Consumer<GameState>(
       builder: (context, gameState, _) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        return Container(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 12,
+            bottom: MediaQuery.of(context).padding.bottom + 8,
+          ),
+          decoration: BoxDecoration(
+            color: GameColors.surface.withValues(alpha: 0.6),
+            border: Border(
+              top: BorderSide(
+                color: GameColors.zen.withValues(alpha: 0.2),
+                width: 1,
+              ),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // Undo button
-              _ZenActionButton(
-                icon: Icons.undo,
-                label: 'Undo',
-                badgeCount: gameState.undosRemaining,
-                enabled: gameState.canUndo,
-                onPressed: gameState.canUndo ? () => gameState.undo() : null,
+              // Stats row: garden progress | session stats
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  children: [
+                    _buildGardenProgress(),
+                    const Spacer(),
+                    _buildSessionStats(),
+                  ],
+                ),
               ),
-
-              // Garden toggle button
-              _ZenActionButton(
-                icon: _showGardenView ? Icons.grid_view : Icons.park_outlined,
-                label: _showGardenView ? 'Puzzle' : 'Garden',
-                enabled: true,
-                onPressed: () {
-                  setState(() {
-                    _showGardenView = !_showGardenView;
-                  });
-                },
-              ),
-
-              // Hint button
-              _ZenActionButton(
-                icon: Icons.lightbulb_outline,
-                label: 'Hint',
-                badgeCount: _hintsRemaining,
-                enabled: _hintsRemaining > 0,
-                onPressed: _hintsRemaining > 0 ? _showHint : null,
+              // Action buttons row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _ZenActionButton(
+                    icon: Icons.undo,
+                    label: 'Undo',
+                    badgeCount: gameState.undosRemaining,
+                    enabled: gameState.canUndo,
+                    onPressed: gameState.canUndo ? () => gameState.undo() : null,
+                  ),
+                  _ZenActionButton(
+                    icon: _showGardenView ? Icons.grid_view : Icons.park_outlined,
+                    label: _showGardenView ? 'Puzzle' : 'Garden',
+                    enabled: true,
+                    onPressed: () {
+                      setState(() {
+                        _showGardenView = !_showGardenView;
+                      });
+                    },
+                  ),
+                  _ZenActionButton(
+                    icon: Icons.lightbulb_outline,
+                    label: 'Hint',
+                    badgeCount: _hintsRemaining,
+                    enabled: _hintsRemaining > 0,
+                    onPressed: _hintsRemaining > 0 ? _showHint : null,
+                  ),
+                ],
               ),
             ],
           ),
