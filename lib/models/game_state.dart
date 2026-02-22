@@ -57,9 +57,8 @@ class GameState extends ChangeNotifier {
   int? _par; // Minimum moves to solve (null if unknown)
   bool _isZenMode = false;
 
-  // Combo tracking
+  // Combo tracking (consecutive correct moves — placing on matching color)
   int _comboCount = 0;
-  DateTime? _lastClearTime;
   int _maxCombo = 0;
 
   // Chain reaction tracking
@@ -93,7 +92,7 @@ class GameState extends ChangeNotifier {
   int? get par => _par;
   bool get isUnderPar => _par != null && _moveCount <= _par!;
   bool get isAtPar => _par != null && _moveCount == _par!;
-  
+
   /// Calculate stars earned for this level completion
   /// ★ (1 star) = Complete the level
   /// ★★ (2 stars) = Complete at or under par moves
@@ -101,14 +100,15 @@ class GameState extends ChangeNotifier {
   int calculateStars() {
     if (!_isComplete) return 0;
     if (_par == null) return 1; // No par = 1 star for completion
-    
+
     final bool usedNoUndo = (GameConfig.maxUndos - _undosRemaining) == 0;
     final bool underPar2 = _moveCount <= (_par! - 2);
-    
+
     if (underPar2 || usedNoUndo) return 3;
     if (_moveCount <= _par!) return 2;
     return 1;
   }
+
   bool get isMultiGrabMode => _isMultiGrabMode;
   List<Layer>? get multiGrabLayers => _multiGrabLayers;
   int get multiGrabCount => _multiGrabLayers?.length ?? 0;
@@ -130,7 +130,6 @@ class GameState extends ChangeNotifier {
     _moveHistory = [];
     _recentlyCleared = [];
     _comboCount = 0;
-    _lastClearTime = null;
     _maxCombo = 0;
     _currentChainLevel = 0;
     _maxChainLevel = 0;
@@ -156,7 +155,6 @@ class GameState extends ChangeNotifier {
     _moveHistory = [];
     _recentlyCleared = [];
     _comboCount = 0;
-    _lastClearTime = null;
     _maxCombo = 0;
     _currentChainLevel = 0;
     _maxChainLevel = 0;
@@ -385,6 +383,10 @@ class GameState extends ChangeNotifier {
     }
 
     _moveCount++; // Still counts as 1 move!
+
+    // Track consecutive correct moves combo
+    _updateMoveCombo(anim.toStackIndex);
+
     _animatingLayer = null;
 
     // Decrement locked block counters
@@ -405,7 +407,7 @@ class GameState extends ChangeNotifier {
       final stack = _stacks[i];
       bool changed = false;
       final newLayers = <Layer>[];
-      
+
       for (final layer in stack.layers) {
         if (layer.isLocked) {
           newLayers.add(layer.decrementLock());
@@ -414,7 +416,7 @@ class GameState extends ChangeNotifier {
           newLayers.add(layer);
         }
       }
-      
+
       if (changed) {
         _stacks[i] = GameStack(
           layers: newLayers,
@@ -438,7 +440,7 @@ class GameState extends ChangeNotifier {
     // Chain level = number of stacks cleared simultaneously
     // A "chain" is when multiple stacks complete from a single move
     _currentChainLevel = _recentlyCleared.length;
-    
+
     // Track max chain and total chains
     if (_currentChainLevel > _maxChainLevel) {
       _maxChainLevel = _currentChainLevel;
@@ -447,29 +449,31 @@ class GameState extends ChangeNotifier {
       _totalChains++;
     }
 
-    // Update combo if stacks were cleared
-    if (_recentlyCleared.isNotEmpty) {
-      _updateCombo();
-    }
+    // (Combo is now tracked per-move in completeMove)
   }
 
-  /// Update combo counter based on clear timing
-  void _updateCombo() {
-    final now = DateTime.now();
-
-    // Check if this clear is within combo window (3 seconds)
-    if (_lastClearTime != null &&
-        now.difference(_lastClearTime!).inMilliseconds <= 3000) {
-      _comboCount = (_comboCount + 1).clamp(0, 5); // Cap at 5x
+  /// Update combo counter — called on every completed move
+  /// Combo increments when block lands on a matching color.
+  /// Resets on move to empty tube or wrong color.
+  void _updateMoveCombo(int toStackIndex) {
+    final destStack = _stacks[toStackIndex];
+    final layers = destStack.layers;
+    if (layers.length < 2) {
+      // Moved to empty tube (only 1 layer now) — reset combo
+      _comboCount = 0;
+      return;
+    }
+    // Check if top layer matches the one below it
+    final topColor = layers.last.colorIndex;
+    final belowColor = layers[layers.length - 2].colorIndex;
+    if (topColor == belowColor) {
+      _comboCount++;
       if (_comboCount > _maxCombo) {
         _maxCombo = _comboCount;
       }
     } else {
-      // Start new combo
-      _comboCount = 1;
+      _comboCount = 0;
     }
-
-    _lastClearTime = now;
   }
 
   /// Calculate chain bonus multiplier
@@ -519,7 +523,6 @@ class GameState extends ChangeNotifier {
     _recentlyCleared = [];
     _animatingLayer = null; // Clear any ongoing animation
     _comboCount = 0; // Reset combo on undo
-    _lastClearTime = null;
     _currentChainLevel = 0; // Reset chain on undo
     _isMultiGrabMode = false;
     _multiGrabLayers = null;
@@ -601,24 +604,25 @@ class GameState extends ChangeNotifier {
   bool unstackFrom(int stackIndex, int count) {
     if (_animatingLayer != null) return false;
     if (stackIndex < 0 || stackIndex >= _stacks.length) return false;
-    if (hasUnstakedLayers) return false; // Can only have one unstack operation at a time
-    
+    if (hasUnstakedLayers)
+      return false; // Can only have one unstack operation at a time
+
     final stack = _stacks[stackIndex];
     if (stack.isEmpty || count > stack.layers.length) return false;
-    
+
     // Extract top N layers
     final layersToUnstack = stack.layers.sublist(
       stack.layers.length - count,
       stack.layers.length,
     );
-    
+
     // Can't unstack locked layers
     if (layersToUnstack.any((l) => l.isLocked)) return false;
-    
+
     _unstakedLayers = layersToUnstack;
     _unstackSlotIndex = stackIndex;
     _stacks[stackIndex] = stack.withTopGroupRemoved(count);
-    
+
     notifyListeners();
     return true;
   }
@@ -629,26 +633,26 @@ class GameState extends ChangeNotifier {
     if (!hasUnstakedLayers) return false;
     if (_animatingLayer != null) return false;
     if (stackIndex < 0 || stackIndex >= _stacks.length) return false;
-    
+
     final targetStack = _stacks[stackIndex];
-    
+
     // Check if we can add all unstacked layers
     if (!targetStack.canAcceptMultiple(_unstakedLayers)) return false;
-    
+
     _stacks[stackIndex] = targetStack.withLayersAdded(_unstakedLayers);
     _unstakedLayers = [];
     _unstackSlotIndex = null;
     _moveCount++; // Unstacking counts as a move
-    
+
     // Decrement locked blocks
     _decrementLockedBlocks();
-    
+
     // Check for completed stacks
     _checkForCompletedStacks();
-    
+
     // Check win condition
     _checkWinCondition();
-    
+
     notifyListeners();
     return true;
   }
@@ -656,11 +660,13 @@ class GameState extends ChangeNotifier {
   /// Cancel unstacking and return layers to original stack
   void cancelUnstack() {
     if (!hasUnstakedLayers || _unstackSlotIndex == null) return;
-    
-    _stacks[_unstackSlotIndex!] = _stacks[_unstackSlotIndex!].withLayersAdded(_unstakedLayers);
+
+    _stacks[_unstackSlotIndex!] = _stacks[_unstackSlotIndex!].withLayersAdded(
+      _unstakedLayers,
+    );
     _unstakedLayers = [];
     _unstackSlotIndex = null;
-    
+
     notifyListeners();
   }
 
@@ -681,11 +687,11 @@ class GameState extends ChangeNotifier {
   /// Returns the list of stack indices and positions where blocks were removed
   List<(int stackIndex, int layerIndex)> activateColorBomb(int colorIndex) {
     final removed = <(int, int)>[];
-    
+
     for (int stackIdx = 0; stackIdx < _stacks.length; stackIdx++) {
       final stack = _stacks[stackIdx];
       final newLayers = <Layer>[];
-      
+
       for (int layerIdx = 0; layerIdx < stack.layers.length; layerIdx++) {
         final layer = stack.layers[layerIdx];
         if (layer.colorIndex == colorIndex && !layer.isLocked) {
@@ -695,7 +701,7 @@ class GameState extends ChangeNotifier {
           newLayers.add(layer);
         }
       }
-      
+
       if (newLayers.length != stack.layers.length) {
         _stacks[stackIdx] = GameStack(
           layers: newLayers,
@@ -704,14 +710,14 @@ class GameState extends ChangeNotifier {
         );
       }
     }
-    
+
     if (removed.isNotEmpty) {
       _colorBombsUsed++;
       _checkForCompletedStacks();
       _checkWinCondition();
       notifyListeners();
     }
-    
+
     return removed;
   }
 
@@ -733,12 +739,13 @@ class GameState extends ChangeNotifier {
   bool activateShuffle() {
     // Collect all current layers (excluding locked ones from shuffling)
     final allLayers = <Layer>[];
-    final lockedLayersMap = <int, List<(int, Layer)>>{}; // stackIdx -> [(layerIdx, layer)]
-    
+    final lockedLayersMap =
+        <int, List<(int, Layer)>>{}; // stackIdx -> [(layerIdx, layer)]
+
     for (int i = 0; i < _stacks.length; i++) {
       final stack = _stacks[i];
       lockedLayersMap[i] = [];
-      
+
       for (int j = 0; j < stack.layers.length; j++) {
         final layer = stack.layers[j];
         if (layer.isLocked) {
@@ -748,23 +755,23 @@ class GameState extends ChangeNotifier {
         }
       }
     }
-    
+
     if (allLayers.isEmpty) return false;
-    
+
     // Shuffle the layers
     final random = Random();
     allLayers.shuffle(random);
-    
+
     // Redistribute layers across stacks
     final maxDepth = _stacks.first.maxDepth;
     final stackCount = _stacks.length;
     final newStacks = <GameStack>[];
-    
+
     int layerIndex = 0;
     for (int i = 0; i < stackCount; i++) {
       final stackLayers = <Layer>[];
       final locked = lockedLayersMap[i] ?? [];
-      
+
       // Calculate how many layers this stack should have (random distribution)
       int targetLayers = 0;
       if (layerIndex < allLayers.length) {
@@ -778,24 +785,22 @@ class GameState extends ChangeNotifier {
           targetLayers = random.nextInt(targetLayers) + 1;
         }
       }
-      
+
       // Add shuffled layers
       for (int j = 0; j < targetLayers && layerIndex < allLayers.length; j++) {
         stackLayers.add(allLayers[layerIndex++]);
       }
-      
+
       // Re-insert locked layers at their original positions (approximately)
       for (final (_, lockedLayer) in locked) {
         stackLayers.add(lockedLayer);
       }
-      
-      newStacks.add(GameStack(
-        layers: stackLayers,
-        maxDepth: maxDepth,
-        id: _stacks[i].id,
-      ));
+
+      newStacks.add(
+        GameStack(layers: stackLayers, maxDepth: maxDepth, id: _stacks[i].id),
+      );
     }
-    
+
     // Distribute any remaining layers
     while (layerIndex < allLayers.length) {
       for (int i = 0; i < stackCount && layerIndex < allLayers.length; i++) {
@@ -804,39 +809,42 @@ class GameState extends ChangeNotifier {
         }
       }
     }
-    
+
     _stacks = newStacks;
     _shufflesUsed++;
     _selectedStackIndex = -1;
     _isMultiGrabMode = false;
     _multiGrabLayers = null;
     _recentlyCleared = [];
-    
+
     notifyListeners();
     return true;
   }
 
   /// Find stacks that are eligible for Magnet (all same color except 1 mismatched block)
   /// Returns list of (stackIndex, mismatchedLayerIndex, dominantColor)
-  List<(int stackIndex, int mismatchedLayerIndex, int dominantColor)> findMagnetEligibleStacks() {
+  List<(int stackIndex, int mismatchedLayerIndex, int dominantColor)>
+  findMagnetEligibleStacks() {
     final eligible = <(int, int, int)>[];
-    
+
     for (int stackIdx = 0; stackIdx < _stacks.length; stackIdx++) {
       final stack = _stacks[stackIdx];
-      if (stack.isEmpty || stack.isComplete || stack.layers.length < 2) continue;
-      
+      if (stack.isEmpty || stack.isComplete || stack.layers.length < 2)
+        continue;
+
       // Count colors in this stack
       final colorCounts = <int, int>{};
       for (final layer in stack.layers) {
-        colorCounts[layer.colorIndex] = (colorCounts[layer.colorIndex] ?? 0) + 1;
+        colorCounts[layer.colorIndex] =
+            (colorCounts[layer.colorIndex] ?? 0) + 1;
       }
-      
+
       // Find if there's exactly one mismatched block
       if (colorCounts.length == 2) {
         // Check if one color has count 1 and the other has count (layers.length - 1)
         int? mismatchedColor;
         int? dominantColor;
-        
+
         for (final entry in colorCounts.entries) {
           if (entry.value == 1) {
             mismatchedColor = entry.key;
@@ -844,11 +852,11 @@ class GameState extends ChangeNotifier {
             dominantColor = entry.key;
           }
         }
-        
+
         if (mismatchedColor != null && dominantColor != null) {
           // Find the index of the mismatched layer
           for (int layerIdx = 0; layerIdx < stack.layers.length; layerIdx++) {
-            if (stack.layers[layerIdx].colorIndex == mismatchedColor && 
+            if (stack.layers[layerIdx].colorIndex == mismatchedColor &&
                 !stack.layers[layerIdx].isLocked) {
               eligible.add((stackIdx, layerIdx, dominantColor));
               break;
@@ -857,39 +865,42 @@ class GameState extends ChangeNotifier {
         }
       }
     }
-    
+
     return eligible;
   }
 
   /// Activate Magnet on a specific stack
   /// Returns the removed layer info: (stackIndex, removedLayer, layerPosition) or null if failed
-  (int stackIndex, Layer removedLayer, Offset layerPosition)? activateMagnet(int stackIndex) {
+  (int stackIndex, Layer removedLayer, Offset layerPosition)? activateMagnet(
+    int stackIndex,
+  ) {
     final eligibleStacks = findMagnetEligibleStacks();
     final match = eligibleStacks.where((e) => e.$1 == stackIndex).firstOrNull;
-    
+
     if (match == null) return null;
-    
+
     final (_, mismatchedLayerIndex, _) = match;
     final stack = _stacks[stackIndex];
     final removedLayer = stack.layers[mismatchedLayerIndex];
-    
+
     // Remove the mismatched layer
     final newLayers = [...stack.layers];
     newLayers.removeAt(mismatchedLayerIndex);
-    
+
     _stacks[stackIndex] = GameStack(
       layers: newLayers,
       maxDepth: stack.maxDepth,
       id: stack.id,
     );
-    
+
     _magnetsUsed++;
     _checkForCompletedStacks();
     _checkWinCondition();
     notifyListeners();
-    
+
     // Calculate approximate position for animation (will be refined in widget)
-    final layerY = mismatchedLayerIndex * (GameSizes.layerHeight + GameSizes.layerMargin);
+    final layerY =
+        mismatchedLayerIndex * (GameSizes.layerHeight + GameSizes.layerMargin);
     return (stackIndex, removedLayer, Offset(0, layerY));
   }
 
@@ -898,7 +909,7 @@ class GameState extends ChangeNotifier {
   (int, int, int?, int?)? getEnhancedHint() {
     final hint = getHint();
     if (hint == null) return null;
-    
+
     _hintsUsed++;
     return (hint.$1, hint.$2, null, null);
   }

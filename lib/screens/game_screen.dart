@@ -24,6 +24,8 @@ import '../widgets/power_up_bar.dart';
 import '../widgets/power_up_effects.dart';
 import '../services/power_up_service.dart';
 import '../widgets/achievement_toast_overlay.dart';
+import '../widgets/particles/confetti_overlay.dart';
+import '../widgets/color_flash_overlay.dart';
 import 'settings_screen.dart';
 
 /// Main gameplay screen
@@ -72,6 +74,10 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
   Offset? _magnetSourcePos;
   Offset? _magnetTargetPos;
   Color? _magnetBlockColor;
+
+  // Puzzle solve effects
+  bool _showSolveConfetti = false;
+  bool _showSolveFlash = false;
 
   IapService? _iapService;
   PowerUpService? _powerUpService;
@@ -237,11 +243,29 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
       });
       // Play win sound
       AudioService().playWin();
-      // Heavy haptic impact on level complete
+
+      // Screen flash (white, 200ms)
+      setState(() {
+        _showSolveFlash = true;
+        _showSolveConfetti = true;
+      });
+
+      // Haptic: success pattern (3 quick taps)
       haptics.heavyImpact();
-      // Follow with success pattern for extra juice
-      Future.delayed(const Duration(milliseconds: 100), () {
-        haptics.levelWinPattern();
+      Future.delayed(const Duration(milliseconds: 80), () {
+        haptics.mediumImpact();
+      });
+      Future.delayed(const Duration(milliseconds: 160), () {
+        haptics.mediumImpact();
+      });
+
+      // Auto-hide confetti
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) {
+          setState(() {
+            _showSolveConfetti = false;
+          });
+        }
       });
     });
   }
@@ -497,6 +521,28 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
   }
 
   // ============== POWER-UP METHODS ==============
+
+  Future<void> _onAddTubePressed(GameState gameState) async {
+    if (gameState.addTubeUsed) return;
+    final currency = CurrencyService();
+    final coins = await currency.getCoins();
+    if (!mounted) return;
+    if (coins < 100) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Not enough coins! Need 100 coins.')),
+      );
+      return;
+    }
+    final success = await currency.spendCoins(100);
+    if (success) {
+      gameState.addEmptyTube();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Empty tube added! 🧪')),
+        );
+      }
+    }
+  }
 
   void _onColorBombPressed() {
     final powerUpService = _powerUpService;
@@ -1006,6 +1052,15 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                             : null,
                       ),
 
+                      // Add Tube button
+                      if (!gameState.addTubeUsed)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: _AddTubeButton(
+                            onTap: () => _onAddTubePressed(gameState),
+                          ),
+                        ),
+
                       // Banner ad
                       _buildBannerAd(),
 
@@ -1077,6 +1132,28 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                   if (_showMultiGrabHint)
                     MultiGrabHintOverlay(onDismiss: _dismissMultiGrabHint),
 
+                  // Solve flash overlay
+                  if (_showSolveFlash)
+                    Positioned.fill(
+                      child: ColorFlashOverlay(
+                        color: Colors.white.withValues(alpha: 0.3),
+                        duration: const Duration(milliseconds: 200),
+                        onComplete: () {
+                          setState(() {
+                            _showSolveFlash = false;
+                          });
+                        },
+                      ),
+                    ),
+                  // Solve confetti
+                  if (_showSolveConfetti)
+                    Positioned.fill(
+                      child: ConfettiOverlay(
+                        colors: GameColors.palette,
+                        confettiCount: 40,
+                        duration: const Duration(seconds: 2),
+                      ),
+                    ),
                   // Win overlay
                   if (gameState.isComplete)
                     CompletionOverlay(
@@ -1280,6 +1357,70 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
             onPressed: _showHint,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Add Tube power-up button
+class _AddTubeButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _AddTubeButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: GameColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: GameColors.zen.withValues(alpha: 0.5),
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: GameColors.zen.withValues(alpha: 0.2),
+                border: Border.all(
+                  color: GameColors.zen,
+                  width: 1.5,
+                ),
+              ),
+              child: const Icon(
+                Icons.add,
+                color: GameColors.zen,
+                size: 14,
+              ),
+            ),
+            const SizedBox(width: 6),
+            const Text(
+              'Add Tube',
+              style: TextStyle(
+                color: GameColors.text,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              '100🪙',
+              style: TextStyle(
+                color: GameColors.textMuted,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

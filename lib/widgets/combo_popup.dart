@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../utils/constants.dart';
 
 /// Displays an animated combo multiplier popup
 class ComboPopup extends StatefulWidget {
@@ -24,7 +23,7 @@ class _ComboPopupState extends State<ComboPopup>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 1500),
     );
 
     // Scale animation: 0.5 → 1.2 → 1.0 → fade
@@ -77,18 +76,8 @@ class _ComboPopupState extends State<ComboPopup>
   }
 
   Color _getComboColor() {
-    switch (widget.comboMultiplier) {
-      case 2:
-        return const Color(0xFFFFD700); // Gold/Yellow
-      case 3:
-        return const Color(0xFFFF8C00); // Dark Orange
-      case 4:
-        return const Color(0xFFFF4500); // Red-Orange
-      case 5:
-        return const Color(0xFF9370DB); // Medium Purple
-      default:
-        return GameColors.accent;
-    }
+    // Gold for all combo levels — zen puzzle game style
+    return const Color(0xFFFFD700);
   }
 
   @override
@@ -114,29 +103,20 @@ class _ComboPopupState extends State<ComboPopup>
                   ),
                 ],
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'COMBO',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: GameColors.text,
-                      letterSpacing: 2,
+              child: Text(
+                'x${widget.comboMultiplier} Combo!',
+                style: TextStyle(
+                  fontSize: 36,
+                  fontWeight: FontWeight.w900,
+                  color: _getComboColor(),
+                  height: 1.0,
+                  shadows: [
+                    Shadow(
+                      color: Colors.black.withValues(alpha: 0.6),
+                      blurRadius: 8,
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${widget.comboMultiplier}x',
-                    style: TextStyle(
-                      fontSize: 48,
-                      fontWeight: FontWeight.w900,
-                      color: _getComboColor(),
-                      height: 1.0,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

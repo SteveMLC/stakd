@@ -278,6 +278,13 @@ class _GameBoardState extends State<GameBoard>
                         onComplete: () {
                           widget.gameState.completeMove();
                           widget.onMove?.call();
+                          // Show combo popup for consecutive correct moves (3+)
+                          final combo = widget.gameState.currentCombo;
+                          if (combo >= 3) {
+                            setState(() {
+                              _showComboMultiplier = combo;
+                            });
+                          }
                         },
                       ),
                     // Chain text popup overlay
@@ -292,7 +299,7 @@ class _GameBoardState extends State<GameBoard>
                       ),
                     // Combo popup overlay (shows after chain popup if both)
                     if (_showComboMultiplier != null &&
-                        _showComboMultiplier! > 1)
+                        _showComboMultiplier! >= 3)
                       Positioned(
                         bottom: 120,
                         left: 0,
@@ -468,18 +475,7 @@ class _GameBoardState extends State<GameBoard>
       });
     }
 
-    // Also show combo popup if combo > 1 (time-based)
-    final currentCombo = widget.gameState.currentCombo;
-    if (currentCombo > 1) {
-      // Small delay so chain shows first
-      Future.delayed(const Duration(milliseconds: 300), () {
-        if (mounted) {
-          setState(() {
-            _showComboMultiplier = currentCombo;
-          });
-        }
-      });
-    }
+    // Combo is now handled per-move in onComplete
   }
 }
 
@@ -578,13 +574,17 @@ class _StackWidgetState extends State<_StackWidget>
     );
     _completionGlowAnimation = TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.0, end: 1.5)
-            .chain(CurveTween(curve: Curves.easeOut)),
+        tween: Tween<double>(
+          begin: 1.0,
+          end: 1.5,
+        ).chain(CurveTween(curve: Curves.easeOut)),
         weight: 50,
       ),
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.5, end: 1.0)
-            .chain(CurveTween(curve: Curves.easeIn)),
+        tween: Tween<double>(
+          begin: 1.5,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeIn)),
         weight: 50,
       ),
     ]).animate(_completionGlowController);
@@ -756,6 +756,7 @@ class _StackWidgetState extends State<_StackWidget>
           _controller,
           _pulseController,
           _multiGrabPulseController,
+          _completionGlowController,
         ]),
         builder: (context, child) {
           final pulseValue = nearingCompletion ? _pulseAnimation.value : 0.0;
@@ -861,10 +862,23 @@ class _StackWidgetState extends State<_StackWidget>
                             if (widget.isRecentlyCleared)
                               BoxShadow(
                                 color: GameColors.palette[2].withValues(
-                                  alpha: 0.4 * _glowAnimation.value,
+                                  alpha:
+                                      0.4 *
+                                      _glowAnimation.value *
+                                      (_completionGlowController.isAnimating
+                                          ? _completionGlowAnimation.value
+                                          : 1.0),
                                 ),
-                                blurRadius: 16,
-                                spreadRadius: 4,
+                                blurRadius:
+                                    16 *
+                                    (_completionGlowController.isAnimating
+                                        ? _completionGlowAnimation.value
+                                        : 1.0),
+                                spreadRadius:
+                                    4 *
+                                    (_completionGlowController.isAnimating
+                                        ? _completionGlowAnimation.value
+                                        : 1.0),
                               ),
                             // Glow effect for nearing completion (3+ matching layers)
                             if (nearingCompletion &&
