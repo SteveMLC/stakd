@@ -28,6 +28,7 @@ class StorageService {
   static const String _keyMultiGrabUsageCount = 'multi_grab_usage_count';
   static const String _keyMultiGrabHintsEnabled = 'multi_grab_hints_enabled';
   static const String _keyTextureSkinsEnabled = 'texture_skins_enabled';
+  static const String _keyColorblindMode = 'colorblind_mode';
   static const String _keyLevelStarsPrefix = 'level_stars_';
   static const String _keyPowerUpPrefix = 'power_up_';
   static const String _keyPowerUpsInitialized = 'power_ups_initialized';
@@ -415,6 +416,25 @@ class StorageService {
       await _prefs?.setBool(_keyTextureSkinsEnabled, enabled);
     } catch (e) {
       debugPrint('StorageService setTextureSkinsEnabled failed: $e');
+    }
+  }
+
+  /// Get colorblind mode setting
+  bool getColorblindMode() {
+    try {
+      return _prefs?.getBool(_keyColorblindMode) ?? false;
+    } catch (e) {
+      debugPrint('StorageService getColorblindMode failed: $e');
+      return false;
+    }
+  }
+
+  /// Set colorblind mode setting
+  Future<void> setColorblindMode(bool enabled) async {
+    try {
+      await _prefs?.setBool(_keyColorblindMode, enabled);
+    } catch (e) {
+      debugPrint('StorageService setColorblindMode failed: $e');
     }
   }
 

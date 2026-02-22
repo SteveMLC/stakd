@@ -20,6 +20,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _soundEnabled = true;
   bool _hapticsEnabled = true;
   bool _textureSkinsEnabled = false;
+  bool _colorblindMode = false;
 
   @override
   void initState() {
@@ -33,6 +34,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _soundEnabled = storage.getSoundEnabled();
       _hapticsEnabled = storage.getHapticsEnabled();
       _textureSkinsEnabled = storage.getTextureSkinsEnabled();
+      _colorblindMode = storage.getColorblindMode();
     });
   }
 
@@ -58,6 +60,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (nextValue) {
       haptics.lightTap();
+    }
+  }
+
+  Future<void> _toggleColorblindMode() async {
+    final storage = StorageService();
+    final nextValue = !_colorblindMode;
+
+    setState(() => _colorblindMode = nextValue);
+    await storage.setColorblindMode(nextValue);
+
+    if (_soundEnabled) {
+      AudioService().playTap();
     }
   }
 
@@ -137,6 +151,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       title: 'Texture Skins',
                       value: _textureSkinsEnabled,
                       onToggle: _toggleTextureSkins,
+                    ),
+                    _buildToggleTile(
+                      icon: Icons.accessibility_new,
+                      title: 'Colorblind Mode',
+                      value: _colorblindMode,
+                      onToggle: _toggleColorblindMode,
                     ),
                     const SizedBox(height: 8),
                     _buildThemeButton(),

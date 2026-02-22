@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/layer_model.dart';
+import '../services/storage_service.dart';
 import '../utils/constants.dart';
 import '../utils/theme_colors.dart';
 
@@ -127,8 +128,8 @@ class LayerWidget extends StatelessWidget {
                 ),
               ),
             ),
-          // Pattern overlay for ultra mode (colorblind accessibility)
-          if (GameColors.isUltraMode && !isLocked)
+          // Pattern overlay for ultra mode or colorblind mode
+          if ((GameColors.isUltraMode || StorageService().getColorblindMode()) && !isLocked)
             Positioned.fill(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(ThemeColors.blockBorderRadius),

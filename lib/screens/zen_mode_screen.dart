@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/game_state.dart';
+import '../models/layer_model.dart';
 import '../models/stack_model.dart';
 import '../services/level_generator.dart';
 import '../services/zen_puzzle_isolate.dart';
@@ -64,11 +65,12 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   DateTime? _sessionStart;
   Timer? _sessionTimer;
   Duration _sessionDuration = Duration.zero;
-  bool _showMoveCounter = false;
+  bool _showMoveCounter = true;
   bool _isTransitioning = false;
   bool _isLoading = false;
   bool _showGardenView = false;
   int _puzzleSeed = 0;
+  List<GameStack>? _initialStacks; // For restart
 
   // Pre-generated next puzzle (generated during completion celebration)
   List<GameStack>? _preGeneratedStacks;
@@ -161,6 +163,22 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     });
   }
 
+  void _restartPuzzle() {
+    if (_initialStacks == null) return;
+    final fresh = _initialStacks!.map((s) => GameStack(
+      layers: s.layers.map((l) => Layer(colorIndex: l.colorIndex, type: l.type, colors: l.colors, lockedUntil: l.lockedUntil, isFrozen: l.isFrozen)).toList(),
+      maxDepth: s.maxDepth,
+    )).toList();
+    context.read<GameState>().initZenGame(fresh);
+    setState(() {
+      _stackKeys.clear();
+      _hintsRemaining = 3;
+      _showingHint = false;
+      _showCompletionOverlay = false;
+    });
+    _puzzleStart = DateTime.now();
+  }
+
   void _loadNewPuzzle() {
     _puzzleStart = DateTime.now();
     final params = _getAdaptiveDifficulty();
@@ -171,6 +189,10 @@ class _ZenModeScreenState extends State<ZenModeScreen>
         .then((encodedStacks) {
           if (!mounted) return;
           final stacks = decodeStacksFromIsolate(encodedStacks, params.depth);
+          _initialStacks = stacks.map((s) => GameStack(
+            layers: s.layers.map((l) => Layer(colorIndex: l.colorIndex, type: l.type, colors: l.colors, lockedUntil: l.lockedUntil, isFrozen: l.isFrozen)).toList(),
+            maxDepth: s.maxDepth,
+          )).toList();
           context.read<GameState>().initZenGame(stacks);
           setState(() {
             _isLoading = false;
@@ -285,6 +307,10 @@ class _ZenModeScreenState extends State<ZenModeScreen>
       // Use the pre-generated puzzle — no loading screen!
       _fadeController.animateTo(0.0).then((_) {
         if (!mounted) return;
+        _initialStacks = _preGeneratedStacks!.map((s) => GameStack(
+          layers: s.layers.map((l) => Layer(colorIndex: l.colorIndex, type: l.type, colors: l.colors, lockedUntil: l.lockedUntil, isFrozen: l.isFrozen)).toList(),
+          maxDepth: s.maxDepth,
+        )).toList();
         context.read<GameState>().initZenGame(_preGeneratedStacks!);
         setState(() {
           _stackKeys.clear();
@@ -421,8 +447,8 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                         ),
                 ),
 
-                // Optional move counter
-                if (_showMoveCounter && !_showGardenView) _buildMoveCounter(),
+                // Move counter (always visible during gameplay)
+                if (!_showGardenView) _buildMoveCounter(),
 
                 // Bottom bar: stats + action buttons
                 _buildBottomBar(),
@@ -492,15 +518,28 @@ class _ZenModeScreenState extends State<ZenModeScreen>
 
           const Spacer(),
 
-          // Zen Mode title (subtle)
-          Text(
-            'ZEN MODE',
-            style: TextStyle(
-              color: GameColors.textMuted.withValues(alpha: 0.6),
-              fontSize: 12,
-              letterSpacing: 3,
-              fontWeight: FontWeight.w300,
-            ),
+          // Zen Mode title + puzzle number
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'ZEN MODE',
+                style: TextStyle(
+                  color: GameColors.textMuted.withValues(alpha: 0.6),
+                  fontSize: 12,
+                  letterSpacing: 3,
+                  fontWeight: FontWeight.w300,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Puzzle #${_puzzlesSolved + 1}',
+                style: TextStyle(
+                  color: GameColors.textMuted.withValues(alpha: 0.5),
+                  fontSize: 11,
+                ),
+              ),
+            ],
           ),
 
           const Spacer(),
@@ -681,6 +720,19 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                     onPressed: gameState.canUndo ? () => gameState.undo() : null,
                   ),
                   _ZenActionButton(
+                    icon: Icons.lightbulb_outline,
+                    label: 'Hint',
+                    badgeCount: _hintsRemaining,
+                    enabled: _hintsRemaining > 0,
+                    onPressed: _hintsRemaining > 0 ? _showHint : null,
+                  ),
+                  _ZenActionButton(
+                    icon: Icons.refresh,
+                    label: 'Restart',
+                    enabled: _initialStacks != null && gameState.moveCount > 0,
+                    onPressed: _initialStacks != null && gameState.moveCount > 0 ? _restartPuzzle : null,
+                  ),
+                  _ZenActionButton(
                     icon: _showGardenView ? Icons.grid_view : Icons.park_outlined,
                     label: _showGardenView ? 'Puzzle' : 'Garden',
                     enabled: true,
@@ -689,13 +741,6 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                         _showGardenView = !_showGardenView;
                       });
                     },
-                  ),
-                  _ZenActionButton(
-                    icon: Icons.lightbulb_outline,
-                    label: 'Hint',
-                    badgeCount: _hintsRemaining,
-                    enabled: _hintsRemaining > 0,
-                    onPressed: _hintsRemaining > 0 ? _showHint : null,
                   ),
                 ],
               ),

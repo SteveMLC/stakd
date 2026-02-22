@@ -1273,6 +1273,18 @@ class _StackWidgetState extends State<_StackWidget>
                     ),
                   ),
                 ),
+                // Colorblind pattern overlay
+                if (GameColors.isUltraMode || StorageService().getColorblindMode())
+                  Positioned.fill(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: CustomPaint(
+                        painter: _ColorblindPatternPainter(
+                          patternIndex: layer.colorIndex,
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -1420,8 +1432,8 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
 
     // Slightly longer animation for multi-grab
     final duration = widget.animatingLayer.isMultiGrab
-        ? const Duration(milliseconds: 320)
-        : const Duration(milliseconds: 280);
+        ? const Duration(milliseconds: 400)
+        : const Duration(milliseconds: 350);
 
     _controller = AnimationController(vsync: this, duration: duration);
 
@@ -1867,5 +1879,81 @@ class _DragOverlay extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Colorblind pattern painter for game board blocks
+class _ColorblindPatternPainter extends CustomPainter {
+  final int patternIndex;
+
+  const _ColorblindPatternPainter({required this.patternIndex});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.55)
+      ..strokeWidth = 1.2
+      ..style = PaintingStyle.stroke;
+
+    switch (patternIndex % 6) {
+      case 0: // Horizontal stripes
+        const spacing = 5.0;
+        for (double y = spacing / 2; y < size.height; y += spacing) {
+          canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+        }
+        break;
+      case 1: // Diagonal stripes
+        const spacing = 7.0;
+        for (double i = -size.height; i < size.width + size.height; i += spacing) {
+          canvas.drawLine(Offset(i, 0), Offset(i + size.height, size.height), paint);
+        }
+        break;
+      case 2: // Dots
+        final dotPaint = Paint()
+          ..color = Colors.white.withValues(alpha: 0.6)
+          ..style = PaintingStyle.fill;
+        const spacing = 7.0;
+        for (double x = spacing / 2; x < size.width; x += spacing) {
+          for (double y = spacing / 2; y < size.height; y += spacing) {
+            canvas.drawCircle(Offset(x, y), 1.5, dotPaint);
+          }
+        }
+        break;
+      case 3: // Crosshatch
+        const spacing = 7.0;
+        for (double i = -size.height; i < size.width + size.height; i += spacing) {
+          canvas.drawLine(Offset(i, 0), Offset(i + size.height, size.height), paint);
+          canvas.drawLine(Offset(i, size.height), Offset(i + size.height, 0), paint);
+        }
+        break;
+      case 4: // Circles
+        const spacing = 9.0;
+        for (double x = spacing / 2; x < size.width; x += spacing) {
+          for (double y = spacing / 2; y < size.height; y += spacing) {
+            canvas.drawCircle(Offset(x, y), 3, paint);
+          }
+        }
+        break;
+      case 5: // Diamonds
+        const spacing = 9.0;
+        const half = spacing / 2;
+        for (double x = 0; x < size.width + spacing; x += spacing) {
+          for (double y = 0; y < size.height + spacing; y += spacing) {
+            final path = Path()
+              ..moveTo(x, y - half)
+              ..lineTo(x + half, y)
+              ..lineTo(x, y + half)
+              ..lineTo(x - half, y)
+              ..close();
+            canvas.drawPath(path, paint);
+          }
+        }
+        break;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ColorblindPatternPainter oldDelegate) {
+    return oldDelegate.patternIndex != patternIndex;
   }
 }
