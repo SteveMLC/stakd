@@ -195,8 +195,8 @@ class DailyRewardsService {
         // Days before current day are claimed
         statuses[day] = RewardStatus.claimed;
       } else if (day == currentDay && !canClaim) {
-        // Current day but already claimed today
-        statuses[day] = RewardStatus.claimed;
+        // Already claimed today - currentDay points to NEXT day, which is locked
+        statuses[day] = RewardStatus.locked;
       } else if (day == currentDay && canClaim) {
         // Current day and can claim
         statuses[day] = RewardStatus.current;

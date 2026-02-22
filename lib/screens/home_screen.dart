@@ -33,6 +33,7 @@ class _HomeScreenState extends State<HomeScreen>
   bool _highlightStreak = false;
   bool _hasUnclaimedReward = false;
   int _coinBalance = 0;
+  bool _dailyRewardsShown = false;
 
   @override
   void initState() {
@@ -92,21 +93,37 @@ class _HomeScreenState extends State<HomeScreen>
       _coinBalance = coins;
     });
 
-    // Show popup automatically if reward is available
-    if (canClaim) {
-      // Small delay to let the screen build first
+    // Show popup automatically if reward is available (only once per session)
+    if (canClaim && !_dailyRewardsShown) {
+      _dailyRewardsShown = true;
       await Future.delayed(const Duration(milliseconds: 500));
       if (mounted) {
-        DailyRewardsPopup.show(context);
+        await DailyRewardsPopup.show(context);
+        // Refresh after popup closes
+        await _refreshAfterRewards();
       }
     }
   }
 
   void _openDailyRewards() {
     DailyRewardsPopup.show(context).then((_) {
-      // Refresh state when popup closes
-      _checkDailyRewards();
+      _refreshAfterRewards();
     });
+  }
+
+  Future<void> _refreshAfterRewards() async {
+    final rewardsService = DailyRewardsService();
+    final currencyService = CurrencyService();
+    await rewardsService.init();
+    await currencyService.init();
+    final canClaim = await rewardsService.canClaimToday();
+    final coins = await currencyService.getCoins();
+    if (mounted) {
+      setState(() {
+        _hasUnclaimedReward = canClaim;
+        _coinBalance = coins;
+      });
+    }
   }
 
   Future<void> _openDailyChallenge(BuildContext context) async {

@@ -29,7 +29,7 @@ class DailyRewardsPopup extends StatefulWidget {
 
     if (!context.mounted) return;
 
-    showDialog(
+    await showDialog<void>(
       context: context,
       barrierDismissible: true,
       barrierColor: Colors.black.withValues(alpha: 0.8),
@@ -151,6 +151,7 @@ class _DailyRewardsPopupState extends State<DailyRewardsPopup>
         children: [
           // Main content
           Container(
+            clipBehavior: Clip.hardEdge,
             constraints: const BoxConstraints(maxWidth: 400),
             decoration: BoxDecoration(
               color: GameColors.surface,
