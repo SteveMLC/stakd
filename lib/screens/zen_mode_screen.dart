@@ -262,23 +262,39 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   }
 
   LevelParams _getAdaptiveDifficulty() {
-    final base = _getBaseDifficulty();
-    if (_consecutiveFastSolves >= 3) {
-      return _bumpDifficulty(base);
-    }
-    if (_consecutiveSlowSolves >= 2) {
-      return _easeDifficulty(base);
-    }
-    return base;
-  }
+    final puzzleNumber = _puzzlesSolved;
 
-  LevelParams _getBaseDifficulty() {
-    return switch (_difficulty) {
-      ZenDifficulty.easy => ZenParams.easy,
-      ZenDifficulty.medium => ZenParams.medium,
-      ZenDifficulty.hard => ZenParams.hard,
-      ZenDifficulty.ultra => ZenParams.ultra,
-    };
+    switch (_difficulty) {
+      case ZenDifficulty.easy:
+        if (puzzleNumber <= 3) {
+          return const LevelParams(colors: 3, depth: 3, stacks: 5, emptySlots: 2, shuffleMoves: 35);
+        } else if (puzzleNumber <= 6) {
+          return const LevelParams(colors: 3, depth: 4, stacks: 5, emptySlots: 2, shuffleMoves: 40);
+        } else if (puzzleNumber <= 10) {
+          return const LevelParams(colors: 4, depth: 4, stacks: 6, emptySlots: 2, shuffleMoves: 45);
+        } else {
+          return ZenParams.easy;
+        }
+
+      case ZenDifficulty.medium:
+        if (puzzleNumber <= 3) {
+          return const LevelParams(colors: 4, depth: 4, stacks: 6, emptySlots: 2, shuffleMoves: 40);
+        } else if (puzzleNumber <= 6) {
+          return const LevelParams(colors: 4, depth: 5, stacks: 6, emptySlots: 2, shuffleMoves: 50);
+        } else {
+          return ZenParams.medium;
+        }
+
+      case ZenDifficulty.hard:
+        if (puzzleNumber <= 3) {
+          return const LevelParams(colors: 5, depth: 4, stacks: 7, emptySlots: 2, shuffleMoves: 50);
+        } else {
+          return ZenParams.hard;
+        }
+
+      case ZenDifficulty.ultra:
+        return ZenParams.ultra;
+    }
   }
 
   LevelParams _bumpDifficulty(LevelParams base) {

@@ -47,10 +47,7 @@ class GameStack {
     if (layer.isLocked) return false; // Can't move locked blocks
     if (layer.isFrozen) return false; // Can't move frozen blocks
     if (isEmpty) return true;
-    
-    // Multi-color matching: check if layer can match with top layer
-    final top = topLayer!;
-    return top.canMatchWith(layer);
+    return true; // Any block can go on any tube with space
   }
 
   /// Count consecutive matching layers from top (considers multi-color matching)
@@ -114,9 +111,7 @@ class GameStack {
     final spaceAvailable = maxDepth - layers.length;
     if (layersToAdd.length > spaceAvailable) return false;
     if (isEmpty) return true;
-    // Check if bottom layer of group can match with top of stack
-    final top = topLayer!;
-    return top.canMatchWith(layersToAdd.first);
+    return true; // Any blocks can go on any tube with space
   }
 
   /// Create a copy with multiple layers removed from top

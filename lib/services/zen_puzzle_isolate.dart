@@ -122,7 +122,6 @@ bool _greedyDFS(List<List<int>> state, int depth, Set<String> visited,
     for (int to = 0; to < state.length; to++) {
       if (from == to) continue;
       if (state[to].length >= depth) continue;
-      if (state[to].isNotEmpty && state[to].last != block) continue;
 
       int priority = 0;
       // Completing a tube = highest priority
@@ -177,7 +176,6 @@ bool _bfsSolvable(List<List<int>> tubes, int depth, int maxStates) {
       for (int to = 0; to < current.length; to++) {
         if (from == to) continue;
         if (current[to].length >= depth) continue;
-        if (current[to].isNotEmpty && current[to].last != block) continue;
 
         final next = current.map((t) => List<int>.from(t)).toList();
         next[from].removeLast();

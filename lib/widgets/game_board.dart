@@ -391,7 +391,7 @@ class _GameBoardState extends State<GameBoard>
 
       // Get the stack's color (use theme-aware colors)
       final stack = widget.gameState.stacks[stackIndex];
-      final topLayer = stack.layers.isNotEmpty ? stack.layers.first : null;
+      final topLayer = stack.layers.isNotEmpty ? stack.layers.last : null;
       final color = topLayer != null
           ? ThemeColors.getColor(topLayer.colorIndex)
           : GameColors.accent;
@@ -741,7 +741,7 @@ class _StackWidgetState extends State<_StackWidget>
 
     // Get the stack's dominant color for glow effect
     final glowColor = widget.stack.layers.isNotEmpty
-        ? GameColors.getColor(widget.stack.layers.first.colorIndex)
+        ? GameColors.getColor(widget.stack.layers.last.colorIndex)
         : GameColors.accent;
 
     return Semantics(
@@ -954,7 +954,7 @@ class _StackWidgetState extends State<_StackWidget>
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
-      children: layers.asMap().entries.map<Widget>((entry) {
+      children: layers.asMap().entries.toList().reversed.map<Widget>((entry) {
         final index = entry.key;
         final layer = entry.value;
         final gradientColors = GameColors.getGradient(layer.colorIndex);
