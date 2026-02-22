@@ -3,10 +3,9 @@ import '../services/audio_service.dart';
 import '../services/haptic_service.dart';
 import '../services/storage_service.dart';
 import '../services/theme_service.dart';
-import '../services/leaderboard_service.dart';
 import '../utils/constants.dart';
 import '../widgets/game_button.dart';
-import '../widgets/name_entry_dialog.dart';
+import '../utils/route_transitions.dart';
 import 'theme_store_screen.dart';
 
 /// Settings screen
@@ -134,27 +133,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 8),
                     _buildThemeButton(),
                     const SizedBox(height: 24),
-                    _buildSectionTitle('Ads'),
-                    Center(
-                      child: GameButton(
-                        text: 'Remove Ads',
-                        icon: Icons.block,
-                        isDisabled: true,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Center(
-                      child: Text(
-                        'Coming soon',
-                        style: TextStyle(
-                          color: GameColors.textMuted,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    _buildSectionTitle('Leaderboards'),
-                    _buildLeaderboardNameTile(),
                   ],
                 ),
               ),
@@ -217,7 +195,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       onTap: () {
         haptics.lightTap();
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const ThemeStoreScreen()),
+          fadeSlideRoute(const ThemeStoreScreen()),
         ).then((_) {
           // Refresh when returning from theme store
           if (mounted) setState(() {});
@@ -265,58 +243,4 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildLeaderboardNameTile() {
-    final leaderboardService = LeaderboardService();
-    final currentName = leaderboardService.playerName;
-
-    return GestureDetector(
-      onTap: () async {
-        haptics.lightTap();
-        final name = await showNameEntryDialog(
-          context,
-          currentName: currentName,
-        );
-        if (name != null && name.isNotEmpty) {
-          await leaderboardService.setPlayerName(name);
-          if (mounted) setState(() {});
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: GameColors.surface,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.person, color: GameColors.accent),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Display Name',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  Text(
-                    currentName,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: GameColors.textMuted,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(
-              Icons.edit,
-              size: 16,
-              color: GameColors.textMuted,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

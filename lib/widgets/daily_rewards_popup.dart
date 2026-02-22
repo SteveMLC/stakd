@@ -377,8 +377,11 @@ class _DailyRewardsPopupState extends State<DailyRewardsPopup>
                   ]
                 : null,
           ),
-          child: Center(
-            child: _buildRewardIcon(reward, status, isPremium),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildRewardIcon(reward, status, isPremium),
+            ],
           ),
         ),
         
@@ -387,6 +390,7 @@ class _DailyRewardsPopupState extends State<DailyRewardsPopup>
         // Amount label
         Text(
           isClaimed ? '✓' : '${reward.amount}',
+          textAlign: TextAlign.center,
           style: TextStyle(
             color: isClaimed
                 ? GameColors.successGlow
@@ -397,6 +401,16 @@ class _DailyRewardsPopupState extends State<DailyRewardsPopup>
             fontWeight: FontWeight.bold,
           ),
         ),
+        // Reward type label
+        if (!isClaimed)
+          Text(
+            reward.type.displayName,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: GameColors.textMuted.withValues(alpha: 0.5),
+              fontSize: 8,
+            ),
+          ),
       ],
     );
     
@@ -520,27 +534,33 @@ class _DailyRewardsPopupState extends State<DailyRewardsPopup>
                         ]
                       : null,
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      _canClaim ? Icons.card_giftcard : Icons.timer,
-                      color: _canClaim ? GameColors.text : GameColors.textMuted,
-                      size: 24,
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      _canClaim 
-                          ? 'CLAIM ${currentReward.description.toUpperCase()}'
-                          : 'COME BACK TOMORROW',
-                      style: TextStyle(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _canClaim ? Icons.card_giftcard : Icons.timer,
                         color: _canClaim ? GameColors.text : GameColors.textMuted,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1,
+                        size: 24,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 10),
+                      Flexible(
+                        child: Text(
+                          _canClaim 
+                              ? 'CLAIM ${currentReward.description.toUpperCase()}'
+                              : 'COME BACK TOMORROW',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: _canClaim ? GameColors.text : GameColors.textMuted,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

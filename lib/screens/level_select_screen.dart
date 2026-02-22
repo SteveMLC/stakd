@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../utils/constants.dart';
 import '../services/storage_service.dart';
 import '../widgets/game_button.dart';
+import '../utils/route_transitions.dart';
 import 'game_screen.dart';
 
 /// Level selection screen
@@ -84,7 +85,7 @@ class LevelSelectScreen extends StatelessWidget {
 
   void _startLevel(BuildContext context, int level) {
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => GameScreen(level: level)),
+      fadeSlideRoute(GameScreen(level: level)),
     );
   }
 }

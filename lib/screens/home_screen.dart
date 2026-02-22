@@ -13,6 +13,8 @@ import 'level_select_screen.dart';
 import 'settings_screen.dart';
 import 'zen_screen.dart';
 import 'leaderboard_screen.dart';
+import '../utils/route_transitions.dart';
+import 'theme_store_screen.dart';
 
 /// Main menu screen
 class HomeScreen extends StatefulWidget {
@@ -110,7 +112,7 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _openDailyChallenge(BuildContext context) async {
     final result = await Navigator.of(
       context,
-    ).push(MaterialPageRoute(builder: (_) => const DailyChallengeScreen()));
+    ).push(fadeSlideRoute(const DailyChallengeScreen()));
 
     if (!mounted) return;
 
@@ -181,6 +183,14 @@ class _HomeScreenState extends State<HomeScreen>
                       isPrimary: false,
                       isSmall: true,
                       onPressed: () => _openLeaderboards(context),
+                    ),
+                    const SizedBox(width: 16),
+                    GameButton(
+                      text: 'Themes',
+                      icon: Icons.palette,
+                      isPrimary: false,
+                      isSmall: true,
+                      onPressed: () => _openThemeStore(context),
                     ),
                     const SizedBox(width: 16),
                     GameButton(
@@ -502,28 +512,28 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _openLevelSelect(BuildContext context) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const LevelSelectScreen()));
+    Navigator.of(context).push(fadeSlideRoute(const LevelSelectScreen()));
   }
 
   void _startZen(String difficulty) {
     Navigator.of(context).pop();
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => ZenScreen(difficulty: difficulty)),
+      fadeSlideRoute(ZenScreen(difficulty: difficulty)),
     );
   }
 
-  void _openSettings(BuildContext context) {
+  void _openThemeStore(BuildContext context) {
     Navigator.of(
       context,
-    ).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
+    ).push(MaterialPageRoute(builder: (_) => const ThemeStoreScreen()));
+  }
+
+  void _openSettings(BuildContext context) {
+    Navigator.of(context).push(fadeSlideRoute(const SettingsScreen()));
   }
 
   void _openLeaderboards(BuildContext context) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const LeaderboardScreen()));
+    Navigator.of(context).push(fadeSlideRoute(const LeaderboardScreen()));
   }
 
   void _showZenDifficultyPicker() {
