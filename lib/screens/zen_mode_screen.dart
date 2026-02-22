@@ -11,6 +11,7 @@ import '../services/storage_service.dart';
 import '../services/garden_service.dart';
 import '../utils/constants.dart';
 import '../widgets/game_board.dart';
+import '../widgets/hint_overlay.dart';
 import '../widgets/loading_text.dart';
 import '../widgets/themes/zen_garden_scene.dart';
 import '../widgets/achievement_toast_overlay.dart';
@@ -42,6 +43,11 @@ class ZenModeScreen extends StatefulWidget {
 class _ZenModeScreenState extends State<ZenModeScreen>
     with TickerProviderStateMixin, AchievementToastMixin {
   final Map<int, GlobalKey> _stackKeys = {};
+
+  bool _showingHint = false;
+  int _hintSourceIndex = -1;
+  int _hintDestIndex = -1;
+  int _hintsRemaining = 3;
 
   ZenDifficulty _difficulty = ZenDifficulty.medium;
   int _puzzlesSolved = 0;
@@ -110,6 +116,39 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     super.dispose();
   }
 
+  void _showHint() {
+    if (_hintsRemaining <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No hints remaining for this puzzle.')),
+      );
+      return;
+    }
+
+    final gameState = context.read<GameState>();
+    final hint = gameState.getHint();
+
+    if (hint == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No valid moves right now.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _showingHint = true;
+      _hintSourceIndex = hint.$1;
+      _hintDestIndex = hint.$2;
+      _hintsRemaining--;
+    });
+    AudioService().playTap();
+  }
+
+  void _dismissHint() {
+    setState(() {
+      _showingHint = false;
+    });
+  }
+
   void _loadNewPuzzle() {
     _puzzleStart = DateTime.now();
     final params = _getAdaptiveDifficulty();
@@ -125,6 +164,8 @@ class _ZenModeScreenState extends State<ZenModeScreen>
             _isLoading = false;
             _stackKeys.clear();
             _puzzleSeed++;
+            _hintsRemaining = 3;
+            _showingHint = false;
           });
         })
         .catchError((e, st) {
@@ -322,8 +363,8 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                 // Optional move counter
                 if (_showMoveCounter) _buildMoveCounter(),
 
-                // Undo button
-                _buildUndoButton(),
+                // Undo + Hint buttons
+                _buildBottomButtons(),
 
                 const SizedBox(height: 16),
               ],
@@ -343,6 +384,19 @@ class _ZenModeScreenState extends State<ZenModeScreen>
             right: 16,
             child: _buildSessionStats(),
           ),
+          // Hint overlay
+          if (_showingHint &&
+              _stackKeys.containsKey(_hintSourceIndex) &&
+              _stackKeys.containsKey(_hintDestIndex))
+            Positioned.fill(
+              child: HintOverlay(
+                sourceIndex: _hintSourceIndex,
+                destIndex: _hintDestIndex,
+                sourceKey: _stackKeys[_hintSourceIndex]!,
+                destKey: _stackKeys[_hintDestIndex]!,
+                onDismiss: _dismissHint,
+              ),
+            ),
           if (_isLoading)
             Positioned.fill(
               child: Container(
@@ -488,23 +542,42 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     );
   }
 
-  Widget _buildUndoButton() {
+  Widget _buildBottomButtons() {
     return Consumer<GameState>(
       builder: (context, gameState, _) {
         return Padding(
           padding: const EdgeInsets.only(bottom: 8),
-          child: IconButton(
-            onPressed: gameState.canUndo ? () => gameState.undo() : null,
-            icon: Badge(
-              isLabelVisible: gameState.undosRemaining > 0,
-              label: Text('${gameState.undosRemaining}'),
-              child: Icon(
-                Icons.undo,
-                color: gameState.canUndo
-                    ? GameColors.text
-                    : GameColors.textMuted.withValues(alpha: 0.4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                onPressed: gameState.canUndo ? () => gameState.undo() : null,
+                icon: Badge(
+                  isLabelVisible: gameState.undosRemaining > 0,
+                  label: Text('${gameState.undosRemaining}'),
+                  child: Icon(
+                    Icons.undo,
+                    color: gameState.canUndo
+                        ? GameColors.text
+                        : GameColors.textMuted.withValues(alpha: 0.4),
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(width: 16),
+              IconButton(
+                onPressed: _hintsRemaining > 0 ? _showHint : null,
+                icon: Badge(
+                  isLabelVisible: true,
+                  label: Text('$_hintsRemaining'),
+                  child: Icon(
+                    Icons.lightbulb_outline,
+                    color: _hintsRemaining > 0
+                        ? GameColors.text
+                        : GameColors.textMuted.withValues(alpha: 0.4),
+                  ),
+                ),
+              ),
+            ],
           ),
         );
       },
