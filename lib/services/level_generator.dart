@@ -42,155 +42,7 @@ class LevelGenerator {
     final levelRandom = Random(levelNumber * 12345 + _seedOffset);
 
     final state = _generateShuffledSolvableState(params, levelRandom);
-    return _buildStacksFromState(state, params.depth);
-  }
-
-  /// Create a solved puzzle state with special blocks
-  List<GameStack> _createSolvedState(LevelParams params, Random random) {
-    final stacks = <GameStack>[];
-
-    // Create color stacks (filled with one color each)
-    for (int colorIndex = 0; colorIndex < params.colors; colorIndex++) {
-      final layers = <Layer>[];
-
-      for (int i = 0; i < params.depth; i++) {
-        // Decide if this should be a special block
-        final multiColorRoll = random.nextDouble();
-        final lockedRoll = random.nextDouble();
-
-        if (params.multiColorProbability > 0 &&
-            multiColorRoll < params.multiColorProbability) {
-          // Create multi-color block
-          final availableColors = List.generate(params.colors, (i) => i);
-          availableColors.shuffle(random);
-          final numColors = random.nextBool() ? 2 : 3;
-          final colors = availableColors.take(numColors).toList();
-          if (!colors.contains(colorIndex)) {
-            colors[0] = colorIndex; // Ensure primary color is included
-          }
-          layers.add(Layer.multiColor(colors: colors));
-        } else if (params.lockedBlockProbability > 0 &&
-            lockedRoll < params.lockedBlockProbability) {
-          // Create locked block
-          final lockedFor = random.nextInt(params.maxLockedMoves) + 1;
-          layers.add(
-            Layer.locked(colorIndex: colorIndex, lockedFor: lockedFor),
-          );
-        } else {
-          // Normal block
-          layers.add(Layer(colorIndex: colorIndex));
-        }
-      }
-
-      stacks.add(GameStack(layers: layers, maxDepth: params.depth));
-    }
-
-    // Add empty stacks
-    for (int i = 0; i < params.emptySlots; i++) {
-      stacks.add(GameStack(layers: [], maxDepth: params.depth));
-    }
-
-    return stacks;
-  }
-
-  /// Shuffle the level by making random valid reverse moves
-  List<GameStack> _shuffleLevel(
-    List<GameStack> stacks,
-    int moves,
-    Random random, {
-    int recursionDepth = 0,
-  }) {
-    var current = stacks.map((s) => s.copy()).toList();
-
-    int movesRemaining = moves;
-    int attempts = 0;
-    int maxAttempts = moves * 15;
-    final recentSourceStacks = <int>[];
-    final recentDestStacks = <int>[];
-
-    while (movesRemaining > 0 && attempts < maxAttempts) {
-      attempts++;
-
-      // Find all valid moves
-      final validMoves = <(int, int, int)>[];
-      for (int from = 0; from < current.length; from++) {
-        if (current[from].isEmpty) continue;
-        for (int to = 0; to < current.length; to++) {
-          if (from == to) continue;
-          if (!current[to].canAccept(current[from].topLayer!)) continue;
-
-          int priority = 10;
-          if (recentSourceStacks.contains(from)) priority -= 3;
-          if (recentDestStacks.contains(to)) priority -= 3;
-
-          final destTopColor = current[to].isEmpty
-              ? -1
-              : current[to].topLayer!.colorIndex;
-          final srcTopColor = current[from].topLayer!.colorIndex;
-          if (destTopColor != -1 && destTopColor != srcTopColor) {
-            priority += 5;
-          }
-
-          if (current[to].isEmpty && current[from].layers.length > 1) {
-            priority += 3;
-          }
-
-          validMoves.add((from, to, priority));
-        }
-      }
-
-      if (validMoves.isEmpty) break;
-
-      // Pick a move weighted by priority
-      validMoves.sort((a, b) => b.$3.compareTo(a.$3));
-      final topMoves = validMoves.take(3).toList();
-      final move = topMoves[random.nextInt(topMoves.length)];
-      final fromStack = current[move.$1];
-      final toStack = current[move.$2];
-
-      final layer = fromStack.topLayer!;
-      current[move.$1] = fromStack.withTopLayerRemoved();
-      current[move.$2] = toStack.withLayerAdded(layer);
-
-      recentSourceStacks.add(move.$1);
-      recentDestStacks.add(move.$2);
-      if (recentSourceStacks.length > 3) recentSourceStacks.removeAt(0);
-      if (recentDestStacks.length > 3) recentDestStacks.removeAt(0);
-
-      movesRemaining--;
-    }
-
-    // Verify the result isn't already solved or too easy
-    const maxRecursionDepth = 5;
-    if (recursionDepth < maxRecursionDepth &&
-        (_isSolved(current) ||
-            _isTooEasy(current) ||
-            difficultyScore(current) < 4)) {
-      // Do a few more shuffles
-      return _shuffleLevel(
-        stacks,
-        moves + 10,
-        random,
-        recursionDepth: recursionDepth + 1,
-      );
-    }
-
-    return current;
-  }
-
-  /// Check if a puzzle has too many pre-sorted columns (nearly solved)
-  bool _isTooEasy(List<GameStack> stacks) {
-    int singleColorStacks = 0;
-    for (final stack in stacks) {
-      if (stack.isEmpty) continue;
-      if (stack.layers.length >= 2 &&
-          stack.layers.every(
-            (l) => l.colorIndex == stack.layers.first.colorIndex,
-          )) {
-        singleColorStacks++;
-      }
-    }
-    return singleColorStacks > 1;
+    return _buildStacksFromState(state, params.depth, params: params);
   }
 
   /// Check if a puzzle state is solved
@@ -369,7 +221,7 @@ class LevelGenerator {
       final seedMultiplier = attempt == 0 ? 12345 : 12345 + attempt * 67890;
       final altRandom = Random(levelNumber * seedMultiplier + _seedOffset);
       final state = _generateShuffledSolvableState(params, altRandom);
-      final level = _buildStacksFromState(state, params.depth);
+      final level = _buildStacksFromState(state, params.depth, params: params);
 
       // Check difficulty score
       final score = difficultyScore(level);
@@ -419,7 +271,7 @@ class LevelGenerator {
         maxAttempts: 1,
         maxSolvableStates: maxSolvableStates,
       );
-      final level = _buildStacksFromState(state, params.depth);
+      final level = _buildStacksFromState(state, params.depth, params: params);
 
       final score = difficultyScore(level);
       if (score >= params.minDifficultyScore) {
@@ -470,7 +322,7 @@ class LevelGenerator {
     for (int attempt = 0; attempt < 10; attempt++) {
       final levelRandom = Random(seed + attempt * 997);
       final state = _generateShuffledSolvableState(params, levelRandom);
-      final level = _buildStacksFromState(state, params.depth);
+      final level = _buildStacksFromState(state, params.depth, params: params);
 
       final score = difficultyScore(level);
       if (score >= minDifficulty) {
@@ -616,8 +468,12 @@ class LevelGenerator {
     return tubes.map((t) => t.join(',')).join('|');
   }
 
-  List<GameStack> _buildStacksFromState(List<List<int>> state, int maxDepth) {
-    return state
+  List<GameStack> _buildStacksFromState(
+    List<List<int>> state,
+    int maxDepth, {
+    LevelParams? params,
+  }) {
+    final stacks = state
         .map(
           (layers) => GameStack(
             layers: layers.map((i) => Layer(colorIndex: i)).toList(),
@@ -625,6 +481,57 @@ class LevelGenerator {
           ),
         )
         .toList();
+
+    // Apply special blocks (locked/frozen) after building solvable state
+    if (params != null) {
+      _applySpecialBlocks(stacks, params);
+    }
+
+    return stacks;
+  }
+
+  /// Apply locked and frozen blocks to an already-generated puzzle
+  void _applySpecialBlocks(List<GameStack> stacks, LevelParams params) {
+    if (params.lockedBlockProbability <= 0 &&
+        params.frozenBlockProbability <= 0) {
+      return;
+    }
+
+    final random = Random();
+
+    for (int s = 0; s < stacks.length; s++) {
+      final stack = stacks[s];
+      if (stack.isEmpty) continue;
+
+      final newLayers = <Layer>[];
+      for (int i = 0; i < stack.layers.length; i++) {
+        final layer = stack.layers[i];
+        final isBottom = (i == 0);
+
+        // Locked blocks: prefer bottom positions
+        if (params.lockedBlockProbability > 0 &&
+            isBottom &&
+            random.nextDouble() < params.lockedBlockProbability) {
+          final lockedFor = random.nextInt(params.maxLockedMoves) + 1;
+          newLayers.add(
+            Layer.locked(colorIndex: layer.colorIndex, lockedFor: lockedFor),
+          );
+        }
+        // Frozen blocks: can be anywhere
+        else if (params.frozenBlockProbability > 0 &&
+            random.nextDouble() < params.frozenBlockProbability) {
+          newLayers.add(Layer.frozen(colorIndex: layer.colorIndex));
+        } else {
+          newLayers.add(layer);
+        }
+      }
+
+      stacks[s] = GameStack(
+        layers: newLayers,
+        maxDepth: stack.maxDepth,
+        id: stack.id,
+      );
+    }
   }
 
   int _dateSeed(DateTime date) {
