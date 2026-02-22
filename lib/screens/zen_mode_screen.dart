@@ -59,8 +59,6 @@ class _ZenModeScreenState extends State<ZenModeScreen>
 
   ZenDifficulty _difficulty = ZenDifficulty.medium;
   int _puzzlesSolved = 0;
-  int _consecutiveFastSolves = 0;
-  int _consecutiveSlowSolves = 0;
   DateTime? _puzzleStart;
   DateTime? _sessionStart;
   Timer? _sessionTimer;
@@ -190,7 +188,6 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     setState(() {
       _puzzlesSolved++;
     });
-    _recordSolveTime();
 
     // Save progress
     final storage = StorageService();
@@ -294,45 +291,6 @@ class _ZenModeScreenState extends State<ZenModeScreen>
 
       case ZenDifficulty.ultra:
         return ZenParams.ultra;
-    }
-  }
-
-  LevelParams _bumpDifficulty(LevelParams base) {
-    return LevelParams(
-      colors: (base.colors + 1).clamp(4, 7),
-      depth: base.depth,
-      stacks: base.stacks + 1,
-      emptySlots: base.emptySlots,
-      shuffleMoves: base.shuffleMoves + 15,
-      minDifficultyScore: base.minDifficultyScore + 3,
-    );
-  }
-
-  LevelParams _easeDifficulty(LevelParams base) {
-    return LevelParams(
-      colors: (base.colors - 1).clamp(4, 7),
-      depth: base.depth,
-      stacks: base.stacks,
-      emptySlots: (base.emptySlots + 1).clamp(1, 3),
-      shuffleMoves: (base.shuffleMoves - 10).clamp(20, 200),
-      minDifficultyScore: (base.minDifficultyScore - 2).clamp(3, 50),
-    );
-  }
-
-  void _recordSolveTime() {
-    final start = _puzzleStart;
-    if (start == null) return;
-    final solveTime = DateTime.now().difference(start);
-
-    if (solveTime.inSeconds < 30) {
-      _consecutiveFastSolves++;
-      _consecutiveSlowSolves = 0;
-    } else if (solveTime.inMinutes >= 3) {
-      _consecutiveSlowSolves++;
-      _consecutiveFastSolves = 0;
-    } else {
-      _consecutiveFastSolves = 0;
-      _consecutiveSlowSolves = 0;
     }
   }
 
