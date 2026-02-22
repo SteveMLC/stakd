@@ -14,16 +14,16 @@ class GameColors {
     Color(0xFF1E90FF), // Dodger Blue
   ];
 
-  // Ultra palette - high contrast and distinct even when desaturated
+  // Ultra palette - high contrast, colorblind-friendly, distinct hues
   static const List<Color> _ultraPalette = [
-    Color(0xFFE69F00), // Orange
-    Color(0xFF56B4E9), // Sky Blue
-    Color(0xFF009E73), // Bluish Green
-    Color(0xFFF0E442), // Yellow
-    Color(0xFF0072B2), // Blue
-    Color(0xFFD55E00), // Vermillion
-    Color(0xFFCC79A7), // Reddish Purple
-    Color(0xFF000000), // Black
+    Color(0xFFE74C3C), // Red
+    Color(0xFF3498DB), // Blue
+    Color(0xFF2ECC71), // Green
+    Color(0xFFF1C40F), // Yellow
+    Color(0xFF9B59B6), // Purple
+    Color(0xFFE67E22), // Orange
+    Color(0xFF1ABC9C), // Teal
+    Color(0xFFE91E63), // Pink
   ];
 
   // Gradients for layers (top to bottom)
@@ -39,17 +39,19 @@ class GameColors {
   ];
 
   static const List<List<Color>> _ultraGradients = [
-    [Color(0xFFE69F00), Color(0xFFCC8F00)], // Orange
-    [Color(0xFF56B4E9), Color(0xFF4698C5)], // Sky Blue
-    [Color(0xFF009E73), Color(0xFF00855F)], // Bluish Green
-    [Color(0xFFF0E442), Color(0xFFD6CC3A)], // Yellow
-    [Color(0xFF0072B2), Color(0xFF005D91)], // Blue
-    [Color(0xFFD55E00), Color(0xFFB84F00)], // Vermillion
-    [Color(0xFFCC79A7), Color(0xFFB36A90)], // Reddish Purple
-    [Color(0xFF2B2B2B), Color(0xFF000000)], // Black
+    [Color(0xFFE74C3C), Color(0xFFC0392B)], // Red
+    [Color(0xFF3498DB), Color(0xFF2980B9)], // Blue
+    [Color(0xFF2ECC71), Color(0xFF27AE60)], // Green
+    [Color(0xFFF1C40F), Color(0xFFD4AC0D)], // Yellow
+    [Color(0xFF9B59B6), Color(0xFF8E44AD)], // Purple
+    [Color(0xFFE67E22), Color(0xFFD35400)], // Orange
+    [Color(0xFF1ABC9C), Color(0xFF16A085)], // Teal
+    [Color(0xFFE91E63), Color(0xFFC2185B)], // Pink
   ];
 
   static bool _useUltraPalette = false;
+
+  static bool get isUltraMode => _useUltraPalette;
 
   static void setUltraPalette(bool enabled) {
     _useUltraPalette = enabled;

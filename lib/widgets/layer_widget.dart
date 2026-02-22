@@ -124,6 +124,18 @@ class LayerWidget extends StatelessWidget {
                 ),
               ),
             ),
+          // Pattern overlay for ultra mode (colorblind accessibility)
+          if (GameColors.isUltraMode && !isLocked)
+            Positioned.fill(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(ThemeColors.blockBorderRadius),
+                child: CustomPaint(
+                  painter: _BlockPatternPainter(
+                    patternIndex: layer.colorIndex,
+                  ),
+                ),
+              ),
+            ),
           // Lock icon and counter overlay
           if (isLocked)
             Center(
@@ -261,5 +273,124 @@ class AnimatedLayerWidget extends StatelessWidget {
       onEnd: onMoveComplete,
       child: LayerWidget(layer: layer),
     );
+  }
+}
+
+/// Paints subtle pattern overlays on blocks for colorblind accessibility.
+/// Each color index gets a unique pattern so blocks are distinguishable
+/// even without color perception.
+class _BlockPatternPainter extends CustomPainter {
+  final int patternIndex;
+
+  const _BlockPatternPainter({required this.patternIndex});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.18)
+      ..strokeWidth = 1.2
+      ..style = PaintingStyle.stroke;
+
+    switch (patternIndex % 8) {
+      case 0: // Diagonal stripes (top-left to bottom-right)
+        _drawDiagonalStripes(canvas, size, paint, 1);
+        break;
+      case 1: // Dots
+        _drawDots(canvas, size, paint);
+        break;
+      case 2: // Crosshatch
+        _drawCrosshatch(canvas, size, paint);
+        break;
+      case 3: // Horizontal stripes
+        _drawHorizontalStripes(canvas, size, paint);
+        break;
+      case 4: // Diagonal stripes (top-right to bottom-left)
+        _drawDiagonalStripes(canvas, size, paint, -1);
+        break;
+      case 5: // Small circles
+        _drawSmallCircles(canvas, size, paint);
+        break;
+      case 6: // Vertical stripes
+        _drawVerticalStripes(canvas, size, paint);
+        break;
+      case 7: // Diamond pattern
+        _drawDiamonds(canvas, size, paint);
+        break;
+    }
+  }
+
+  void _drawDiagonalStripes(Canvas canvas, Size size, Paint paint, int dir) {
+    const spacing = 8.0;
+    for (double i = -size.height; i < size.width + size.height; i += spacing) {
+      canvas.drawLine(
+        Offset(i, dir == 1 ? 0 : size.height),
+        Offset(i + size.height * dir, dir == 1 ? size.height : 0),
+        paint,
+      );
+    }
+  }
+
+  void _drawDots(Canvas canvas, Size size, Paint paint) {
+    final dotPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.2)
+      ..style = PaintingStyle.fill;
+    const spacing = 8.0;
+    for (double x = spacing / 2; x < size.width; x += spacing) {
+      for (double y = spacing / 2; y < size.height; y += spacing) {
+        canvas.drawCircle(Offset(x, y), 1.5, dotPaint);
+      }
+    }
+  }
+
+  void _drawCrosshatch(Canvas canvas, Size size, Paint paint) {
+    const spacing = 8.0;
+    for (double i = -size.height; i < size.width + size.height; i += spacing) {
+      canvas.drawLine(Offset(i, 0), Offset(i + size.height, size.height), paint);
+      canvas.drawLine(Offset(i, size.height), Offset(i + size.height, 0), paint);
+    }
+  }
+
+  void _drawHorizontalStripes(Canvas canvas, Size size, Paint paint) {
+    const spacing = 6.0;
+    for (double y = spacing / 2; y < size.height; y += spacing) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+  }
+
+  void _drawSmallCircles(Canvas canvas, Size size, Paint paint) {
+    const spacing = 10.0;
+    for (double x = spacing / 2; x < size.width; x += spacing) {
+      for (double y = spacing / 2; y < size.height; y += spacing) {
+        canvas.drawCircle(Offset(x, y), 3, paint);
+      }
+    }
+  }
+
+  void _drawVerticalStripes(Canvas canvas, Size size, Paint paint) {
+    const spacing = 6.0;
+    for (double x = spacing / 2; x < size.width; x += spacing) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+  }
+
+  void _drawDiamonds(Canvas canvas, Size size, Paint paint) {
+    const spacing = 10.0;
+    const half = spacing / 2;
+    for (double x = 0; x < size.width + spacing; x += spacing) {
+      for (double y = 0; y < size.height + spacing; y += spacing) {
+        final path = Path()
+          ..moveTo(x, y - half)
+          ..lineTo(x + half, y)
+          ..lineTo(x, y + half)
+          ..lineTo(x - half, y)
+          ..close();
+        canvas.drawPath(path, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _BlockPatternPainter oldDelegate) {
+    return oldDelegate.patternIndex != patternIndex;
   }
 }
