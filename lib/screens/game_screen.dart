@@ -47,6 +47,7 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
   bool _tutorialInitialized = false;
   int _hintSourceIndex = -1;
   int _hintDestIndex = -1;
+  int _hintsRemainingThisPuzzle = 3;
   int? _previousSelectedStack;
   int _previousMoveCount = 0;
   bool _showMultiGrabHint = false;
@@ -266,6 +267,7 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
     // Reset hint state
     setState(() {
       _showingHint = false;
+      _hintsRemainingThisPuzzle = 3;
       _stackKeys.clear();
       _previousMoveCount = 0;
       _previousSelectedStack = null;
@@ -381,6 +383,13 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
   }
 
   void _showHint() {
+    if (_hintsRemainingThisPuzzle <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No hints remaining for this puzzle.')),
+      );
+      return;
+    }
+
     final iap = context.read<IapService>();
     if (iap.hintCount <= 0) {
       _showHintPurchaseDialog(iap);
@@ -407,6 +416,7 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
         _showingHint = true;
         _hintSourceIndex = hint.$1;
         _hintDestIndex = hint.$2;
+        _hintsRemainingThisPuzzle--;
       });
       AudioService().playTap();
     }
@@ -740,6 +750,13 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
   }
 
   void _onEnhancedHintPressed() {
+    if (_hintsRemainingThisPuzzle <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No hints remaining for this puzzle.')),
+      );
+      return;
+    }
+
     final powerUpService = _powerUpService;
     if (powerUpService == null ||
         !powerUpService.isAvailable(PowerUpType.hint)) {
@@ -764,6 +781,7 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
       _showingHint = true;
       _hintSourceIndex = hint.$1;
       _hintDestIndex = hint.$2;
+      _hintsRemainingThisPuzzle--;
     });
     AudioService().playTap();
   }
@@ -1191,6 +1209,15 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
           GameIconButton(
             icon: Icons.help_outline,
             onPressed: _retriggerTutorial,
+          ),
+          const SizedBox(width: 8),
+
+          // Hint button
+          GameIconButton(
+            icon: Icons.lightbulb_outline,
+            badge: '$_hintsRemainingThisPuzzle',
+            isDisabled: _hintsRemainingThisPuzzle <= 0,
+            onPressed: _hintsRemainingThisPuzzle > 0 ? _showHint : null,
           ),
           const SizedBox(width: 8),
 
