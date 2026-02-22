@@ -309,6 +309,9 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                 // Optional move counter
                 if (_showMoveCounter) _buildMoveCounter(),
 
+                // Undo button
+                _buildUndoButton(),
+
                 const SizedBox(height: 16),
               ],
             ),
@@ -316,14 +319,14 @@ class _ZenModeScreenState extends State<ZenModeScreen>
 
           // Garden progress indicator (bottom left)
           Positioned(
-            bottom: 32,
+            bottom: MediaQuery.of(context).padding.bottom + 32,
             left: 16,
             child: _buildGardenProgress(),
           ),
 
           // Session stats overlay (bottom right)
           Positioned(
-            bottom: 32,
+            bottom: MediaQuery.of(context).padding.bottom + 32,
             right: 16,
             child: _buildSessionStats(),
           ),
@@ -462,6 +465,29 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                   ),
                 ),
               ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildUndoButton() {
+    return Consumer<GameState>(
+      builder: (context, gameState, _) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: IconButton(
+            onPressed: gameState.canUndo ? () => gameState.undo() : null,
+            icon: Badge(
+              isLabelVisible: gameState.undosRemaining > 0,
+              label: Text('${gameState.undosRemaining}'),
+              child: Icon(
+                Icons.undo,
+                color: gameState.canUndo
+                    ? GameColors.text
+                    : GameColors.textMuted.withValues(alpha: 0.4),
+              ),
             ),
           ),
         );

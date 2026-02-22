@@ -1146,8 +1146,9 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Widget _buildBottomControls(GameState gameState, IapService iap) {
+    final bottomPad = MediaQuery.of(context).padding.bottom;
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.fromLTRB(16, 16, 16, bottomPad > 0 ? bottomPad + 16 : 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [

@@ -1099,6 +1099,7 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
   Offset _startPos = Offset.zero;
   Offset _endPos = Offset.zero;
   double _arcHeight = 60.0;
+  bool _positionsReady = false;
 
   @override
   void initState() {
@@ -1229,6 +1230,7 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
       final distance = (_endPos - _startPos).distance;
       final baseArc = (distance * 0.3).clamp(40.0, 80.0);
       _arcHeight = widget.animatingLayer.isMultiGrab ? baseArc * 1.3 : baseArc;
+      _positionsReady = true;
     });
   }
 
@@ -1255,6 +1257,7 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
+        if (!_positionsReady) return const SizedBox.shrink();
         final t = _curveAnimation.value;
 
         // Quadratic bezier arc trajectory

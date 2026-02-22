@@ -15,8 +15,11 @@ class GardenService {
   static GardenState get state => _state;
 
   /// Reset garden to empty state (call when entering Zen Mode)
+  /// Seeds baseline stage-0 elements so the garden isn't completely empty.
   static void startFreshSession() {
-    _state = GardenState();
+    final baselineElements = _getUnlocksForStage(0);
+    _state = GardenState(unlockedElements: baselineElements);
+    rebuildNotifier.value++;
   }
 
   /// Record a puzzle completion in Zen Mode (session only, not persisted)
