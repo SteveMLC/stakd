@@ -25,10 +25,13 @@ class LayerWidget extends StatelessWidget {
     // Choose gradient/colors based on block type (use theme-aware colors)
     final gradientColors = ThemeColors.getGradient(layer.colorIndex);
     
-    // Apply frost effect to locked blocks
+    // Apply frost effect to locked or frozen blocks
     final isLocked = layer.isLocked;
+    final isFrozen = layer.isFrozen;
     final shadowColor = isLocked 
         ? Colors.blue.withValues(alpha: 0.3) 
+        : isFrozen
+        ? const Color(0xFF0288D1).withValues(alpha: 0.3)
         : gradientColors.last;
     
     // Check if theme has block glow enabled
@@ -170,6 +173,42 @@ class LayerWidget extends StatelessWidget {
                 ),
               ),
             ),
+          // Frozen block ice overlay
+          if (isFrozen)
+            Container(
+              margin: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(GameSizes.stackBorderRadius - 2),
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0x660288D1),
+                    Color(0x4481D4FA),
+                    Color(0x660288D1),
+                  ],
+                ),
+              ),
+            ),
+          // Frozen block ice crystal lines + snowflake icon
+          if (isFrozen)
+            Positioned.fill(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(GameSizes.stackBorderRadius - 2),
+                child: CustomPaint(
+                  painter: _IceCrystalPainter(),
+                ),
+              ),
+            ),
+          if (isFrozen)
+            const Center(
+              child: Icon(
+                Icons.ac_unit,
+                color: Colors.white,
+                size: 14,
+                shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
+              ),
+            ),
         ],
       ),
     );
@@ -197,6 +236,15 @@ class LayerWidget extends StatelessWidget {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: gradientColors.map((c) => _desaturate(c, 0.5)).toList(),
+      );
+    }
+
+    // Slightly darken frozen blocks
+    if (layer.isFrozen) {
+      return LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: gradientColors.map((c) => _desaturate(c, 0.2)).toList(),
       );
     }
     
@@ -274,6 +322,33 @@ class AnimatedLayerWidget extends StatelessWidget {
       child: LayerWidget(layer: layer),
     );
   }
+}
+
+/// Paints ice crystal lines on frozen blocks
+class _IceCrystalPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.35)
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke;
+
+    // Angular ice crystal lines
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+
+    // Line 1: diagonal top-left
+    canvas.drawLine(Offset(cx - 12, cy - 8), Offset(cx - 4, cy - 2), paint);
+    // Line 2: diagonal top-right
+    canvas.drawLine(Offset(cx + 12, cy - 8), Offset(cx + 4, cy - 2), paint);
+    // Line 3: diagonal bottom-left
+    canvas.drawLine(Offset(cx - 10, cy + 6), Offset(cx - 3, cy + 1), paint);
+    // Line 4: diagonal bottom-right
+    canvas.drawLine(Offset(cx + 10, cy + 6), Offset(cx + 3, cy + 1), paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 /// Paints subtle pattern overlays on blocks for colorblind accessibility.
