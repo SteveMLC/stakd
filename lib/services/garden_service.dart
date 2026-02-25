@@ -22,9 +22,30 @@ class GardenService {
     if (json != null) {
       _state = GardenState.fromJson(jsonDecode(json));
     } else {
-      // Initialize with baseline elements if no saved state
-      final baselineElements = _getUnlocksForStage(0);
-      _state = GardenState(unlockedElements: baselineElements);
+      // First time: retroactively count existing puzzle progress
+      // Check how many levels the player has already completed
+      final existingProgress = prefs.getInt('highest_level') ?? 1;
+      final retroactivePuzzles = (existingProgress - 1).clamp(0, 999);
+      
+      final stage = GardenState.calculateStage(retroactivePuzzles);
+      final allUnlocks = _getUnlocksForStage(stage);
+      
+      _state = GardenState(
+        totalPuzzlesSolved: retroactivePuzzles,
+        currentStage: stage,
+        unlockedElements: allUnlocks,
+      );
+      await _save();
+    }
+    
+    // Always ensure current stage unlocks are applied (handles new elements added in updates)
+    final currentUnlocks = _getUnlocksForStage(_state.currentStage);
+    final missing = currentUnlocks.where((e) => !_state.unlockedElements.contains(e)).toList();
+    if (missing.isNotEmpty) {
+      _state = _state.copyWith(
+        unlockedElements: [..._state.unlockedElements, ...missing],
+      );
+      await _save();
     }
   }
 
@@ -80,25 +101,25 @@ class GardenService {
       unlocks.addAll(['pebble_path', 'small_stones', 'grass_1', 'grass_1_b']);
     }
     if (stage >= 2) {
-      unlocks.addAll(['grass_2', 'grass_2_b', 'flowers_white', 'flowers_yellow', 'bush_small']);
+      unlocks.addAll(['grass_2', 'grass_2_b', 'flowers_white', 'flowers_yellow', 'bush_small', 'zen_sand_swirl']);
     }
     if (stage >= 3) {
-      unlocks.addAll(['grass_3', 'sapling', 'pond_empty', 'flowers_purple']);
+      unlocks.addAll(['grass_3', 'sapling', 'zen_bamboo', 'pond_empty', 'flowers_purple']);
     }
     if (stage >= 4) {
       unlocks.addAll(['tree_young', 'pond_full', 'lily_pads', 'bench', 'butterfly']);
     }
     if (stage >= 5) {
-      unlocks.addAll(['tree_cherry', 'koi_fish', 'lantern', 'petals']);
+      unlocks.addAll(['tree_cherry', 'zen_blossoms_b', 'koi_fish', 'lantern', 'petals']);
     }
     if (stage >= 6) {
-      unlocks.addAll(['torii_gate', 'tree_autumn', 'fireflies', 'wind_chime']);
+      unlocks.addAll(['torii_gate', 'zen_bonsai', 'tree_autumn', 'fireflies', 'wind_chime']);
     }
     if (stage >= 7) {
       unlocks.addAll(['pagoda', 'stream', 'bridge', 'dragonflies']);
     }
     if (stage >= 8) {
-      unlocks.addAll(['mountain', 'moon', 'clouds', 'birds']);
+      unlocks.addAll(['mountain', 'moon', 'clouds', 'birds', 'mist_overlay']);
     }
     if (stage >= 9) {
       unlocks.addAll(['seasons', 'rare_events']);
