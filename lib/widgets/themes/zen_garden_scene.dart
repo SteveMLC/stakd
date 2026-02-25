@@ -391,12 +391,12 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     // Stage 4: Pond
     if (isUnlocked('pond_full')) {
       elements.add(
-        GardenElement(
-          elementId: 'pond_full',
-          revealType: GardenRevealType.rippleIn,
-          child: Positioned(
-            bottom: 90,
-            right: 60,
+        Positioned(
+          bottom: 90,
+          right: 60,
+          child: GardenElement(
+            elementId: 'pond_full',
+            revealType: GardenRevealType.rippleIn,
             child: Image.asset(
               'assets/images/zen-garden/zen_pond.png',
               width: 140,
@@ -411,12 +411,12 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     // Stage 4: Lily pads on pond
     if (isUnlocked('lily_pads')) {
       elements.add(
-        GardenElement(
-          elementId: 'lily_pads',
-          revealType: GardenRevealType.bloomOut,
-          child: Positioned(
-            bottom: 120,
-            right: 90,
+        Positioned(
+          bottom: 120,
+          right: 90,
+          child: GardenElement(
+            elementId: 'lily_pads',
+            revealType: GardenRevealType.bloomOut,
             child: Image.asset(
               'assets/images/zen-garden/zen_lily_pads.png',
               width: 80,
@@ -431,12 +431,12 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     // Stage 7: Waterfall/stream
     if (isUnlocked('stream')) {
       elements.add(
-        GardenElement(
-          elementId: 'stream',
-          revealType: GardenRevealType.rippleIn,
-          child: Positioned(
-            bottom: 70,
-            left: 0,
+        Positioned(
+          bottom: 70,
+          left: 0,
+          child: GardenElement(
+            elementId: 'stream',
+            revealType: GardenRevealType.rippleIn,
             child: Image.asset(
               'assets/images/zen-garden/zen_waterfall.png',
               width: 100,
@@ -451,13 +451,13 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     // Keep koi fish as CustomPainter (animated)
     if (isUnlocked('koi_fish') && isUnlocked('pond_full')) {
       elements.add(
-        GardenElement(
-          elementId: 'koi_fish',
-          revealType: GardenRevealType.rippleIn,
-          showParticles: false,
-          child: Positioned(
-            bottom: 90,
-            right: 60,
+        Positioned(
+          bottom: 90,
+          right: 60,
+          child: GardenElement(
+            elementId: 'koi_fish',
+            revealType: GardenRevealType.rippleIn,
+            showParticles: false,
             child: SizedBox(
               width: 140,
               height: 85,
@@ -532,12 +532,12 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     // Stage 0: Foundation grass base
     if (isUnlocked('grass_base')) {
       elements.add(
-        GardenElement(
-          elementId: 'grass_base',
-          revealType: GardenRevealType.growUp,
-          child: Positioned(
-            bottom: 70,
-            left: 20,
+        Positioned(
+          bottom: 70,
+          left: 20,
+          child: GardenElement(
+            elementId: 'grass_base',
+            revealType: GardenRevealType.growUp,
             child: Image.asset(
               'assets/images/zen-garden/zen_grass_base.png',
               width: 80,
@@ -552,12 +552,12 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     // Stage 2: Small shrub
     if (isUnlocked('bush_small')) {
       elements.add(
-        GardenElement(
-          elementId: 'bush_small',
-          revealType: GardenRevealType.bloomOut,
-          child: Positioned(
-            bottom: 75,
-            left: 200,
+        Positioned(
+          bottom: 75,
+          left: 200,
+          child: GardenElement(
+            elementId: 'bush_small',
+            revealType: GardenRevealType.bloomOut,
             child: Image.asset(
               'assets/images/zen-garden/zen_shrub.png',
               width: 60,
@@ -572,12 +572,12 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     // Stage 3: Bamboo (replacing old sapling)
     if (stage >= 3) {
       elements.add(
-        GardenElement(
-          elementId: 'zen_bamboo',
-          revealType: GardenRevealType.growUp,
-          child: Positioned(
-            bottom: 90,
-            left: 50,
+        Positioned(
+          bottom: 90,
+          left: 50,
+          child: GardenElement(
+            elementId: 'zen_bamboo',
+            revealType: GardenRevealType.growUp,
             child: Image.asset(
               'assets/images/zen-garden/zen_bamboo.png',
               width: 40,
@@ -592,12 +592,12 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     // Stage 5: Cherry blossoms
     if (isUnlocked('tree_cherry')) {
       elements.add(
-        GardenElement(
-          elementId: 'tree_cherry',
-          revealType: GardenRevealType.growUp,
-          child: Positioned(
-            bottom: 100,
-            right: 80,
+        Positioned(
+          bottom: 100,
+          right: 80,
+          child: GardenElement(
+            elementId: 'tree_cherry',
+            revealType: GardenRevealType.growUp,
             child: Image.asset(
               'assets/images/zen-garden/zen_blossoms_a.png',
               width: 100,
@@ -612,12 +612,12 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     // Stage 5: Additional blossoms
     if (stage >= 5) {
       elements.add(
-        GardenElement(
-          elementId: 'zen_blossoms_b',
-          revealType: GardenRevealType.bloomOut,
-          child: Positioned(
-            bottom: 80,
-            left: 280,
+        Positioned(
+          bottom: 80,
+          left: 280,
+          child: GardenElement(
+            elementId: 'zen_blossoms_b',
+            revealType: GardenRevealType.bloomOut,
             child: Image.asset(
               'assets/images/zen-garden/zen_blossoms_b.png',
               width: 80,
@@ -632,12 +632,12 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     // Stage 6: Bonsai (hero piece)
     if (stage >= 6) {
       elements.add(
-        GardenElement(
-          elementId: 'zen_bonsai',
-          revealType: GardenRevealType.growUp,
-          child: Positioned(
-            bottom: 100,
-            left: 140,
+        Positioned(
+          bottom: 100,
+          left: 140,
+          child: GardenElement(
+            elementId: 'zen_bonsai',
+            revealType: GardenRevealType.growUp,
             child: Image.asset(
               'assets/images/zen-garden/zen_bonsai.png',
               width: 120,
@@ -667,12 +667,12 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     // Stage 5: Lantern
     if (isUnlocked('lantern')) {
       elements.add(
-        GardenElement(
-          elementId: 'lantern',
-          revealType: GardenRevealType.growUp,
-          child: Positioned(
-            bottom: 90,
-            right: 40,
+        Positioned(
+          bottom: 90,
+          right: 40,
+          child: GardenElement(
+            elementId: 'lantern',
+            revealType: GardenRevealType.growUp,
             child: Image.asset(
               'assets/images/zen-garden/zen_lantern.png',
               width: 40,
@@ -687,13 +687,13 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     // Stage 6: Shrine/Torii gate
     if (isUnlocked('torii_gate')) {
       elements.add(
-        GardenElement(
-          elementId: 'torii_gate',
-          revealType: GardenRevealType.growUp,
-          revealDuration: const Duration(milliseconds: 2000),
-          child: Positioned(
-            bottom: 95,
-            left: 220,
+        Positioned(
+          bottom: 95,
+          left: 220,
+          child: GardenElement(
+            elementId: 'torii_gate',
+            revealType: GardenRevealType.growUp,
+            revealDuration: const Duration(milliseconds: 2000),
             child: Image.asset(
               'assets/images/zen-garden/zen_shrine.png',
               width: 60,
@@ -708,12 +708,12 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     // Stage 7: Bridge
     if (isUnlocked('bridge')) {
       elements.add(
-        GardenElement(
-          elementId: 'bridge',
-          revealType: GardenRevealType.fadeScale,
-          child: Positioned(
-            bottom: 88,
-            left: 90,
+        Positioned(
+          bottom: 88,
+          left: 90,
+          child: GardenElement(
+            elementId: 'bridge',
+            revealType: GardenRevealType.fadeScale,
             child: Image.asset(
               'assets/images/zen-garden/zen_bridge.png',
               width: 80,
@@ -728,12 +728,12 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     // Keep wind chime as CustomPainter (not in asset registry)
     if (isUnlocked('wind_chime')) {
       elements.add(
-        GardenElement(
-          elementId: 'wind_chime',
-          revealType: GardenRevealType.growUp,
-          child: Positioned(
-            bottom: 155,
-            right: 110,
+        Positioned(
+          bottom: 155,
+          right: 110,
+          child: GardenElement(
+            elementId: 'wind_chime',
+            revealType: GardenRevealType.growUp,
             child: SizedBox(
               width: 44,
               height: 70,
@@ -761,11 +761,26 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
 
     if (isUnlocked('butterfly')) {
       particles.add(
-        GardenElement(
-          elementId: 'butterfly',
-          revealType: GardenRevealType.fadeScale,
-          showParticles: false,
-          child: _flutteringBug(top: 150, left: 100),
+        AnimatedBuilder(
+          animation: _ambientController,
+          builder: (context, _) {
+            final top = 150.0 + math.sin(_ambientController.value * 2 * math.pi) * 10;
+            final left = 100.0 + math.cos(_ambientController.value * 2 * math.pi) * 15;
+            return Positioned(
+              top: top,
+              left: left,
+              child: GardenElement(
+                elementId: 'butterfly',
+                revealType: GardenRevealType.fadeScale,
+                showParticles: false,
+                child: const Icon(
+                  Icons.flutter_dash,
+                  size: 18,
+                  color: Color(0xFFB388FF),
+                ),
+              ),
+            );
+          },
         ),
       );
     }
@@ -944,12 +959,12 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     // Stage 0: Sand foundation
     if (isUnlocked('ground')) {
       elements.add(
-        GardenElement(
-          elementId: 'ground',
-          revealType: GardenRevealType.fadeScale,
-          child: Positioned(
-            bottom: 0,
-            left: 50,
+        Positioned(
+          bottom: 0,
+          left: 50,
+          child: GardenElement(
+            elementId: 'ground',
+            revealType: GardenRevealType.fadeScale,
             child: Image.asset(
               'assets/images/zen-garden/zen_sand_plate.png',
               width: 250,
@@ -964,12 +979,12 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     // Stage 1: Small rocks/stones
     if (isUnlocked('small_stones')) {
       elements.add(
-        GardenElement(
-          elementId: 'small_stones',
-          revealType: GardenRevealType.growUp,
-          child: Positioned(
-            bottom: 70,
-            left: 120,
+        Positioned(
+          bottom: 70,
+          left: 120,
+          child: GardenElement(
+            elementId: 'small_stones',
+            revealType: GardenRevealType.growUp,
             child: Image.asset(
               'assets/images/zen-garden/zen_rocks_small.png',
               width: 60,
@@ -984,12 +999,12 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     // Stage 1: Stepping stones path
     if (isUnlocked('pebble_path')) {
       elements.add(
-        GardenElement(
-          elementId: 'pebble_path',
-          revealType: GardenRevealType.fadeScale,
-          child: Positioned(
-            bottom: 50,
-            left: 180,
+        Positioned(
+          bottom: 50,
+          left: 180,
+          child: GardenElement(
+            elementId: 'pebble_path',
+            revealType: GardenRevealType.fadeScale,
             child: Image.asset(
               'assets/images/zen-garden/zen_stepping_stones.png',
               width: 120,
@@ -1004,12 +1019,12 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     // Stage 2: Sand swirls
     if (gardenState.currentStage >= 2) {
       elements.add(
-        GardenElement(
-          elementId: 'zen_sand_swirl',
-          revealType: GardenRevealType.bloomOut,
-          child: Positioned(
-            bottom: 30,
-            right: 100,
+        Positioned(
+          bottom: 30,
+          right: 100,
+          child: GardenElement(
+            elementId: 'zen_sand_swirl',
+            revealType: GardenRevealType.bloomOut,
             child: Image.asset(
               'assets/images/zen-garden/zen_sand_swirl.png',
               width: 100,
@@ -1024,12 +1039,12 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     // Stage 3: Medium rocks (replaces sapling)
     if (isUnlocked('sapling')) {
       elements.add(
-        GardenElement(
-          elementId: 'sapling',
-          revealType: GardenRevealType.growUp,
-          child: Positioned(
-            bottom: 75,
-            left: 300,
+        Positioned(
+          bottom: 75,
+          left: 300,
+          child: GardenElement(
+            elementId: 'sapling',
+            revealType: GardenRevealType.growUp,
             child: Image.asset(
               'assets/images/zen-garden/zen_rocks_medium.png',
               width: 90,
@@ -1054,18 +1069,6 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
           height: double.infinity,
           fit: BoxFit.cover,
         ),
-      ),
-    );
-  }
-
-  Widget _flutteringBug({required double top, required double left}) {
-    return Positioned(
-      top: top + math.sin(_ambientController.value * 2 * math.pi) * 10,
-      left: left + math.cos(_ambientController.value * 2 * math.pi) * 15,
-      child: const Icon(
-        Icons.flutter_dash,
-        size: 18,
-        color: Color(0xFFB388FF),
       ),
     );
   }

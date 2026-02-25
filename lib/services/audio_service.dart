@@ -13,6 +13,7 @@ class AudioService {
   bool _soundEnabled = true;
   bool _musicEnabled = true;
   bool _initialized = false;
+  final Set<String> _failedSounds = {};
 
   bool get soundEnabled => _soundEnabled;
   bool get musicEnabled => _musicEnabled;
@@ -35,12 +36,14 @@ class AudioService {
   /// Play a sound effect
   Future<void> playSound(GameSound sound) async {
     if (!_soundEnabled) return;
+    if (_failedSounds.contains(sound.path)) return;
 
     try {
       await _sfxPlayer.stop();
       await _sfxPlayer.play(AssetSource(sound.path));
     } catch (e) {
-      debugPrint('Error playing sound: $e');
+      _failedSounds.add(sound.path);
+      debugPrint('Audio unavailable (${sound.path}): skipping');
     }
   }
 

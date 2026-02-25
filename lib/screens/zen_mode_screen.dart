@@ -808,9 +808,10 @@ class _ZenModeScreenState extends State<ZenModeScreen>
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    _buildGardenProgress(),
-                    const Spacer(),
+                    Flexible(fit: FlexFit.tight, child: _buildGardenProgress()),
+                    const SizedBox(width: 8),
                     _buildSessionStats(),
                   ],
                 ),
@@ -941,9 +942,10 @@ class _ZenModeScreenState extends State<ZenModeScreen>
           const SizedBox(height: 6),
 
           // Progress bar
-          SizedBox(
-            width: 120,
-            child: Stack(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final barWidth = constraints.maxWidth.isFinite ? constraints.maxWidth : 120.0;
+              return Stack(
               children: [
                 // Background
                 Container(
@@ -958,7 +960,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                   duration: const Duration(milliseconds: 500),
                   curve: Curves.easeOutCubic,
                   height: 6,
-                  width: 120 * progress,
+                  width: barWidth * progress,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
@@ -976,7 +978,8 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                   ),
                 ),
               ],
-            ),
+            );
+            },
           ),
           const SizedBox(height: 4),
 
