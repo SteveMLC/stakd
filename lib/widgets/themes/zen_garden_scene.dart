@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../models/garden_state.dart';
+// Registry no longer needed in main scene file
 import '../../services/zen_audio_service.dart';
 import '../../services/garden_service.dart';
 import '../garden/garden_element.dart';
@@ -154,8 +155,9 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
         // Layer 1: Distant background
         if (isUnlocked('mountain')) _buildDistantBackground(),
 
-        // Layer 2: Ground
+        // Layer 2: Ground and foundation elements
         _buildGround(state.currentStage),
+        _buildGroundAssets(),
 
         // Layer 3: Water features
         if (isUnlocked('pond_empty') || isUnlocked('pond_full'))
@@ -172,6 +174,9 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
           animation: _ambientController,
           builder: (context, child) => _buildParticles(),
         ),
+
+        // Layer 7: Mist overlay (stage 8)
+        if (state.currentStage >= 8) _buildMistOverlay(),
 
         // Stats overlay
         if (widget.showStats)
@@ -381,161 +386,113 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
   }
 
   Widget _buildWater() {
-    final hasFull = isUnlocked('pond_full');
-    final hasEmpty = isUnlocked('pond_empty');
-    final hasKoi = isUnlocked('koi_fish');
-    final hasLily = isUnlocked('lily_pads');
+    final elements = <Widget>[];
 
-    if (!hasEmpty && !hasFull) return const SizedBox.shrink();
-
-    return Positioned(
-      bottom: 90,
-      right: 60,
-      child: SizedBox(
-        width: 140,
-        height: 85,
-        child: PondFillAnimation(
-          isFull: hasFull,
-          emptyPond: Container(
-            width: 130,
-            height: 75,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(80),
-              color: const Color(0xFF8B7355).withValues(alpha: 0.25),
-              border: Border.all(
-                color: const Color(0xFF6D5643).withValues(alpha: 0.4),
-                width: 2,
-              ),
+    // Stage 4: Pond
+    if (isUnlocked('pond_full')) {
+      elements.add(
+        GardenElement(
+          elementId: 'pond_full',
+          revealType: GardenRevealType.rippleIn,
+          child: Positioned(
+            bottom: 90,
+            right: 60,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_pond.png',
+              width: 140,
+              height: 85,
+              fit: BoxFit.contain,
             ),
           ),
-          fullPond: Stack(
-            children: [
-              // Pond base with animated shimmer
-              AnimatedBuilder(
+        ),
+      );
+    }
+
+    // Stage 4: Lily pads on pond
+    if (isUnlocked('lily_pads')) {
+      elements.add(
+        GardenElement(
+          elementId: 'lily_pads',
+          revealType: GardenRevealType.bloomOut,
+          child: Positioned(
+            bottom: 120,
+            right: 90,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_lily_pads.png',
+              width: 80,
+              height: 50,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Stage 7: Waterfall/stream
+    if (isUnlocked('stream')) {
+      elements.add(
+        GardenElement(
+          elementId: 'stream',
+          revealType: GardenRevealType.rippleIn,
+          child: Positioned(
+            bottom: 70,
+            left: 0,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_waterfall.png',
+              width: 100,
+              height: 140,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Keep koi fish as CustomPainter (animated)
+    if (isUnlocked('koi_fish') && isUnlocked('pond_full')) {
+      elements.add(
+        GardenElement(
+          elementId: 'koi_fish',
+          revealType: GardenRevealType.rippleIn,
+          showParticles: false,
+          child: Positioned(
+            bottom: 90,
+            right: 60,
+            child: SizedBox(
+              width: 140,
+              height: 85,
+              child: AnimatedBuilder(
                 animation: _ambientController,
                 builder: (context, child) {
-                  final shimmer = 0.7 + math.sin(_ambientController.value * 2 * math.pi) * 0.1;
-                  return Container(
-                    width: 130,
-                    height: 75,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(80),
-                      gradient: RadialGradient(
-                        center: Alignment.center,
-                        colors: [
-                          Color.lerp(
-                            const Color(0xFF4FC3F7),
-                            const Color(0xFF81D4FA),
-                            shimmer - 0.7,
-                          )!.withValues(alpha: 0.8),
-                          const Color(0xFF039BE5).withValues(alpha: 0.6),
-                        ],
+                  return Stack(
+                    children: [
+                      _koiFish(
+                        progress: _ambientController.value,
+                        startX: 20,
+                        startY: 45,
+                        color: const Color(0xFFFF6B00),
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF4FC3F7).withValues(alpha: 0.3),
-                          blurRadius: 10,
-                          spreadRadius: 2,
-                        )
-                      ],
-                    ),
+                      _koiFish(
+                        progress: (_ambientController.value + 0.5) % 1.0,
+                        startX: 80,
+                        startY: 30,
+                        color: const Color(0xFFFFFFFF),
+                        reverse: true,
+                      ),
+                    ],
                   );
                 },
               ),
-            
-            // Lily pads
-            if (hasLily)
-              GardenElement(
-                elementId: 'lily_pads',
-                revealType: GardenRevealType.bloomOut,
-                child: Stack(
-                  children: [
-                    Positioned(
-                      top: 15,
-                      left: 20,
-                      child: _lilyPad(size: 18),
-                    ),
-                    Positioned(
-                      top: 35,
-                      left: 45,
-                      child: _lilyPad(size: 22, hasFlower: true),
-                    ),
-                    Positioned(
-                      top: 20,
-                      right: 30,
-                      child: _lilyPad(size: 16),
-                    ),
-                  ],
-                ),
-              ),
-            
-            // Koi fish
-            if (hasKoi)
-              GardenElement(
-                elementId: 'koi_fish',
-                revealType: GardenRevealType.rippleIn,
-                showParticles: false,
-                child: AnimatedBuilder(
-                  animation: _ambientController,
-                  builder: (context, child) {
-                    return Stack(
-                      children: [
-                        _koiFish(
-                          progress: _ambientController.value,
-                          startX: 20,
-                          startY: 45,
-                          color: const Color(0xFFFF6B00),
-                        ),
-                        _koiFish(
-                          progress: (_ambientController.value + 0.5) % 1.0,
-                          startX: 80,
-                          startY: 30,
-                          color: const Color(0xFFFFFFFF),
-                          reverse: true,
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ],
+            ),
           ),
         ),
-      ),
-    );
+      );
+    }
+
+    return Stack(children: elements);
   }
 
-  Widget _lilyPad({required double size, bool hasFlower = false}) {
-    return SizedBox(
-      width: size + (hasFlower ? 8 : 0),
-      height: size + (hasFlower ? 8 : 0),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Container(
-            width: size,
-            height: size * 0.7,
-            decoration: BoxDecoration(
-              color: const Color(0xFF2E7D32),
-              borderRadius: BorderRadius.circular(size),
-            ),
-          ),
-          if (hasFlower)
-            Positioned(
-              top: 0,
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFFB7C5),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
+  // Old CustomPainter lily pad method removed - using image assets now
 
   Widget _koiFish({
     required double progress,
@@ -572,113 +529,122 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
   Widget _buildFlora(int stage) {
     final elements = <Widget>[];
 
-    // Stage 0: Baseline grass - sparse but visible, so garden isn't empty
-    if (stage >= 0) {
+    // Stage 0: Foundation grass base
+    if (isUnlocked('grass_base')) {
       elements.add(
         GardenElement(
           elementId: 'grass_base',
           revealType: GardenRevealType.growUp,
-          child: _baseGrass(left: 20, size: 28, opacity: 0.7),
-        ),
-      );
-      elements.add(
-        GardenElement(
-          elementId: 'grass_base_2',
-          revealType: GardenRevealType.growUp,
-          child: _baseGrass(right: 30, size: 24, opacity: 0.6),
-        ),
-      );
-      elements.add(
-        GardenElement(
-          elementId: 'grass_base_3',
-          revealType: GardenRevealType.growUp,
-          child: _baseGrass(left: 160, size: 26, opacity: 0.5),
+          child: Positioned(
+            bottom: 70,
+            left: 20,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_grass_base.png',
+              width: 80,
+              height: 60,
+              fit: BoxFit.contain,
+            ),
+          ),
         ),
       );
     }
 
-    // Stage 1: First grass patches (more vibrant)
-    if (stage >= 1) {
-      elements.add(
-        GardenElement(
-          elementId: 'grass_1',
-          revealType: GardenRevealType.growUp,
-          child: _grass(left: 30, size: 40, swayPhase: 0.1),
-        ),
-      );
-      elements.add(
-        GardenElement(
-          elementId: 'grass_1_b',
-          revealType: GardenRevealType.growUp,
-          child: _grass(right: 50, size: 36, swayPhase: 0.35),
-        ),
-      );
-    }
-    
-    // Stage 2: More grass and flowers
-    if (stage >= 2) {
-      elements.add(
-        GardenElement(
-          elementId: 'grass_2',
-          revealType: GardenRevealType.growUp,
-          child: _grass(left: 100, size: 50, swayPhase: 0.2),
-        ),
-      );
-      elements.add(
-        GardenElement(
-          elementId: 'grass_2_b',
-          revealType: GardenRevealType.growUp,
-          child: _grass(right: 120, size: 46, swayPhase: 0.6),
-        ),
-      );
-      elements.add(_flower(left: 80, color: Colors.white, elementId: 'flowers_white'));
-      elements.add(_flower(right: 90, color: Colors.yellow, elementId: 'flowers_yellow'));
+    // Stage 2: Small shrub
+    if (isUnlocked('bush_small')) {
       elements.add(
         GardenElement(
           elementId: 'bush_small',
           revealType: GardenRevealType.bloomOut,
-          child: _bush(left: 200, size: 30),
+          child: Positioned(
+            bottom: 75,
+            left: 200,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_shrub.png',
+              width: 60,
+              height: 45,
+              fit: BoxFit.contain,
+            ),
+          ),
         ),
       );
     }
     
-    // Stage 3: Trees and more flowers
+    // Stage 3: Bamboo (replacing old sapling)
     if (stage >= 3) {
       elements.add(
         GardenElement(
-          elementId: 'grass_3',
+          elementId: 'zen_bamboo',
           revealType: GardenRevealType.growUp,
-          child: _grass(left: 230, size: 44, swayPhase: 0.45),
+          child: Positioned(
+            bottom: 90,
+            left: 50,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_bamboo.png',
+              width: 40,
+              height: 120,
+              fit: BoxFit.contain,
+            ),
+          ),
         ),
       );
-      elements.add(
-        GardenElement(
-          elementId: 'sapling',
-          revealType: GardenRevealType.growUp,
-          child: _tree(left: 50, stage: stage),
-        ),
-      );
-      elements.add(_flower(left: 160, color: const Color(0xFFB39DDB), elementId: 'flowers_purple'));
     }
     
-    // Stage 5: Cherry blossom tree
-    if (stage >= 5) {
+    // Stage 5: Cherry blossoms
+    if (isUnlocked('tree_cherry')) {
       elements.add(
         GardenElement(
           elementId: 'tree_cherry',
           revealType: GardenRevealType.growUp,
-          child: _tree(right: 80, stage: stage, isCherry: true),
+          child: Positioned(
+            bottom: 100,
+            right: 80,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_blossoms_a.png',
+              width: 100,
+              height: 130,
+              fit: BoxFit.contain,
+            ),
+          ),
         ),
       );
     }
 
-    // Stage 6: Autumn tree
+    // Stage 5: Additional blossoms
+    if (stage >= 5) {
+      elements.add(
+        GardenElement(
+          elementId: 'zen_blossoms_b',
+          revealType: GardenRevealType.bloomOut,
+          child: Positioned(
+            bottom: 80,
+            left: 280,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_blossoms_b.png',
+              width: 80,
+              height: 100,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Stage 6: Bonsai (hero piece)
     if (stage >= 6) {
       elements.add(
         GardenElement(
-          elementId: 'tree_autumn',
+          elementId: 'zen_bonsai',
           revealType: GardenRevealType.growUp,
-          child: _tree(left: 140, stage: stage, isAutumn: true),
+          child: Positioned(
+            bottom: 100,
+            left: 140,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_bonsai.png',
+              width: 120,
+              height: 160,
+              fit: BoxFit.contain,
+            ),
+          ),
         ),
       );
     }
@@ -686,174 +652,19 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     return Stack(children: elements);
   }
 
-  Widget _grass({double? left, double? right, required double size, required double swayPhase}) {
-    return Positioned(
-      bottom: 70,
-      left: left,
-      right: right,
-      child: AnimatedBuilder(
-        animation: _ambientController,
-        builder: (context, child) {
-          final sway = math.sin((_ambientController.value * 2 * math.pi) + swayPhase) * 3;
-          return Transform.rotate(
-            angle: sway * 0.02,
-            alignment: Alignment.bottomCenter,
-            child: child,
-          );
-        },
-        child: CustomPaint(
-          size: Size(size, size * 1.5),
-          painter: GrassPainter(),
-        ),
-      ),
-    );
-  }
+  // Old CustomPainter grass method removed - using image assets now
 
-  /// Sparse baseline grass for stage 0 - visible but subtle
-  Widget _baseGrass({double? left, double? right, required double size, double opacity = 0.6}) {
-    return Positioned(
-      bottom: 65,
-      left: left,
-      right: right,
-      child: AnimatedBuilder(
-        animation: _ambientController,
-        builder: (context, child) {
-          final sway = math.sin(_ambientController.value * 2 * math.pi) * 2;
-          return Transform.rotate(
-            angle: sway * 0.015,
-            alignment: Alignment.bottomCenter,
-            child: child,
-          );
-        },
-        child: Opacity(
-          opacity: opacity,
-          child: CustomPaint(
-            size: Size(size, size * 1.2),
-            painter: BaseGrassPainter(),
-          ),
-        ),
-      ),
-    );
-  }
-  
-  Widget _bush({double? left, double? right, required double size}) {
-    return Positioned(
-      bottom: 75,
-      left: left,
-      right: right,
-      child: AnimatedBuilder(
-        animation: _ambientController,
-        builder: (context, child) {
-          final sway = math.sin((_ambientController.value * 2 * math.pi) * 0.5) * 1;
-          return Transform.rotate(
-            angle: sway * 0.01,
-            alignment: Alignment.bottomCenter,
-            child: child,
-          );
-        },
-        child: Container(
-          width: size,
-          height: size * 0.8,
-          decoration: BoxDecoration(
-            color: const Color(0xFF2E7D32),
-            borderRadius: BorderRadius.circular(size / 2),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.2),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  // Old CustomPainter base grass method removed - using image assets now
+  // Old CustomPainter bush method removed - using image assets now
 
-  Widget _flower({double? left, double? right, required Color color, String? elementId}) {
-    final flowerWidget = Positioned(
-      bottom: 80,
-      left: left,
-      right: right,
-      child: SizedBox(
-        width: 20,
-        height: 32,
-        child: Column(
-          children: [
-            Container(
-              width: 14,
-              height: 14,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-              ),
-            ),
-            Container(width: 2, height: 18, color: Colors.green[700]),
-          ],
-        ),
-      ),
-    );
+  // Old CustomPainter flower method removed - using image assets now
 
-    if (elementId != null) {
-      return GardenElement(
-        elementId: elementId,
-        revealType: GardenRevealType.bloomOut,
-        child: flowerWidget,
-      );
-    }
-    return flowerWidget;
-  }
-
-  Widget _tree({double? left, double? right, required int stage, bool isCherry = false, bool isAutumn = false}) {
-    final height = 80.0 + (stage - 3) * 28;
-    final scale = height / 140;
-
-    return Positioned(
-      bottom: 100,
-      left: left,
-      right: right,
-      child: AnimatedBuilder(
-        animation: _ambientController,
-        builder: (context, child) {
-          final sway = math.sin(_ambientController.value * 2 * math.pi) * 0.015;
-          return Transform.rotate(
-            angle: sway,
-            alignment: Alignment.bottomCenter,
-            child: child,
-          );
-        },
-        child: SizedBox(
-          width: 120 * scale,
-          height: 160 * scale,
-          child: CustomPaint(
-            painter: TreePainter(
-              isCherry: isCherry,
-              isAutumn: isAutumn,
-              scale: scale,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  // Old CustomPainter tree method removed - using image assets now
 
   Widget _buildStructures() {
     final elements = <Widget>[];
 
-    if (isUnlocked('bench')) {
-      elements.add(
-        GardenElement(
-          elementId: 'bench',
-          revealType: GardenRevealType.fadeScale,
-          child: Positioned(
-            bottom: 90,
-            left: 150,
-            child: _simpleBench(),
-          ),
-        ),
-      );
-    }
-
+    // Stage 5: Lantern
     if (isUnlocked('lantern')) {
       elements.add(
         GardenElement(
@@ -862,12 +673,18 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
           child: Positioned(
             bottom: 90,
             right: 40,
-            child: _simpleLantern(),
+            child: Image.asset(
+              'assets/images/zen-garden/zen_lantern.png',
+              width: 40,
+              height: 80,
+              fit: BoxFit.contain,
+            ),
           ),
         ),
       );
     }
 
+    // Stage 6: Shrine/Torii gate
     if (isUnlocked('torii_gate')) {
       elements.add(
         GardenElement(
@@ -877,62 +694,18 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
           child: Positioned(
             bottom: 95,
             left: 220,
-            child: SizedBox(
-              width: 80,
-              height: 100,
-              child: CustomPaint(
-                painter: ToriiPainter(),
-              ),
+            child: Image.asset(
+              'assets/images/zen-garden/zen_shrine.png',
+              width: 60,
+              height: 80,
+              fit: BoxFit.contain,
             ),
           ),
         ),
       );
     }
 
-    if (isUnlocked('pagoda')) {
-      elements.add(
-        GardenElement(
-          elementId: 'pagoda',
-          revealType: GardenRevealType.growUp,
-          revealDuration: const Duration(milliseconds: 2500),
-          child: Positioned(
-            bottom: 130,
-            left: 20,
-            child: SizedBox(
-              width: 55,
-              height: 85,
-              child: CustomPaint(
-                painter: PagodaPainter(),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    if (isUnlocked('stream')) {
-      elements.add(
-        GardenElement(
-          elementId: 'stream',
-          revealType: GardenRevealType.rippleIn,
-          child: Positioned(
-            bottom: 70,
-            left: 0,
-            child: SizedBox(
-              width: 200,
-              height: 60,
-              child: AnimatedBuilder(
-                animation: _ambientController,
-                builder: (context, _) => CustomPaint(
-                  painter: StreamPainter(animationValue: _ambientController.value),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
+    // Stage 7: Bridge
     if (isUnlocked('bridge')) {
       elements.add(
         GardenElement(
@@ -941,18 +714,18 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
           child: Positioned(
             bottom: 88,
             left: 90,
-            child: SizedBox(
-              width: 45,
-              height: 32,
-              child: CustomPaint(
-                painter: BridgePainter(),
-              ),
+            child: Image.asset(
+              'assets/images/zen-garden/zen_bridge.png',
+              width: 80,
+              height: 50,
+              fit: BoxFit.contain,
             ),
           ),
         ),
       );
     }
 
+    // Keep wind chime as CustomPainter (not in asset registry)
     if (isUnlocked('wind_chime')) {
       elements.add(
         GardenElement(
@@ -981,55 +754,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     return Stack(children: elements);
   }
 
-  Widget _simpleBench() {
-    return SizedBox(
-      width: 60,
-      height: 35,
-      child: Stack(
-        children: [
-          Positioned(
-            top: 0,
-            left: 5,
-            right: 5,
-            child: Container(height: 8, color: const Color(0xFF8B4513)),
-          ),
-          Positioned(
-            top: 8,
-            left: 10,
-            child: Container(width: 6, height: 20, color: const Color(0xFF654321)),
-          ),
-          Positioned(
-            top: 8,
-            right: 10,
-            child: Container(width: 6, height: 20, color: const Color(0xFF654321)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _simpleLantern() {
-    return SizedBox(
-      width: 25,
-      height: 50,
-      child: Column(
-        children: [
-          Container(
-            width: 20,
-            height: 25,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFFACD),
-              borderRadius: BorderRadius.circular(3),
-              boxShadow: isUnlocked('fireflies')
-                  ? [BoxShadow(color: Colors.yellow.withValues(alpha: 0.5), blurRadius: 10)]
-                  : null,
-            ),
-          ),
-          Container(width: 8, height: 25, color: const Color(0xFF696969)),
-        ],
-      ),
-    );
-  }
+  // Old CustomPainter bench and lantern methods removed - using image assets now
 
   Widget _buildParticles() {
     final particles = <Widget>[];
@@ -1211,6 +936,126 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     }
 
     return Stack(children: particles);
+  }
+
+  Widget _buildGroundAssets() {
+    final elements = <Widget>[];
+
+    // Stage 0: Sand foundation
+    if (isUnlocked('ground')) {
+      elements.add(
+        GardenElement(
+          elementId: 'ground',
+          revealType: GardenRevealType.fadeScale,
+          child: Positioned(
+            bottom: 0,
+            left: 50,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_sand_plate.png',
+              width: 250,
+              height: 180,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Stage 1: Small rocks/stones
+    if (isUnlocked('small_stones')) {
+      elements.add(
+        GardenElement(
+          elementId: 'small_stones',
+          revealType: GardenRevealType.growUp,
+          child: Positioned(
+            bottom: 70,
+            left: 120,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_rocks_small.png',
+              width: 60,
+              height: 40,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Stage 1: Stepping stones path
+    if (isUnlocked('pebble_path')) {
+      elements.add(
+        GardenElement(
+          elementId: 'pebble_path',
+          revealType: GardenRevealType.fadeScale,
+          child: Positioned(
+            bottom: 50,
+            left: 180,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_stepping_stones.png',
+              width: 120,
+              height: 40,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Stage 2: Sand swirls
+    if (gardenState.currentStage >= 2) {
+      elements.add(
+        GardenElement(
+          elementId: 'zen_sand_swirl',
+          revealType: GardenRevealType.bloomOut,
+          child: Positioned(
+            bottom: 30,
+            right: 100,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_sand_swirl.png',
+              width: 100,
+              height: 70,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Stage 3: Medium rocks (replaces sapling)
+    if (isUnlocked('sapling')) {
+      elements.add(
+        GardenElement(
+          elementId: 'sapling',
+          revealType: GardenRevealType.growUp,
+          child: Positioned(
+            bottom: 75,
+            left: 300,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_rocks_medium.png',
+              width: 90,
+              height: 60,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Stack(children: elements);
+  }
+
+  Widget _buildMistOverlay() {
+    return Positioned.fill(
+      child: Opacity(
+        opacity: 0.3,
+        child: Image.asset(
+          'assets/images/zen-garden/zen_mist.png',
+          width: double.infinity,
+          height: double.infinity,
+          fit: BoxFit.cover,
+        ),
+      ),
+    );
   }
 
   Widget _flutteringBug({required double top, required double left}) {

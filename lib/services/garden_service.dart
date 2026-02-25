@@ -59,7 +59,7 @@ class GardenService {
 
     // Stage 0: Always show baseline elements so garden isn't completely empty
     if (stage >= 0) {
-      unlocks.addAll(['ground', 'grass_base', 'grass_base_2', 'grass_base_3', 'ambient_particles']);
+      unlocks.addAll(['ground', 'ground_raked', 'grass_base', 'grass_base_2', 'grass_base_3', 'ambient_particles']);
     }
 
     if (stage >= 1) {

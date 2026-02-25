@@ -35,6 +35,7 @@ flutter:
     - assets/sounds/zen/
     - assets/images/
     - assets/images/textures/
+    - assets/images/zen-garden/
 
 flutter_launcher_icons:
   android: true
