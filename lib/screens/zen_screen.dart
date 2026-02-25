@@ -112,7 +112,7 @@ class _ZenScreenState extends State<ZenScreen> with TickerProviderStateMixin {
       _totalMoves += context.read<GameState>().moveCount;
     });
     _recordSolveTime();
-    GardenService.recordPuzzleSolved();
+    await GardenService.recordPuzzleSolved();
 
     await Future.delayed(const Duration(milliseconds: 800));
     if (!mounted) return;

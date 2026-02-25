@@ -14,6 +14,7 @@ import 'services/currency_service.dart';
 import 'services/leaderboard_service.dart';
 import 'services/power_up_service.dart';
 import 'services/garden_service.dart';
+import 'services/stats_service.dart';
 import 'app.dart';
 
 void main() async {
