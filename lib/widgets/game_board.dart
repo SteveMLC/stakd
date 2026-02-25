@@ -724,6 +724,9 @@ class _StackWidgetState extends State<_StackWidget>
   late AnimationController _completionGlowController;
   late Animation<double> _completionGlowAnimation;
   bool _isLongPressing = false;
+  bool _isDragging = false;
+  Offset? _panStartPosition;
+  static const double _dragThreshold = 10.0; // pixels
 
   @override
   void initState() {
@@ -888,24 +891,63 @@ class _StackWidgetState extends State<_StackWidget>
     });
   }
 
-  void _onLongPressStart(LongPressStartDetails details) {
+  void _onPanStart(DragStartDetails details) {
     if (widget.stack.isEmpty) return;
-    _setLongPressing(true);
-    // Start drag via parent callback
-    widget.onDragStart?.call(widget.index, details.globalPosition);
+    // Reset drag state and remember start position
+    _isDragging = false;
+    _panStartPosition = details.globalPosition;
   }
 
-  void _onLongPressMoveUpdate(LongPressMoveUpdateDetails details) {
-    widget.onDragUpdate?.call(details.globalPosition);
+  void _onPanUpdate(DragUpdateDetails details) {
+    if (widget.stack.isEmpty || _panStartPosition == null) return;
+    
+    final currentPos = details.globalPosition;
+    final distance = (currentPos - _panStartPosition!).distance;
+    
+    // Start drag if we've moved beyond the threshold and aren't dragging yet
+    if (!_isDragging && distance >= _dragThreshold) {
+      setState(() {
+        _isDragging = true;
+      });
+      // Start drag via parent callback
+      widget.onDragStart?.call(widget.index, currentPos);
+    } else if (_isDragging) {
+      // Continue dragging
+      widget.onDragUpdate?.call(currentPos);
+    }
+  }
+
+  void _onPanEnd(DragEndDetails details) {
+    if (_isDragging) {
+      // End drag
+      widget.onDragEnd?.call();
+      setState(() {
+        _isDragging = false;
+      });
+    }
+    // Reset pan state
+    _panStartPosition = null;
+  }
+
+  void _onPanCancel() {
+    if (_isDragging) {
+      // Cancel drag
+      widget.onDragEnd?.call();
+      setState(() {
+        _isDragging = false;
+      });
+    }
+    // Reset pan state
+    _panStartPosition = null;
   }
 
   void _onLongPress() {
-    // Drag is handled via start/move/end — no-op here if dragging
-    if (widget.onDragStart != null) {
-      _setLongPressing(false);
-      return;
-    }
+    // Long press is now only used for multi-grab
     if (widget.stack.isEmpty) return;
+    
+    // Show long press visual feedback
+    _setLongPressing(true);
+    
     final topGroup = widget.stack.getTopGroup();
     if (topGroup.length > 1) {
       haptics.successPattern();
@@ -913,20 +955,16 @@ class _StackWidgetState extends State<_StackWidget>
       StorageService().setMultiGrabUsed();
       StorageService().incrementMultiGrabUsage();
     } else {
+      // For single blocks, just treat as tap
       widget.onTap();
     }
-    _setLongPressing(false);
-  }
-
-  void _onLongPressEnd(LongPressEndDetails details) {
-    _setLongPressing(false);
-    widget.onDragEnd?.call();
-  }
-
-  void _onLongPressCancel() {
-    _setLongPressing(false);
-    // Cancel drag too
-    widget.onDragEnd?.call();
+    
+    // Hide long press visual feedback after a short delay
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (mounted) {
+        _setLongPressing(false);
+      }
+    });
   }
 
   @override
@@ -995,14 +1033,17 @@ class _StackWidgetState extends State<_StackWidget>
                 opacity: widget.isDragSource ? 0.4 : 1.0,
                 child: GestureDetector(
                 onTap: () {
-                  haptics.lightTap();
-                  widget.onTap();
+                  // Only process tap if we're not dragging
+                  if (!_isDragging) {
+                    haptics.lightTap();
+                    widget.onTap();
+                  }
                 },
-                onLongPressStart: _onLongPressStart,
+                onPanStart: _onPanStart,
+                onPanUpdate: _onPanUpdate,
+                onPanEnd: _onPanEnd,
+                onPanCancel: _onPanCancel,
                 onLongPress: _onLongPress,
-                onLongPressMoveUpdate: _onLongPressMoveUpdate,
-                onLongPressEnd: _onLongPressEnd,
-                onLongPressCancel: _onLongPressCancel,
                 child: SizedBox(
                   width: GameSizes.stackWidth,
                   height: GameSizes.getStackHeight(widget.stack.maxDepth),
@@ -1147,7 +1188,7 @@ class _StackWidgetState extends State<_StackWidget>
                           child: _buildLayers(),
                         ),
                       ),
-                      if (_isLongPressing)
+                      if (_isLongPressing && !_isDragging)
                         Positioned.fill(
                           child: IgnorePointer(
                             child: _LongPressRing(

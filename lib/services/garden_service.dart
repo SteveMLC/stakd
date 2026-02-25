@@ -1,9 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/garden_state.dart';
 
-/// Garden state is SESSION-ONLY. Each Zen Mode session starts fresh.
-/// The garden grows as you solve puzzles, then fades when you leave.
-/// Like a sand mandala - beautiful, impermanent.
+/// Garden state is PERSISTENT. Garden grows as you solve puzzles across ALL sessions.
+/// The garden accumulates progress from both main game and zen mode completions.
 class GardenService {
   static GardenState _state = GardenState();
   static Function(int newStage, String stageName)? onStageAdvanced;
@@ -14,17 +15,28 @@ class GardenService {
 
   static GardenState get state => _state;
 
-  /// Reset garden to empty state (call when entering Zen Mode)
-  /// Seeds baseline stage-0 elements so the garden isn't completely empty.
-  static void startFreshSession() {
-    final baselineElements = _getUnlocksForStage(0);
-    _state = GardenState(unlockedElements: baselineElements);
-    rebuildNotifier.value++;
+  /// Load persisted garden state
+  static Future<void> init() async {
+    final prefs = await SharedPreferences.getInstance();
+    final json = prefs.getString('garden_state');
+    if (json != null) {
+      _state = GardenState.fromJson(jsonDecode(json));
+    } else {
+      // Initialize with baseline elements if no saved state
+      final baselineElements = _getUnlocksForStage(0);
+      _state = GardenState(unlockedElements: baselineElements);
+    }
   }
 
-  /// Record a puzzle completion in Zen Mode (session only, not persisted)
+  /// Save garden state to disk
+  static Future<void> _save() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('garden_state', jsonEncode(_state.toJson()));
+  }
+
+  /// Record a puzzle completion (persisted!)
   /// Returns true if stage advanced
-  static bool recordPuzzleSolved() {
+  static Future<bool> recordPuzzleSolved() async {
     final oldStage = _state.currentStage;
     final newTotal = _state.totalPuzzlesSolved + 1;
     final newStage = GardenState.calculateStage(newTotal);
@@ -40,6 +52,8 @@ class GardenService {
       lastPlayedAt: DateTime.now(),
       unlockedElements: [..._state.unlockedElements, ...newUnlocks],
     );
+
+    await _save();
 
     // Notify if stage advanced
     final stageAdvanced = newStage > oldStage;

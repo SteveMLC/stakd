@@ -12,6 +12,7 @@ import '../services/haptic_service.dart';
 import '../services/achievement_service.dart';
 import '../services/leaderboard_service.dart';
 import '../services/currency_service.dart';
+import '../services/garden_service.dart';
 import '../utils/constants.dart';
 import '../utils/route_transitions.dart';
 import '../widgets/game_board.dart';
@@ -230,6 +231,9 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
 
       // Check for star-based achievements
       await AchievementService().checkStarAchievements();
+
+      // Record puzzle completion in garden (both main game and zen grow the garden!)
+      await GardenService.recordPuzzleSolved();
 
       // Award coins based on stars earned (10 coins per star)
       final coinsEarned = stars * 10;

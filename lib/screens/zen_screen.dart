@@ -45,7 +45,6 @@ class _ZenScreenState extends State<ZenScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    GardenService.startFreshSession();
     GameColors.setUltraPalette(widget.difficulty == 'ultra');
     _sessionTimer = Stopwatch()..start();
 

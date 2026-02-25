@@ -13,6 +13,7 @@ import 'services/theme_service.dart';
 import 'services/currency_service.dart';
 import 'services/leaderboard_service.dart';
 import 'services/power_up_service.dart';
+import 'services/garden_service.dart';
 import 'app.dart';
 
 void main() async {
@@ -44,6 +45,7 @@ void main() async {
   await ThemeService().init();
   await LeaderboardService().init();
   await PowerUpService().initializeDefaults();
+  await GardenService.init();
 
   // Initialize review service and increment session count
   final prefs = await SharedPreferences.getInstance();

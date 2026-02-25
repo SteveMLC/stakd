@@ -86,7 +86,6 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   @override
   void initState() {
     super.initState();
-    GardenService.startFreshSession();
     GameColors.setUltraPalette(_difficulty == ZenDifficulty.ultra);
     _sessionStart = DateTime.now();
     _puzzleSeed = DateTime.now().millisecondsSinceEpoch;
@@ -289,7 +288,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     _preGenerateNextPuzzle();
   }
 
-  void _advanceAfterCompletion() {
+  void _advanceAfterCompletion() async {
     if (_isTransitioning) return;
     _isTransitioning = true;
 
@@ -300,7 +299,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
 
     // Save progress
     StorageService().addZenPuzzle();
-    GardenService.recordPuzzleSolved();
+    await GardenService.recordPuzzleSolved();
     AchievementService().checkStarAchievements();
 
     if (_preGeneratedStacks != null) {
@@ -370,21 +369,24 @@ class _ZenModeScreenState extends State<ZenModeScreen>
         children: [
           const ZenGardenScene(showStats: false, interactive: false),
 
-          // Ambient particles background (hidden in garden view)
+          // Ambient particles background (reduced opacity to show garden)
           if (!_showGardenView)
             Positioned.fill(
-              child: AnimatedBuilder(
-                animation: _particleController,
-                builder: (context, _) => CustomPaint(
-                  painter: AmbientParticlesPainter(
-                    progress: _particleController.value,
-                    seed: _puzzleSeed,
+              child: Opacity(
+                opacity: 0.3,
+                child: AnimatedBuilder(
+                  animation: _particleController,
+                  builder: (context, _) => CustomPaint(
+                    painter: AmbientParticlesPainter(
+                      progress: _particleController.value,
+                      seed: _puzzleSeed,
+                    ),
                   ),
                 ),
               ),
             ),
 
-          // Subtle overlay for readability (hidden when garden view is active)
+          // Subtle overlay for readability (reduced to barely visible to show garden)
           if (!_showGardenView)
             Positioned.fill(
               child: Container(
@@ -395,11 +397,11 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                     colors: [
                       const Color(
                         0xFF0B0F14,
-                      ).withValues(alpha: 0.15),
+                      ).withValues(alpha: 0.05),
                       Colors.transparent,
                       const Color(
                         0xFF0B0F14,
-                      ).withValues(alpha: 0.15),
+                      ).withValues(alpha: 0.05),
                     ],
                   ),
                 ),
