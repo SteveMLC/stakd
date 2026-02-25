@@ -13,6 +13,9 @@ class CompletionOverlay extends StatefulWidget {
   final bool isNewRecord;
   final VoidCallback onNextPuzzle;
   final VoidCallback onHome;
+  final bool isNewMoveBest;
+  final bool isNewTimeBest;
+  final int currentStreak;
 
   const CompletionOverlay({
     super.key,
@@ -24,6 +27,9 @@ class CompletionOverlay extends StatefulWidget {
     this.isNewRecord = false,
     required this.onNextPuzzle,
     required this.onHome,
+    this.isNewMoveBest = false,
+    this.isNewTimeBest = false,
+    this.currentStreak = 0,
   });
 
   @override
@@ -232,30 +238,98 @@ class _CompletionOverlayState extends State<CompletionOverlay>
                             const SizedBox(height: 16),
                             // Star rating
                             _buildStarRating(),
-                            // New Record badge
-                            if (widget.isNewRecord)
+                            // New Record badges
+                            if (widget.isNewMoveBest || widget.isNewTimeBest)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Wrap(
+                                  spacing: 8,
+                                  alignment: WrapAlignment.center,
+                                  children: [
+                                    if (widget.isNewMoveBest)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: starGold.withValues(alpha: 0.2),
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(
+                                            color: starGold.withValues(alpha: 0.5),
+                                            width: 1,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '🏆 Best Moves!',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: starGold,
+                                          ),
+                                        ),
+                                      ),
+                                    if (widget.isNewTimeBest)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: starGold.withValues(alpha: 0.2),
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(
+                                            color: starGold.withValues(alpha: 0.5),
+                                            width: 1,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '⚡ Best Time!',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: starGold,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            // Streak display
+                            if (widget.currentStreak > 0)
                               Padding(
                                 padding: const EdgeInsets.only(top: 8),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 12,
-                                    vertical: 4,
+                                    vertical: 6,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: starGold.withValues(alpha: 0.2),
-                                    borderRadius: BorderRadius.circular(12),
+                                    color: GameColors.zen.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(16),
                                     border: Border.all(
-                                      color: starGold.withValues(alpha: 0.5),
+                                      color: GameColors.zen.withValues(alpha: 0.4),
                                       width: 1,
                                     ),
                                   ),
-                                  child: Text(
-                                    '⭐ NEW RECORD! ⭐',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: starGold,
-                                    ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.local_fire_department,
+                                        size: 16,
+                                        color: Color(0xFFFF6B44),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Streak: ${widget.currentStreak}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: GameColors.text,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),

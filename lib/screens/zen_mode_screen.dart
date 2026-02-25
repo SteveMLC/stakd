@@ -19,7 +19,9 @@ import '../widgets/loading_text.dart';
 import '../widgets/themes/zen_garden_scene.dart';
 import '../widgets/achievement_toast_overlay.dart';
 import '../widgets/completion_overlay.dart';
+import '../widgets/zen_session_summary.dart';
 import '../services/achievement_service.dart';
+import '../services/stats_service.dart';
 
 /// Zen Mode difficulty levels
 enum ZenDifficulty {
@@ -76,6 +78,11 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   List<GameStack>? _preGeneratedStacks;
   bool _isPreGenerating = false;
 
+  // Stats tracking
+  bool _isNewMoveBest = false;
+  bool _isNewTimeBest = false;
+  bool _showSessionSummary = false;
+
   // Fade animation for puzzle transitions
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
@@ -126,6 +133,13 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     _sessionTimer?.cancel();
     _fadeController.dispose();
     _particleController.dispose();
+    
+    // Reset streak if player exits without completing current puzzle
+    final gameState = context.read<GameState>();
+    if (!gameState.isComplete && gameState.moveCount > 0) {
+      StatsService().resetStreak();
+    }
+    
     super.dispose();
   }
 
@@ -234,32 +248,35 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   LevelParams _getAdaptiveDifficultyFor(int puzzleNumber, ZenDifficulty difficulty) {
     switch (difficulty) {
       case ZenDifficulty.easy:
-        if (puzzleNumber <= 2)
+        if (puzzleNumber <= 2) {
           return const LevelParams(colors: 2, depth: 3, stacks: 4, emptySlots: 2, shuffleMoves: 25);
-        else if (puzzleNumber <= 5)
+        } else if (puzzleNumber <= 5) {
           return const LevelParams(colors: 3, depth: 3, stacks: 5, emptySlots: 2, shuffleMoves: 35);
-        else if (puzzleNumber <= 8)
+        } else if (puzzleNumber <= 8) {
           return const LevelParams(colors: 3, depth: 4, stacks: 5, emptySlots: 2, shuffleMoves: 40);
-        else
+        } else {
           return ZenParams.easy;
+        }
 
       case ZenDifficulty.medium:
-        if (puzzleNumber <= 2)
+        if (puzzleNumber <= 2) {
           return const LevelParams(colors: 3, depth: 3, stacks: 5, emptySlots: 2, shuffleMoves: 30);
-        else if (puzzleNumber <= 4)
+        } else if (puzzleNumber <= 4) {
           return const LevelParams(colors: 3, depth: 4, stacks: 5, emptySlots: 2, shuffleMoves: 40);
-        else if (puzzleNumber <= 7)
+        } else if (puzzleNumber <= 7) {
           return const LevelParams(colors: 4, depth: 4, stacks: 6, emptySlots: 2, shuffleMoves: 45);
-        else
+        } else {
           return ZenParams.medium;
+        }
 
       case ZenDifficulty.hard:
-        if (puzzleNumber <= 2)
+        if (puzzleNumber <= 2) {
           return const LevelParams(colors: 3, depth: 4, stacks: 5, emptySlots: 2, shuffleMoves: 40);
-        else if (puzzleNumber <= 5)
+        } else if (puzzleNumber <= 5) {
           return const LevelParams(colors: 4, depth: 4, stacks: 6, emptySlots: 2, shuffleMoves: 50);
-        else
+        } else {
           return ZenParams.hard;
+        }
 
       case ZenDifficulty.ultra:
         return ZenParams.ultra;
@@ -272,6 +289,21 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     final duration = start != null
         ? DateTime.now().difference(start)
         : Duration.zero;
+
+    final statsService = StatsService();
+    final difficulty = _difficulty.label;
+    
+    // Check for new personal bests before recording
+    _isNewMoveBest = statsService.isNewMoveBest(difficulty, gameState.moveCount);
+    _isNewTimeBest = statsService.isNewTimeBest(difficulty, duration);
+    
+    // Record puzzle completion in stats
+    statsService.recordPuzzleComplete(
+      difficulty: difficulty,
+      moves: gameState.moveCount,
+      time: duration,
+      combos: gameState.currentCombo,
+    );
 
     setState(() {
       _completionDuration = duration;
@@ -357,6 +389,18 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
 
+  void _showSessionSummaryOverlay() {
+    if (_puzzlesSolved == 0) {
+      // If no puzzles solved, exit directly
+      Navigator.of(context).pop();
+      return;
+    }
+    
+    setState(() {
+      _showSessionSummary = true;
+    });
+  }
+
   LevelParams _getAdaptiveDifficulty() {
     return _getAdaptiveDifficultyFor(_puzzlesSolved, _difficulty);
   }
@@ -417,6 +461,9 @@ class _ZenModeScreenState extends State<ZenModeScreen>
 
                 // Difficulty slider
                 _buildDifficultySlider(),
+
+                // Stats bar
+                if (!_showGardenView) _buildStatsBar(),
 
                 // Game board or Garden view (with fade animation)
                 Expanded(
@@ -480,9 +527,24 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                 par: null,
                 stars: _completionStars,
                 coinsEarned: _coinsEarned,
-                isNewRecord: false,
+                isNewRecord: _isNewMoveBest || _isNewTimeBest,
                 onNextPuzzle: _advanceAfterCompletion,
                 onHome: () => Navigator.of(context).pop(),
+                isNewMoveBest: _isNewMoveBest,
+                isNewTimeBest: _isNewTimeBest,
+                currentStreak: StatsService().currentStreak,
+              ),
+            ),
+          if (_showSessionSummary)
+            Positioned.fill(
+              child: ZenSessionSummary(
+                puzzlesSolved: _puzzlesSolved,
+                sessionDuration: _sessionDuration,
+                bestMoves: StatsService().getBestMoves(_difficulty.label),
+                difficulty: _difficulty.label,
+                totalStars: StatsService().totalPuzzlesSolved,
+                bestStreak: StatsService().bestStreak,
+                onContinue: () => Navigator.of(context).pop(),
               ),
             ),
           if (_isLoading)
@@ -514,7 +576,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
           // Exit Zen button (subtle)
           _ZenIconButton(
             icon: Icons.close,
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: _showSessionSummaryOverlay,
             tooltip: 'Exit Zen',
           ),
 
@@ -604,6 +666,42 @@ class _ZenModeScreenState extends State<ZenModeScreen>
             );
           }).toList(),
         ),
+      ),
+    );
+  }
+
+  Widget _buildStatsBar() {
+    final statsService = StatsService();
+    final difficulty = _difficulty.label;
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _StatChip(
+            icon: Icons.local_fire_department, 
+            value: '${statsService.currentStreak}', 
+            label: 'Streak'
+          ),
+          _StatChip(
+            icon: Icons.emoji_events, 
+            value: statsService.getBestMoves(difficulty) == 999999 
+                ? '--' 
+                : '${statsService.getBestMoves(difficulty)}', 
+            label: 'Best'
+          ),
+          _StatChip(
+            icon: Icons.timer, 
+            value: statsService.formatTime(statsService.getBestTime(difficulty)), 
+            label: 'Record'
+          ),
+          _StatChip(
+            icon: Icons.stars, 
+            value: '${statsService.totalPuzzlesSolved}', 
+            label: 'Solved'
+          ),
+        ],
       ),
     );
   }
@@ -948,6 +1046,60 @@ class _ZenActionButton extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Compact stat chip for the stats bar
+class _StatChip extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String label;
+
+  const _StatChip({
+    required this.icon,
+    required this.value,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: GameColors.surface.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: GameColors.zen.withValues(alpha: 0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 16,
+            color: GameColors.zen.withValues(alpha: 0.8),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: TextStyle(
+              color: GameColors.text,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Text(
+            label,
+            style: TextStyle(
+              color: GameColors.textMuted.withValues(alpha: 0.6),
+              fontSize: 10,
+            ),
+          ),
+        ],
       ),
     );
   }

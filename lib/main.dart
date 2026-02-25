@@ -47,6 +47,7 @@ void main() async {
   await LeaderboardService().init();
   await PowerUpService().initializeDefaults();
   await GardenService.init();
+  await StatsService().init();
 
   // Initialize review service and increment session count
   final prefs = await SharedPreferences.getInstance();
