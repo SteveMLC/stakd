@@ -152,49 +152,49 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
         // Layer 0: Sky gradient
         _buildSky(state.currentStage),
 
-        // Layer 1: Distant background
-        if (isUnlocked('mountain')) _buildDistantBackground(),
+          // Layer 1: Distant background
+          if (isUnlocked('mountain')) _buildDistantBackground(),
 
-        // Layer 2: Ground and foundation elements
-        _buildGround(state.currentStage),
-        _buildGroundAssets(),
+          // Layer 2: Ground and foundation elements
+          _buildGround(state.currentStage),
+          _buildGroundAssets(),
 
-        // Layer 3: Water features
-        if (isUnlocked('pond_empty') || isUnlocked('pond_full'))
-          _buildWater(),
+          // Layer 3: Water features
+          if (isUnlocked('pond_empty') || isUnlocked('pond_full'))
+            _buildWater(),
 
-        // Layer 4: Flora and trees
-        _buildFlora(state.currentStage),
+          // Layer 4: Flora and trees
+          _buildFlora(state.currentStage),
 
-        // Layer 5: Structures
-        _buildStructures(),
+          // Layer 5: Structures
+          _buildStructures(),
 
-        // Layer 6: Particles
-        AnimatedBuilder(
-          animation: _ambientController,
-          builder: (context, child) => _buildParticles(),
-        ),
-
-        // Layer 7: Mist overlay (stage 8)
-        if (state.currentStage >= 8) _buildMistOverlay(),
-
-        // Stats overlay
-        if (widget.showStats)
-          Positioned(
-            bottom: 20,
-            left: 20,
-            child: _buildStatsCard(state),
+          // Layer 6: Particles
+          AnimatedBuilder(
+            animation: _ambientController,
+            builder: (context, child) => _buildParticles(),
           ),
-        
-        // Milestone celebration overlay
-        if (_showingMilestone && _milestoneStage != null && _milestoneStageName != null)
-          GrowthMilestone(
-            stage: _milestoneStage!,
-            stageName: _milestoneStageName!,
-            onComplete: _onMilestoneComplete,
-          ),
-      ],
-    );
+
+          // Layer 7: Mist overlay (stage 8)
+          if (state.currentStage >= 8) _buildMistOverlay(),
+
+          // Stats overlay
+          if (widget.showStats)
+            Positioned(
+              bottom: 20,
+              left: 20,
+              child: _buildStatsCard(state),
+            ),
+          
+          // Milestone celebration overlay
+          if (_showingMilestone && _milestoneStage != null && _milestoneStageName != null)
+            GrowthMilestone(
+              stage: _milestoneStage!,
+              stageName: _milestoneStageName!,
+              onComplete: _onMilestoneComplete,
+            ),
+        ],
+      );
   }
 
   Widget _buildSky(int stage) {

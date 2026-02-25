@@ -17,35 +17,45 @@ class GardenService {
 
   /// Load persisted garden state
   static Future<void> init() async {
-    final prefs = await SharedPreferences.getInstance();
-    final json = prefs.getString('garden_state');
-    if (json != null) {
-      _state = GardenState.fromJson(jsonDecode(json));
-    } else {
-      // First time: retroactively count existing puzzle progress
-      // Check how many levels the player has already completed
-      final existingProgress = prefs.getInt('highest_level') ?? 1;
-      final retroactivePuzzles = (existingProgress - 1).clamp(0, 999);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final json = prefs.getString('garden_state');
+      if (json != null) {
+        _state = GardenState.fromJson(jsonDecode(json));
+      } else {
+        // First time: retroactively count existing puzzle progress
+        // Check how many levels the player has already completed
+        final existingProgress = prefs.getInt('highest_level') ?? 1;
+        final retroactivePuzzles = (existingProgress - 1).clamp(0, 999);
+        
+        final stage = GardenState.calculateStage(retroactivePuzzles);
+        final allUnlocks = _getUnlocksForStage(stage);
+        
+        _state = GardenState(
+          totalPuzzlesSolved: retroactivePuzzles,
+          currentStage: stage,
+          unlockedElements: allUnlocks,
+        );
+        await _save();
+      }
       
-      final stage = GardenState.calculateStage(retroactivePuzzles);
-      final allUnlocks = _getUnlocksForStage(stage);
-      
+      // Always ensure current stage unlocks are applied (handles new elements added in updates)
+      final currentUnlocks = _getUnlocksForStage(_state.currentStage);
+      final missing = currentUnlocks.where((e) => !_state.unlockedElements.contains(e)).toList();
+      if (missing.isNotEmpty) {
+        _state = _state.copyWith(
+          unlockedElements: [..._state.unlockedElements, ...missing],
+        );
+        await _save();
+      }
+    } catch (e) {
+      debugPrint('GardenService init error: $e');
+      // Fallback: ensure we have at least stage 0 elements
       _state = GardenState(
-        totalPuzzlesSolved: retroactivePuzzles,
-        currentStage: stage,
-        unlockedElements: allUnlocks,
+        totalPuzzlesSolved: 0,
+        currentStage: 0,
+        unlockedElements: _getUnlocksForStage(0),
       );
-      await _save();
-    }
-    
-    // Always ensure current stage unlocks are applied (handles new elements added in updates)
-    final currentUnlocks = _getUnlocksForStage(_state.currentStage);
-    final missing = currentUnlocks.where((e) => !_state.unlockedElements.contains(e)).toList();
-    if (missing.isNotEmpty) {
-      _state = _state.copyWith(
-        unlockedElements: [..._state.unlockedElements, ...missing],
-      );
-      await _save();
     }
   }
 

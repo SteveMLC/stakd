@@ -40,7 +40,9 @@ enum ZenDifficulty {
 
 /// Zen Mode - Infinite relaxing puzzle experience
 class ZenModeScreen extends StatefulWidget {
-  const ZenModeScreen({super.key});
+  final String difficulty;
+
+  const ZenModeScreen({super.key, this.difficulty = 'medium'});
 
   @override
   State<ZenModeScreen> createState() => _ZenModeScreenState();
@@ -61,7 +63,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   int _completionStars = 0;
   int _coinsEarned = 0;
 
-  ZenDifficulty _difficulty = ZenDifficulty.medium;
+  late ZenDifficulty _difficulty;
   int _puzzlesSolved = 0;
   DateTime? _puzzleStart;
   DateTime? _sessionStart;
@@ -93,6 +95,10 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   @override
   void initState() {
     super.initState();
+    _difficulty = ZenDifficulty.values.firstWhere(
+      (d) => d.label.toLowerCase() == widget.difficulty.toLowerCase(),
+      orElse: () => ZenDifficulty.medium,
+    );
     GameColors.setUltraPalette(_difficulty == ZenDifficulty.ultra);
     _sessionStart = DateTime.now();
     _puzzleSeed = DateTime.now().millisecondsSinceEpoch;
@@ -408,6 +414,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: Stack(
         fit: StackFit.expand,
         children: [
