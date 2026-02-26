@@ -97,6 +97,9 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   // Garden footer celebration
   bool _justSolvedPuzzle = false;
 
+  // Par calculation for star system
+  int? _currentPar;
+
   // Fade animation for puzzle transitions
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
@@ -246,6 +249,21 @@ class _ZenModeScreenState extends State<ZenModeScreen>
             return compute<List<int>, List<List<int>>>(
               generateZenPuzzleInIsolate, 
               fallbackEncoded,
+            ).timeout(
+              const Duration(seconds: 3),
+              onTimeout: () {
+                // Last resort: generate trivially simple puzzle synchronously
+                final simpleParams = LevelParams(
+                  colors: 4,
+                  depth: 4,
+                  stacks: 6,
+                  emptySlots: 2,
+                  shuffleMoves: 30,
+                  minDifficultyScore: 0,
+                );
+                final simpleEncoded = encodeParamsForIsolate(simpleParams, seed: seed);
+                return generateZenPuzzleInIsolate(simpleEncoded);
+              },
             );
           },
         )
@@ -257,6 +275,19 @@ class _ZenModeScreenState extends State<ZenModeScreen>
             maxDepth: s.maxDepth,
           )).toList();
           context.read<GameState>().initZenGame(stacks);
+          
+          // Calculate par after puzzle generation (asynchronously to avoid blocking)
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            final generator = LevelGenerator();
+            final par = generator.calculatePar(stacks, maxStates: 15000);
+            if (mounted) {
+              setState(() {
+                _currentPar = par;
+              });
+            }
+          });
+          
           setState(() {
             _isLoading = false;
             _stackKeys.clear();
@@ -340,6 +371,21 @@ class _ZenModeScreenState extends State<ZenModeScreen>
             return compute<List<int>, List<List<int>>>(
               generateZenPuzzleInIsolate,
               fallbackEncoded,
+            ).timeout(
+              const Duration(seconds: 3),
+              onTimeout: () {
+                // Last resort: generate trivially simple puzzle synchronously
+                final simpleParams = LevelParams(
+                  colors: 4,
+                  depth: 4,
+                  stacks: 6,
+                  emptySlots: 2,
+                  shuffleMoves: 30,
+                  minDifficultyScore: 0,
+                );
+                final simpleEncoded = encodeParamsForIsolate(simpleParams, seed: savedSeed);
+                return generateZenPuzzleInIsolate(simpleEncoded);
+              },
             );
           },
         )
@@ -437,10 +483,21 @@ class _ZenModeScreenState extends State<ZenModeScreen>
       combos: gameState.currentCombo,
     );
 
+    // Calculate stars based on par
+    int stars = 1; // 1 star for completing
+    if (_currentPar != null) {
+      if (gameState.moveCount <= _currentPar!) {
+        stars = 2; // 2 stars for meeting par
+      }
+      if (gameState.moveCount <= _currentPar! - 2 && gameState.undosRemaining == 3) {
+        stars = 3; // 3 stars for beating par by 2+ with no undos used
+      }
+    }
+
     setState(() {
       _completionDuration = duration;
       _completionMoves = gameState.moveCount;
-      _completionStars = gameState.calculateStars();
+      _completionStars = stars;
       _coinsEarned = 0;
       _showCompletionOverlay = true;
       _justSolvedPuzzle = true; // Trigger garden footer celebration
@@ -608,6 +665,17 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                         ),
                 ),
 
+                // Garden footer (in flow, not positioned)
+                if (!_showGardenView)
+                  GardenMiniFooter(
+                    gardenStage: GardenService.state.currentStage,
+                    progress: GardenService.state.progressToNextStage,
+                    stageName: GardenService.state.stageName,
+                    justSolved: _justSolvedPuzzle,
+                    puzzlesSolvedInStage: GardenService.state.puzzlesSolvedInStage,
+                    puzzlesNeededForNextStage: GardenService.state.puzzlesNeededForNextStage,
+                  ),
+
                 // Move counter (always visible during gameplay)
                 if (!_showGardenView) _buildMoveCounter(),
 
@@ -617,23 +685,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
             ),
           ),
 
-          // Garden mini-footer (between puzzle and bottom toolbar)
-          if (!_showGardenView)
-            Positioned(
-              bottom: 80, // above the bottom toolbar
-              left: 0,
-              right: 0,
-              child: GardenMiniFooter(
-                gardenStage: GardenService.state.currentStage,
-                progress: GardenService.state.progressToNextStage,
-                stageName: GardenService.state.stageName,
-                justSolved: _justSolvedPuzzle,
-                puzzlesSolvedInStage: GardenService.state.puzzlesSolvedInStage,
-                puzzlesNeededForNextStage: GardenService.state.puzzlesNeededForNextStage,
-              ),
-            ),
-
-          // (Garden progress and session stats moved into bottom bar)
+          // (Garden progress and session stats moved into Column flow)
           // Hint overlay
           if (_showingHint &&
               _stackKeys.containsKey(_hintSourceIndex) &&
@@ -652,7 +704,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
               child: CompletionOverlay(
                 moves: _completionMoves,
                 time: _completionDuration,
-                par: null,
+                par: _currentPar,
                 stars: _completionStars,
                 coinsEarned: _coinsEarned,
                 isNewRecord: _isNewMoveBest || _isNewTimeBest,
