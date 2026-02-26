@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/garden_state.dart';
+import '../models/garden_archetype.dart';
 
 /// Garden state is PERSISTENT. Garden grows as you solve puzzles across ALL sessions.
 /// The garden accumulates progress from both main game and zen mode completions.
@@ -22,6 +23,12 @@ class GardenService {
       final json = prefs.getString('garden_state');
       if (json != null) {
         _state = GardenState.fromJson(jsonDecode(json));
+        
+        // For existing gardens that don't have a seed yet, generate one
+        if (_state.userSeed == 0) {
+          _state = _state.copyWith(userSeed: DateTime.now().millisecondsSinceEpoch);
+          await _save();
+        }
       } else {
         // First time: retroactively count existing puzzle progress
         // Check how many levels the player has already completed
@@ -31,10 +38,14 @@ class GardenService {
         final stage = GardenState.calculateStage(retroactivePuzzles);
         final allUnlocks = _getUnlocksForStage(stage);
         
+        // Generate a unique seed for this new garden
+        final userSeed = DateTime.now().millisecondsSinceEpoch;
+        
         _state = GardenState(
           totalPuzzlesSolved: retroactivePuzzles,
           currentStage: stage,
           unlockedElements: allUnlocks,
+          userSeed: userSeed,
         );
         await _save();
       }
@@ -46,6 +57,13 @@ class GardenService {
         _state = _state.copyWith(
           unlockedElements: [..._state.unlockedElements, ...missing],
         );
+        await _save();
+      }
+      
+      // Assign archetype on first launch or if missing
+      if (_state.archetype.isEmpty && _state.userSeed != 0) {
+        final archetype = GardenArchetypeExt.fromSeed(_state.userSeed);
+        _state = _state.copyWith(archetype: archetype.name);
         await _save();
       }
     } catch (e) {

@@ -1,9 +1,11 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../models/garden_state.dart';
+import '../../models/garden_archetype.dart';
 // Registry no longer needed in main scene file
 import '../../services/zen_audio_service.dart';
 import '../../services/garden_service.dart';
+import '../../utils/garden_variation.dart';
 import '../garden/garden_element.dart';
 import '../garden/growth_milestone.dart';
 import 'base_theme_scene.dart';
@@ -32,11 +34,15 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
   final ZenAudioService _audioService = ZenAudioService();
   int _lastStage = -1;
   bool _hadWater = false;
+  late GardenVariation _variation;
   
   // Milestone tracking
   bool _showingMilestone = false;
   int? _milestoneStage;
   String? _milestoneStageName;
+
+  // Archetype accessor
+  GardenArchetype get _archetype => gardenState.gardenArchetype;
 
   @override
   void initState() {
@@ -53,6 +59,9 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     _petalSeeds = List.generate(6, (_) {
       return Offset(rng.nextDouble(), rng.nextDouble());
     });
+
+    // Initialize variation with user seed
+    _variation = GardenVariation(GardenService.state.userSeed);
 
     // Set up milestone listener
     if (widget.enableMilestones) {
@@ -137,6 +146,23 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     }
     GardenService.onStageAdvanced = null;
     super.dispose();
+  }
+
+  Widget _withVariation(String elementId, Widget child) {
+    final rotation = _variation.rotationFor(elementId);
+    final scale = _variation.scaleFor(elementId);
+    final offset = _variation.positionOffsetFor(elementId);
+    
+    return Transform.translate(
+      offset: offset,
+      child: Transform.rotate(
+        angle: rotation,
+        child: Transform.scale(
+          scale: scale,
+          child: child,
+        ),
+      ),
+    );
   }
 
   @override
@@ -394,7 +420,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
         Positioned(
           bottom: 90,
           right: 60,
-          child: GardenElement(
+          child: _withVariation('pond_full', GardenElement(
             elementId: 'pond_full',
             revealType: GardenRevealType.rippleIn,
             child: Image.asset(
@@ -403,7 +429,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
               height: 85,
               fit: BoxFit.contain,
             ),
-          ),
+          )),
         ),
       );
     }
@@ -414,7 +440,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
         Positioned(
           bottom: 120,
           right: 90,
-          child: GardenElement(
+          child: _withVariation('lily_pads', GardenElement(
             elementId: 'lily_pads',
             revealType: GardenRevealType.bloomOut,
             child: Image.asset(
@@ -423,7 +449,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
               height: 50,
               fit: BoxFit.contain,
             ),
-          ),
+          )),
         ),
       );
     }
@@ -434,7 +460,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
         Positioned(
           bottom: 70,
           left: 0,
-          child: GardenElement(
+          child: _withVariation('stream', GardenElement(
             elementId: 'stream',
             revealType: GardenRevealType.rippleIn,
             child: Image.asset(
@@ -443,7 +469,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
               height: 140,
               fit: BoxFit.contain,
             ),
-          ),
+          )),
         ),
       );
     }
@@ -528,6 +554,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
 
   Widget _buildFlora(int stage) {
     final elements = <Widget>[];
+    final floraScale = _archetype.scaleMultiplierFor('flora');
 
     // Stage 0: Foundation grass base
     if (isUnlocked('grass_base')) {
@@ -535,16 +562,16 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
         Positioned(
           bottom: 70,
           left: 20,
-          child: GardenElement(
+          child: _withVariation('grass_base', GardenElement(
             elementId: 'grass_base',
             revealType: GardenRevealType.growUp,
             child: Image.asset(
               'assets/images/zen-garden/zen_grass_base.png',
-              width: 80,
-              height: 60,
+              width: (80 * floraScale).round().toDouble(),
+              height: (60 * floraScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
-          ),
+          )),
         ),
       );
     }
@@ -555,16 +582,16 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
         Positioned(
           bottom: 75,
           left: 200,
-          child: GardenElement(
+          child: _withVariation('bush_small', GardenElement(
             elementId: 'bush_small',
             revealType: GardenRevealType.bloomOut,
             child: Image.asset(
               'assets/images/zen-garden/zen_shrub.png',
-              width: 60,
-              height: 45,
+              width: (60 * floraScale).round().toDouble(),
+              height: (45 * floraScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
-          ),
+          )),
         ),
       );
     }
@@ -575,16 +602,16 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
         Positioned(
           bottom: 90,
           left: 50,
-          child: GardenElement(
+          child: _withVariation('zen_bamboo', GardenElement(
             elementId: 'zen_bamboo',
             revealType: GardenRevealType.growUp,
             child: Image.asset(
               'assets/images/zen-garden/zen_bamboo.png',
-              width: 40,
-              height: 120,
+              width: (40 * floraScale).round().toDouble(),
+              height: (120 * floraScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
-          ),
+          )),
         ),
       );
     }
@@ -595,16 +622,16 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
         Positioned(
           bottom: 100,
           right: 80,
-          child: GardenElement(
+          child: _withVariation('tree_cherry', GardenElement(
             elementId: 'tree_cherry',
             revealType: GardenRevealType.growUp,
             child: Image.asset(
               'assets/images/zen-garden/zen_blossoms_a.png',
-              width: 100,
-              height: 130,
+              width: (100 * floraScale).round().toDouble(),
+              height: (130 * floraScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
-          ),
+          )),
         ),
       );
     }
@@ -615,16 +642,16 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
         Positioned(
           bottom: 80,
           left: 280,
-          child: GardenElement(
+          child: _withVariation('zen_blossoms_b', GardenElement(
             elementId: 'zen_blossoms_b',
             revealType: GardenRevealType.bloomOut,
             child: Image.asset(
               'assets/images/zen-garden/zen_blossoms_b.png',
-              width: 80,
-              height: 100,
+              width: (80 * floraScale).round().toDouble(),
+              height: (100 * floraScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
-          ),
+          )),
         ),
       );
     }
@@ -635,16 +662,16 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
         Positioned(
           bottom: 100,
           left: 140,
-          child: GardenElement(
+          child: _withVariation('zen_bonsai', GardenElement(
             elementId: 'zen_bonsai',
             revealType: GardenRevealType.growUp,
             child: Image.asset(
               'assets/images/zen-garden/zen_bonsai.png',
-              width: 120,
-              height: 160,
+              width: (120 * floraScale).round().toDouble(),
+              height: (160 * floraScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
-          ),
+          )),
         ),
       );
     }
@@ -663,6 +690,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
 
   Widget _buildStructures() {
     final elements = <Widget>[];
+    final structureScale = _archetype.scaleMultiplierFor('structure');
 
     // Stage 5: Lantern
     if (isUnlocked('lantern')) {
@@ -670,16 +698,16 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
         Positioned(
           bottom: 90,
           right: 40,
-          child: GardenElement(
+          child: _withVariation('lantern', GardenElement(
             elementId: 'lantern',
             revealType: GardenRevealType.growUp,
             child: Image.asset(
               'assets/images/zen-garden/zen_lantern.png',
-              width: 40,
-              height: 80,
+              width: (40 * structureScale).round().toDouble(),
+              height: (80 * structureScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
-          ),
+          )),
         ),
       );
     }
@@ -690,7 +718,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
         Positioned(
           bottom: 95,
           left: 220,
-          child: GardenElement(
+          child: _withVariation('torii_gate', GardenElement(
             elementId: 'torii_gate',
             revealType: GardenRevealType.growUp,
             revealDuration: const Duration(milliseconds: 2000),
@@ -700,7 +728,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
               height: 80,
               fit: BoxFit.contain,
             ),
-          ),
+          )),
         ),
       );
     }
@@ -711,7 +739,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
         Positioned(
           bottom: 88,
           left: 90,
-          child: GardenElement(
+          child: _withVariation('bridge', GardenElement(
             elementId: 'bridge',
             revealType: GardenRevealType.fadeScale,
             child: Image.asset(
@@ -720,7 +748,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
               height: 50,
               fit: BoxFit.contain,
             ),
-          ),
+          )),
         ),
       );
     }
@@ -962,7 +990,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
         Positioned(
           bottom: 0,
           left: 50,
-          child: GardenElement(
+          child: _withVariation('ground', GardenElement(
             elementId: 'ground',
             revealType: GardenRevealType.fadeScale,
             child: Image.asset(
@@ -971,7 +999,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
               height: 180,
               fit: BoxFit.contain,
             ),
-          ),
+          )),
         ),
       );
     }
@@ -982,7 +1010,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
         Positioned(
           bottom: 70,
           left: 120,
-          child: GardenElement(
+          child: _withVariation('small_stones', GardenElement(
             elementId: 'small_stones',
             revealType: GardenRevealType.growUp,
             child: Image.asset(
@@ -991,7 +1019,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
               height: 40,
               fit: BoxFit.contain,
             ),
-          ),
+          )),
         ),
       );
     }
@@ -1002,7 +1030,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
         Positioned(
           bottom: 50,
           left: 180,
-          child: GardenElement(
+          child: _withVariation('pebble_path', GardenElement(
             elementId: 'pebble_path',
             revealType: GardenRevealType.fadeScale,
             child: Image.asset(
@@ -1011,7 +1039,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
               height: 40,
               fit: BoxFit.contain,
             ),
-          ),
+          )),
         ),
       );
     }
@@ -1022,7 +1050,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
         Positioned(
           bottom: 30,
           right: 100,
-          child: GardenElement(
+          child: _withVariation('zen_sand_swirl', GardenElement(
             elementId: 'zen_sand_swirl',
             revealType: GardenRevealType.bloomOut,
             child: Image.asset(
@@ -1031,7 +1059,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
               height: 70,
               fit: BoxFit.contain,
             ),
-          ),
+          )),
         ),
       );
     }
@@ -1042,7 +1070,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
         Positioned(
           bottom: 75,
           left: 300,
-          child: GardenElement(
+          child: _withVariation('sapling', GardenElement(
             elementId: 'sapling',
             revealType: GardenRevealType.growUp,
             child: Image.asset(
@@ -1051,7 +1079,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
               height: 60,
               fit: BoxFit.contain,
             ),
-          ),
+          )),
         ),
       );
     }

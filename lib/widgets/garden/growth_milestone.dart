@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../../models/garden_state.dart';
 import '../../services/zen_audio_service.dart';
 
 /// Celebration overlay when reaching a new garden stage
@@ -34,7 +35,7 @@ class _GrowthMilestoneState extends State<GrowthMilestone>
     super.initState();
     
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 2500),
+      duration: const Duration(milliseconds: 4600),
       vsync: this,
     );
     
@@ -44,30 +45,24 @@ class _GrowthMilestoneState extends State<GrowthMilestone>
     );
 
     _fadeAnimation = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 20),
-      TweenSequenceItem(tween: ConstantTween(1.0), weight: 60),
-      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 20),
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 800),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 3200),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 600),
     ]).animate(_controller);
 
     _scaleAnimation = TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween(begin: 0.5, end: 1.1).chain(
-          CurveTween(curve: Curves.easeOutBack),
+        tween: Tween(begin: 0.95, end: 1.0).chain(
+          CurveTween(curve: Curves.easeOut),
         ),
-        weight: 30,
+        weight: 800,
       ),
-      TweenSequenceItem(
-        tween: Tween(begin: 1.1, end: 1.0).chain(
-          CurveTween(curve: Curves.easeInOut),
-        ),
-        weight: 20,
-      ),
-      TweenSequenceItem(tween: ConstantTween(1.0), weight: 50),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 3800),
     ]).animate(_controller);
 
     _glowAnimation = CurvedAnimation(
       parent: _controller,
-      curve: const Interval(0.0, 0.4, curve: Curves.easeOut),
+      curve: const Interval(0.0, 0.2, curve: Curves.easeOut),
     );
 
     _spawnParticles();
@@ -102,7 +97,7 @@ class _GrowthMilestoneState extends State<GrowthMilestone>
     // Start animations
     _particleController.forward(); // particles run simultaneously
     
-    // Wait for main animation to complete (2.5s)
+    // Wait for main animation to complete (4.6s)
     await _controller.forward();
     
     // Callback
@@ -118,94 +113,105 @@ class _GrowthMilestoneState extends State<GrowthMilestone>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: Listenable.merge([_controller, _particleController]),
-      builder: (context, _) {
-        return Opacity(
-          opacity: _fadeAnimation.value,
-          child: Container(
-            color: Colors.black.withValues(alpha: 0.3 * _fadeAnimation.value),
-            child: Stack(
-              children: [
-                // Particles
-                ..._buildParticles(),
-                
-                // Center card
-                Center(
-                  child: Transform.scale(
-                    scale: _scaleAnimation.value,
-                    child: Container(
-                      width: 260,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 32,
-                        vertical: 24,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            const Color(0xFF2E7D32).withValues(alpha: 0.95),
-                            const Color(0xFF1B5E20).withValues(alpha: 0.95),
+    final stageIcon = _getStageIcon(widget.stage);
+    final milestoneTitle = GardenState.getMilestoneTitle(widget.stage);
+    final milestoneLine = GardenState.getMilestoneLine(widget.stage);
+
+    return GestureDetector(
+      onTap: () {
+        _controller.stop();
+        widget.onComplete();
+      },
+      child: AnimatedBuilder(
+        animation: Listenable.merge([_controller, _particleController]),
+        builder: (context, _) {
+          return Opacity(
+            opacity: _fadeAnimation.value,
+            child: Container(
+              color: Colors.black.withValues(alpha: 0.7 * _fadeAnimation.value),
+              child: Stack(
+                children: [
+                  // Particles
+                  ..._buildParticles(),
+                  
+                  // Center card
+                  Center(
+                    child: Transform.scale(
+                      scale: _scaleAnimation.value,
+                      child: Container(
+                        width: 280,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 32,
+                          vertical: 28,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1A1A1A).withValues(alpha: 0.95),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.white
+                                  .withValues(alpha: _glowAnimation.value * 0.3),
+                              blurRadius: 24 * _glowAnimation.value,
+                              spreadRadius: 2 * _glowAnimation.value,
+                            ),
                           ],
                         ),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF66BB6A)
-                                .withValues(alpha: _glowAnimation.value * 0.6),
-                            blurRadius: 30 * _glowAnimation.value,
-                            spreadRadius: 5 * _glowAnimation.value,
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.eco,
-                            color: Colors.white,
-                            size: 48,
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Garden Growing',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w300,
-                              letterSpacing: 1.5,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              stageIcon,
+                              style: const TextStyle(fontSize: 48),
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            widget.stageName,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
+                            const SizedBox(height: 16),
+                            Text(
+                              milestoneTitle,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              textAlign: TextAlign.center,
                             ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Stage ${widget.stage}',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.7),
-                              fontSize: 14,
+                            const SizedBox(height: 12),
+                            Text(
+                              milestoneLine,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.8),
+                                fontSize: 14,
+                                fontStyle: FontStyle.italic,
+                                height: 1.5,
+                              ),
+                              textAlign: TextAlign.center,
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
+  }
+
+  String _getStageIcon(int stage) {
+    const icons = [
+      '🌑', // Empty Canvas
+      '🌱', // First Signs
+      '🌿', // Taking Root
+      '🌲', // Quiet Growth
+      '💧', // Still Water
+      '🌸', // First Bloom
+      '🏮', // Harmony
+      '⛩️', // Sanctuary
+      '🌙', // Transcendence
+      '✨', // Infinite
+    ];
+    return icons[stage.clamp(0, 9)];
   }
 
   List<Widget> _buildParticles() {
