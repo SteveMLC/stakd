@@ -39,6 +39,12 @@ class GameBoard extends StatefulWidget {
 
   @override
   State<GameBoard> createState() => _GameBoardState();
+  
+  /// Static method to clear all overlays from a GameBoard instance
+  static void clearOverlays(BuildContext context) {
+    final gameBoardState = context.findAncestorStateOfType<_GameBoardState>();
+    gameBoardState?.clearAllOverlays();
+  }
 }
 
 class _GameBoardState extends State<GameBoard>
@@ -95,6 +101,16 @@ class _GameBoardState extends State<GameBoard>
   void dispose() {
     _shakeController.dispose();
     super.dispose();
+  }
+
+  /// Clear all visible overlays (combo, chain, confetti, etc.)
+  void clearAllOverlays() {
+    setState(() {
+      _showComboMultiplier = null;
+      _showChainLevel = null;
+      _flashColor = null;
+      _showConfetti = false;
+    });
   }
 
   @override
@@ -328,20 +344,20 @@ class _GameBoardState extends State<GameBoard>
                         },
                       ),
                     // Combo popup overlay (shows after chain popup if both)
+                    // Uses Positioned.fill with IgnorePointer to ensure it's above all game elements
                     if (_showComboMultiplier != null &&
                         _showComboMultiplier! >= 3)
-                      Positioned(
-                        bottom: 120,
-                        left: 0,
-                        right: 0,
-                        child: Center(
-                          child: ComboPopup(
-                            comboMultiplier: _showComboMultiplier!,
-                            onComplete: () {
-                              setState(() {
-                                _showComboMultiplier = null;
-                              });
-                            },
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: Center(
+                            child: ComboPopup(
+                              comboMultiplier: _showComboMultiplier!,
+                              onComplete: () {
+                                setState(() {
+                                  _showComboMultiplier = null;
+                                });
+                              },
+                            ),
                           ),
                         ),
                       ),
@@ -1405,12 +1421,12 @@ class _MultiGrabIndicator extends StatelessWidget {
       builder: (context, child) {
         final pulse = animation.value;
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
           decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.3 + pulse * 0.2),
-            borderRadius: BorderRadius.circular(8),
+            color: Colors.black.withValues(alpha: 0.2 + pulse * 0.1),
+            borderRadius: BorderRadius.circular(6),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.3 + pulse * 0.3),
+              color: Colors.white.withValues(alpha: 0.2 + pulse * 0.15),
             ),
           ),
           child: Row(
@@ -1418,16 +1434,16 @@ class _MultiGrabIndicator extends StatelessWidget {
             children: [
               Icon(
                 Icons.layers,
-                size: 12,
-                color: Colors.white.withValues(alpha: 0.8),
+                size: 9,
+                color: Colors.white.withValues(alpha: 0.6),
               ),
-              const SizedBox(width: 2),
+              const SizedBox(width: 1),
               Text(
                 '🔥$count',
                 style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white.withValues(alpha: 0.9),
+                  fontSize: 8,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withValues(alpha: 0.7),
                 ),
               ),
             ],

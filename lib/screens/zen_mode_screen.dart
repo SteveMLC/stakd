@@ -291,6 +291,10 @@ class _ZenModeScreenState extends State<ZenModeScreen>
 
   void _showCompletion(GameState gameState) {
     if (_showCompletionOverlay) return;
+    
+    // Clear any active combo/chain overlays BEFORE showing completion modal
+    GameBoard.clearOverlays(context);
+    
     final start = _puzzleStart;
     final duration = start != null
         ? DateTime.now().difference(start)
@@ -661,7 +665,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                     style: TextStyle(
                       color: isSelected
                           ? GameColors.text
-                          : GameColors.textMuted.withValues(alpha: 0.6),
+                          : GameColors.textMuted,
                       fontSize: 13,
                       fontWeight: isSelected
                           ? FontWeight.w600
@@ -696,12 +700,12 @@ class _ZenModeScreenState extends State<ZenModeScreen>
             value: statsService.getBestMoves(difficulty) == 999999 
                 ? '--' 
                 : '${statsService.getBestMoves(difficulty)}', 
-            label: 'Best'
+            label: 'Best Moves'
           ),
           _StatChip(
             icon: Icons.timer, 
             value: statsService.formatTime(statsService.getBestTime(difficulty)), 
-            label: 'Record'
+            label: 'Best Time'
           ),
           _StatChip(
             icon: Icons.stars, 
@@ -804,18 +808,6 @@ class _ZenModeScreenState extends State<ZenModeScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Stats row: garden progress | session stats
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Flexible(fit: FlexFit.tight, child: _buildGardenProgress()),
-                    const SizedBox(width: 8),
-                    _buildSessionStats(),
-                  ],
-                ),
-              ),
               // Action buttons row
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -906,7 +898,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   Widget _buildGardenProgress() {
     final state = GardenService.state;
     final progress = state.progressToNextStage;
-    final puzzlesInStage = state.puzzlesSolvedInStage;
+    final puzzlesInStage = state.puzzlesSolvedInStage.clamp(0, 999);
     final puzzlesNeeded = state.puzzlesNeededForNextStage;
 
     return Container(
