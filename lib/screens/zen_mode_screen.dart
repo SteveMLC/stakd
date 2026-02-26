@@ -535,6 +535,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                 isNewRecord: _isNewMoveBest || _isNewTimeBest,
                 onNextPuzzle: _advanceAfterCompletion,
                 onHome: () => Navigator.of(context).pop(),
+                onReplay: _restartPuzzle,
                 isNewMoveBest: _isNewMoveBest,
                 isNewTimeBest: _isNewTimeBest,
                 currentStreak: StatsService().currentStreak,

@@ -13,6 +13,7 @@ class CompletionOverlay extends StatefulWidget {
   final bool isNewRecord;
   final VoidCallback onNextPuzzle;
   final VoidCallback onHome;
+  final VoidCallback onReplay;
   final bool isNewMoveBest;
   final bool isNewTimeBest;
   final int currentStreak;
@@ -27,6 +28,7 @@ class CompletionOverlay extends StatefulWidget {
     this.isNewRecord = false,
     required this.onNextPuzzle,
     required this.onHome,
+    required this.onReplay,
     this.isNewMoveBest = false,
     this.isNewTimeBest = false,
     this.currentStreak = 0,
@@ -183,34 +185,72 @@ class _CompletionOverlayState extends State<CompletionOverlay>
     );
   }
 
+  Widget _buildStarCriteria() {
+    if (widget.par == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        children: [
+          Text(
+            '⭐ Complete puzzle',
+            style: TextStyle(
+              fontSize: 11,
+              color: GameColors.textMuted.withValues(alpha: 0.7),
+            ),
+          ),
+          Text(
+            '⭐⭐ ${widget.par} moves or less',
+            style: TextStyle(
+              fontSize: 11,
+              color: GameColors.textMuted.withValues(alpha: 0.7),
+            ),
+          ),
+          Text(
+            '⭐⭐⭐ ${widget.par! - 2} moves or no undo',
+            style: TextStyle(
+              fontSize: 11,
+              color: GameColors.textMuted.withValues(alpha: 0.7),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _fadeAnimation,
       builder: (context, child) {
-        return Stack(
-          children: [
-            // Modal barrier to block interaction with underlying UI
-            ModalBarrier(
-              color: GameColors.backgroundDark.withValues(alpha: 0.85 * _fadeAnimation.value),
-              dismissible: false,
-            ),
-            // Content stack
-            Stack(
-              children: [
-                AnimatedBuilder(
-                  animation: _confettiController,
-                  builder: (context, _) {
-                    return CustomPaint(
-                      painter: _ConfettiPainter(
-                        particles: _confetti,
-                        progress: _confettiController.value,
-                      ),
-                      size: Size.infinite,
-                    );
-                  },
-                ),
-                Center(
+        // Wrap entire overlay in AbsorbPointer to block ALL touch events to underlying UI
+        return AbsorbPointer(
+          absorbing: true,
+          child: Stack(
+            children: [
+              // Modal barrier to block interaction with underlying UI
+              ModalBarrier(
+                color: GameColors.backgroundDark.withValues(alpha: 0.85 * _fadeAnimation.value),
+                dismissible: false,
+              ),
+              // Content stack
+              Stack(
+                children: [
+                  AnimatedBuilder(
+                    animation: _confettiController,
+                    builder: (context, _) {
+                      return CustomPaint(
+                        painter: _ConfettiPainter(
+                          particles: _confetti,
+                          progress: _confettiController.value,
+                        ),
+                        size: Size.infinite,
+                      );
+                    },
+                  ),
+                  Center(
                 child: AnimatedBuilder(
                   animation: _scaleAnimation,
                   builder: (context, child) {
@@ -245,6 +285,8 @@ class _CompletionOverlayState extends State<CompletionOverlay>
                             const SizedBox(height: 16),
                             // Star rating
                             _buildStarRating(),
+                            // Star criteria
+                            _buildStarCriteria(),
                             // New Record badges
                             if (widget.isNewMoveBest || widget.isNewTimeBest)
                               Padding(
@@ -383,14 +425,52 @@ class _CompletionOverlayState extends State<CompletionOverlay>
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                TextButton(
+                                OutlinedButton(
                                   onPressed: () {
                                     AudioService().playTap();
                                     widget.onHome();
                                   },
-                                  child: const Text('Home'),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 24,
+                                      vertical: 16,
+                                    ),
+                                    side: BorderSide(
+                                      color: GameColors.textMuted.withValues(alpha: 0.3),
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'Home',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ),
-                                const SizedBox(width: 16),
+                                const SizedBox(width: 12),
+                                OutlinedButton(
+                                  onPressed: () {
+                                    AudioService().playTap();
+                                    widget.onReplay();
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 24,
+                                      vertical: 16,
+                                    ),
+                                    side: BorderSide(
+                                      color: GameColors.textMuted.withValues(alpha: 0.3),
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'Replay',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
                                 ElevatedButton(
                                   onPressed: () {
                                     AudioService().playTap();
@@ -422,7 +502,8 @@ class _CompletionOverlayState extends State<CompletionOverlay>
               ],
             ),
           ],
-        );
+        ), // Close AbsorbPointer
+      );
       },
     );
   }

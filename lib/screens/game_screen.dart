@@ -1172,6 +1172,7 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                         _nextLevel();
                       },
                       onHome: _goHome,
+                      onReplay: _restartLevel,
                     ),
                   if (iap.isLoading) _buildBlockingOverlay(),
                 ],

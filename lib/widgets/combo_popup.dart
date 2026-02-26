@@ -23,7 +23,7 @@ class _ComboPopupState extends State<ComboPopup>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 1200),
     );
 
     // Scale animation: 0.5 → 1.2 → 1.0 → fade
@@ -90,10 +90,10 @@ class _ComboPopupState extends State<ComboPopup>
           child: Transform.scale(
             scale: _scaleAnimation.value,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.7),
-                borderRadius: BorderRadius.circular(16),
+                color: Colors.black.withValues(alpha: 0.65),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: _getComboColor(), width: 3),
                 boxShadow: [
                   BoxShadow(
@@ -106,14 +106,14 @@ class _ComboPopupState extends State<ComboPopup>
               child: Text(
                 'x${widget.comboMultiplier} Combo!',
                 style: TextStyle(
-                  fontSize: 36,
+                  fontSize: 28,
                   fontWeight: FontWeight.w900,
                   color: _getComboColor(),
                   height: 1.0,
                   shadows: [
                     Shadow(
                       color: Colors.black.withValues(alpha: 0.6),
-                      blurRadius: 8,
+                      blurRadius: 6,
                     ),
                   ],
                 ),

@@ -343,11 +343,13 @@ class _GameBoardState extends State<GameBoard>
                           });
                         },
                       ),
-                    // Combo popup overlay (shows after chain popup if both)
-                    // Uses Positioned.fill with IgnorePointer to ensure it's above all game elements
+                    // Combo popup overlay - positioned at top to avoid overlapping stacks
                     if (_showComboMultiplier != null &&
                         _showComboMultiplier! >= 3)
-                      Positioned.fill(
+                      Positioned(
+                        top: 8,
+                        left: 0,
+                        right: 0,
                         child: IgnorePointer(
                           child: Center(
                             child: ComboPopup(
@@ -1823,6 +1825,60 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
   }
 }
 
+/// Custom painter for dashed border on dragged blocks
+class _DashedBorderPainter extends CustomPainter {
+  final Color color;
+  final double strokeWidth;
+  final double dashLength;
+  final double gapLength;
+  final double borderRadius;
+
+  const _DashedBorderPainter({
+    required this.color,
+    this.strokeWidth = 2.0,
+    this.dashLength = 8.0,
+    this.gapLength = 4.0,
+    this.borderRadius = 4.0,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke;
+
+    final rrect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(strokeWidth / 2, strokeWidth / 2, 
+                     size.width - strokeWidth, size.height - strokeWidth),
+      Radius.circular(borderRadius),
+    );
+
+    final path = Path()..addRRect(rrect);
+    final pathMetrics = path.computeMetrics();
+
+    for (final metric in pathMetrics) {
+      double distance = 0.0;
+      while (distance < metric.length) {
+        final double length = dashLength.clamp(0, metric.length - distance);
+        canvas.drawPath(
+          metric.extractPath(distance, distance + length),
+          paint,
+        );
+        distance += dashLength + gapLength;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedBorderPainter oldDelegate) {
+    return oldDelegate.color != color ||
+           oldDelegate.strokeWidth != strokeWidth ||
+           oldDelegate.dashLength != dashLength ||
+           oldDelegate.gapLength != gapLength;
+  }
+}
+
 /// Overlay widget that renders dragged block(s) following the finger
 class _DragOverlay extends StatelessWidget {
   final List<Layer> layers;
@@ -1864,9 +1920,9 @@ class _DragOverlay extends StatelessWidget {
                   offset: const Offset(0, 6),
                 ),
                 BoxShadow(
-                  color: layerColor.withValues(alpha: 0.4),
-                  blurRadius: 16,
-                  spreadRadius: 2,
+                  color: layerColor.withValues(alpha: 0.5),
+                  blurRadius: 20,
+                  spreadRadius: 4,
                 ),
               ],
             ),
@@ -1897,8 +1953,9 @@ class _DragOverlay extends StatelessWidget {
                         : null,
                     borderRadius: BorderRadius.circular(4),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.4),
-                      width: 1.5,
+                      color: Colors.white.withValues(alpha: 0.8),
+                      width: 2.5,
+                      strokeAlign: BorderSide.strokeAlignOutside,
                     ),
                   ),
                   child: Stack(
@@ -1924,6 +1981,18 @@ class _DragOverlay extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: Colors.black.withValues(alpha: 0.16),
                             borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      // Dashed border overlay for ghost block effect
+                      Positioned.fill(
+                        child: CustomPaint(
+                          painter: _DashedBorderPainter(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            strokeWidth: 2.5,
+                            dashLength: 6.0,
+                            gapLength: 3.0,
+                            borderRadius: 4.0,
                           ),
                         ),
                       ),
