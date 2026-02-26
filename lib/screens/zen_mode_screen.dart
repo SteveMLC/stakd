@@ -112,6 +112,9 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     GameColors.setUltraPalette(_difficulty == ZenDifficulty.ultra);
     _sessionStart = DateTime.now();
     _puzzleSeed = DateTime.now().millisecondsSinceEpoch;
+    
+    // Initialize StatsService to load persisted data
+    StatsService().init();
 
     // Setup fade animation
     _fadeController = AnimationController(
@@ -859,7 +862,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
           ),
           _StatChip(
             icon: Icons.stars, 
-            value: '${statsService.totalPuzzlesSolved}', 
+            value: '${statsService.getSolvedCount(difficulty)}', 
             label: 'Solved'
           ),
         ],

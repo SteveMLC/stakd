@@ -220,6 +220,7 @@ class _DailyRewardsPopupState extends State<DailyRewardsPopup>
             ),
         ],
       ),
+    ),
     );
   }
 
@@ -569,7 +570,6 @@ class _DailyRewardsPopupState extends State<DailyRewardsPopup>
             ),
           ),
         ],
-      ),
       ),
     );
   }

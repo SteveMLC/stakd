@@ -20,6 +20,7 @@ class StatsService {
   static const String _keyBestCombo = 'stats_best_combo';
   static const String _keyBestMovesPrefix = 'stats_best_moves_';
   static const String _keyBestTimePrefix = 'stats_best_time_ms_';
+  static const String _keySolvedCountPrefix = 'stats_solved_';
 
   // Stats data
   int totalPuzzlesSolved = 0;
@@ -32,6 +33,7 @@ class StatsService {
   int bestCombo = 0;
   Map<String, int> bestMovesPerDifficulty = {};
   Map<String, Duration> bestTimePerDifficulty = {};
+  Map<String, int> solvedCountPerDifficulty = {};
 
   /// Initialize the stats service
   Future<void> init() async {
@@ -63,6 +65,7 @@ class StatsService {
       // Load per-difficulty bests
       bestMovesPerDifficulty = {};
       bestTimePerDifficulty = {};
+      solvedCountPerDifficulty = {};
       
       for (final difficulty in ['Easy', 'Medium', 'Hard', 'Ultra']) {
         final moves = _prefs?.getInt('$_keyBestMovesPrefix$difficulty');
@@ -74,6 +77,9 @@ class StatsService {
         if (timeMs != null) {
           bestTimePerDifficulty[difficulty] = Duration(milliseconds: timeMs);
         }
+        
+        final solved = _prefs?.getInt('$_keySolvedCountPrefix$difficulty') ?? 0;
+        solvedCountPerDifficulty[difficulty] = solved;
       }
     } catch (e) {
       debugPrint('StatsService _load failed: $e');
@@ -98,6 +104,9 @@ class StatsService {
       }
       for (final entry in bestTimePerDifficulty.entries) {
         await _prefs?.setInt('$_keyBestTimePrefix${entry.key}', entry.value.inMilliseconds);
+      }
+      for (final entry in solvedCountPerDifficulty.entries) {
+        await _prefs?.setInt('$_keySolvedCountPrefix${entry.key}', entry.value);
       }
     } catch (e) {
       debugPrint('StatsService _save failed: $e');
@@ -134,6 +143,10 @@ class StatsService {
       if (time < prevBestTime) {
         bestTimePerDifficulty[difficulty] = time;
       }
+      
+      // Increment per-difficulty solved count
+      final prevSolved = solvedCountPerDifficulty[difficulty] ?? 0;
+      solvedCountPerDifficulty[difficulty] = prevSolved + 1;
 
       await _save();
     } catch (e) {
@@ -173,6 +186,11 @@ class StatsService {
     return bestTimePerDifficulty[difficulty] ?? const Duration(hours: 99);
   }
 
+  /// Get solved count for difficulty (display purposes)
+  int getSolvedCount(String difficulty) {
+    return solvedCountPerDifficulty[difficulty] ?? 0;
+  }
+
   /// Get formatted time string
   String formatTime(Duration duration) {
     if (duration.inHours >= 99) return '--:--';
@@ -195,6 +213,7 @@ class StatsService {
       bestCombo = 0;
       bestMovesPerDifficulty.clear();
       bestTimePerDifficulty.clear();
+      solvedCountPerDifficulty.clear();
       
       await _save();
     } catch (e) {

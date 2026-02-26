@@ -47,10 +47,20 @@ class _HomeScreenState extends State<HomeScreen> {
     final rewardsService = DailyRewardsService();
     await rewardsService.init();
     final currentDay = await rewardsService.getCurrentDay();
-    
-    // Only show streak if we've claimed at least one reward
     final lastClaim = await rewardsService.getLastClaimDate();
-    final streak = lastClaim != null ? currentDay : 0;
+    
+    // Streak = days claimed so far in current cycle
+    // If currentDay = 5 and lastClaim exists, we've claimed days 1-4, so streak = 4
+    // If we haven't claimed anything yet, streak = 0
+    int streak = 0;
+    if (lastClaim != null) {
+      final canClaim = await rewardsService.canClaimToday();
+      // If we can claim today, streak = currentDay - 1 (days already claimed)
+      // If we can't claim (already claimed today), streak = currentDay (including today)
+      streak = canClaim ? currentDay - 1 : currentDay;
+      // Cap at 7 (full cycle)
+      if (streak > 7) streak = 0; // Reset after cycle completes
+    }
 
     setState(() {
       _isDailyCompleted = completed;
