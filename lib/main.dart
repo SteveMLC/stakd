@@ -15,6 +15,7 @@ import 'services/leaderboard_service.dart';
 import 'services/power_up_service.dart';
 import 'services/garden_service.dart';
 import 'services/stats_service.dart';
+import 'services/progression_service.dart';
 import 'app.dart';
 
 void main() async {
@@ -48,6 +49,7 @@ void main() async {
   await PowerUpService().initializeDefaults();
   await GardenService.init();
   await StatsService().init();
+  await ProgressionService().init();
 
   // Initialize review service and increment session count
   final prefs = await SharedPreferences.getInstance();
