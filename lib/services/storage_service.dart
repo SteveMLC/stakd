@@ -23,6 +23,7 @@ class StorageService {
   static const String _keyLastDailyChallengeDate = 'last_daily_challenge_date';
   static const String _keyDailyChallengeStreak = 'daily_challenge_streak';
   static const String _keyTutorialCompleted = 'tutorial_completed';
+  static const String _keyOnboardingShown = 'onboarding_shown';
   static const String _keyMultiGrabHintSeen = 'multi_grab_hint_seen';
   static const String _keyMultiGrabUsed = 'multi_grab_used';
   static const String _keyMultiGrabUsageCount = 'multi_grab_usage_count';
@@ -320,6 +321,25 @@ class StorageService {
       await _prefs?.setBool(_keyTutorialCompleted, completed);
     } catch (e) {
       debugPrint('StorageService setTutorialCompleted failed: $e');
+    }
+  }
+
+  /// Check if onboarding has been shown
+  bool getOnboardingShown() {
+    try {
+      return _prefs?.getBool(_keyOnboardingShown) ?? false;
+    } catch (e) {
+      debugPrint('StorageService getOnboardingShown failed: $e');
+      return false;
+    }
+  }
+
+  /// Set onboarding as shown
+  Future<void> setOnboardingShown() async {
+    try {
+      await _prefs?.setBool(_keyOnboardingShown, true);
+    } catch (e) {
+      debugPrint('StorageService setOnboardingShown failed: $e');
     }
   }
 

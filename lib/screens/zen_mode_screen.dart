@@ -85,6 +85,10 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   bool _isNewTimeBest = false;
   bool _showSessionSummary = false;
 
+  // Onboarding hint
+  bool _showOnboardingHint = false;
+  bool _hasCheckedOnboarding = false;
+
   // Fade animation for puzzle transitions
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
@@ -221,10 +225,44 @@ class _ZenModeScreenState extends State<ZenModeScreen>
             _showingHint = false;
             _showCompletionOverlay = false;
           });
+          
+          // Check and show onboarding hint on first puzzle load
+          _checkOnboarding();
         })
         .catchError((e, st) {
           if (mounted) setState(() => _isLoading = false);
         });
+  }
+
+  void _checkOnboarding() async {
+    if (_hasCheckedOnboarding) return;
+    _hasCheckedOnboarding = true;
+    
+    final shown = StorageService().getOnboardingShown();
+    if (!shown) {
+      // Show onboarding hint after a brief delay
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (mounted) {
+        setState(() {
+          _showOnboardingHint = true;
+        });
+        
+        // Auto-dismiss after 3 seconds
+        Future.delayed(const Duration(seconds: 3), () {
+          if (mounted) {
+            _dismissOnboarding();
+          }
+        });
+      }
+    }
+  }
+
+  void _dismissOnboarding() {
+    if (!_showOnboardingHint) return;
+    setState(() {
+      _showOnboardingHint = false;
+    });
+    StorageService().setOnboardingShown();
   }
 
   void _preGenerateNextPuzzle() {
@@ -551,6 +589,58 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                 totalStars: StatsService().totalPuzzlesSolved,
                 bestStreak: StatsService().bestStreak,
                 onContinue: () => Navigator.of(context).pop(),
+              ),
+            ),
+          if (_showOnboardingHint)
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: _dismissOnboarding,
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.6),
+                  child: Center(
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 32),
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: GameColors.surface.withValues(alpha: 0.95),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: GameColors.zen.withValues(alpha: 0.5),
+                          width: 2,
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.pan_tool_outlined,
+                            size: 48,
+                            color: GameColors.zen.withValues(alpha: 0.8),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Drag blocks between stacks\nto sort by color',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: GameColors.text,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w500,
+                              height: 1.4,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Tap anywhere to continue',
+                            style: TextStyle(
+                              color: GameColors.textMuted.withValues(alpha: 0.7),
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
           if (_isLoading)

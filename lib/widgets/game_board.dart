@@ -1989,9 +1989,9 @@ class _DragOverlay extends StatelessWidget {
                         child: CustomPaint(
                           painter: _DashedBorderPainter(
                             color: Colors.white.withValues(alpha: 0.9),
-                            strokeWidth: 2.5,
+                            strokeWidth: 2.0,
                             dashLength: 6.0,
-                            gapLength: 3.0,
+                            gapLength: 4.0,
                             borderRadius: 4.0,
                           ),
                         ),

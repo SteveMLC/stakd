@@ -26,10 +26,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _pulseController;
-  late Animation<double> _pulseAnimation;
+class _HomeScreenState extends State<HomeScreen> {
   bool _isDailyCompleted = false;
   int _dailyStreak = 0;
   bool _highlightStreak = false;
@@ -39,21 +36,8 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
-      vsync: this,
-    );
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.04).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
     _loadDailyData();
     _checkDailyRewards();
-  }
-
-  @override
-  void dispose() {
-    _pulseController.dispose();
-    super.dispose();
   }
 
   Future<void> _loadDailyData() async {
@@ -65,17 +49,6 @@ class _HomeScreenState extends State<HomeScreen>
       _isDailyCompleted = completed;
       _dailyStreak = streak;
     });
-
-    _updatePulseAnimation();
-  }
-
-  void _updatePulseAnimation() {
-    if (_isDailyCompleted) {
-      _pulseController.stop();
-      _pulseController.value = 1.0;
-    } else if (!_pulseController.isAnimating) {
-      _pulseController.repeat(reverse: true);
-    }
   }
 
   Future<void> _checkDailyRewards() async {
@@ -157,9 +130,6 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    final storage = StorageService();
-    final highestLevel = storage.getHighestLevel();
-
     return Scaffold(
       body: AnimatedBackground(
         child: SafeArea(
@@ -182,80 +152,64 @@ class _HomeScreenState extends State<HomeScreen>
                 const Spacer(flex: 2),
                 _buildZenModeButton(),
                 const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Expanded(child: _buildDailyChallengeSection(context)),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildSecondaryButton(
-                        text: 'Level Challenge',
-                        icon: Icons.flag,
-                        badge: 'Lv $highestLevel',
-                        onPressed: () => _openLevelSelect(context),
-                      ),
-                    ),
-                  ],
-                ),
+                _buildDailyChallengeSection(context),
                 const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    GameButton(
-                      text: 'Leaderboards',
-                      icon: Icons.leaderboard,
-                      isPrimary: false,
-                      isSmall: true,
-                      onPressed: () => _openLeaderboards(context),
-                    ),
-                    const SizedBox(width: 16),
-                    GameButton(
-                      text: 'Themes',
-                      icon: Icons.palette,
-                      isPrimary: false,
-                      isSmall: true,
-                      onPressed: () => _openThemeStore(context),
-                    ),
-                    const SizedBox(width: 16),
-                    GameButton(
-                      text: 'Settings',
-                      icon: Icons.settings,
-                      isPrimary: false,
-                      isSmall: true,
-                      onPressed: () => _openSettings(context),
-                    ),
-                  ],
-                ),
-                const Spacer(flex: 3),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: GameColors.surface.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(
-                        Icons.emoji_events,
-                        color: GameColors.accent,
-                        size: 20,
+                      Expanded(
+                        child: GameButton(
+                          text: 'Levels',
+                          icon: Icons.flag,
+                          isPrimary: false,
+                          isSmall: true,
+                          onPressed: () => _openLevelSelect(context),
+                        ),
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Level $highestLevel',
-                        style: const TextStyle(
-                          color: GameColors.text,
-                          fontWeight: FontWeight.w500,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: GameButton(
+                          text: 'Themes',
+                          icon: Icons.palette,
+                          isPrimary: false,
+                          isSmall: true,
+                          onPressed: () => _openThemeStore(context),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: GameButton(
+                          text: 'Leaderboards',
+                          icon: Icons.leaderboard,
+                          isPrimary: false,
+                          isSmall: true,
+                          onPressed: () => _openLeaderboards(context),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: GameButton(
+                          text: 'Settings',
+                          icon: Icons.settings,
+                          isPrimary: false,
+                          isSmall: true,
+                          onPressed: () => _openSettings(context),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Spacer(flex: 3),
               ],
             ),
           ),
@@ -365,71 +319,26 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildDailyChallengeSection(BuildContext context) {
-    return Column(
-      children: [
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
-            AnimatedBuilder(
-              animation: _pulseAnimation,
-              builder: (context, child) {
-                final scale = _isDailyCompleted ? 1.0 : _pulseAnimation.value;
-                final glowOpacity = _isDailyCompleted
-                    ? 0.0
-                    : (_pulseAnimation.value - 1.0) * 3.0;
-
-                return Transform.scale(
-                  scale: scale,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      boxShadow: glowOpacity <= 0
-                          ? null
-                          : [
-                              BoxShadow(
-                                color: GameColors.accent.withValues(
-                                  alpha: glowOpacity,
-                                ),
-                                blurRadius: 16,
-                                spreadRadius: 2,
-                              ),
-                            ],
-                    ),
-                    child: child,
-                  ),
-                );
-              },
-              child: SizedBox(
-                width: double.infinity,
-                child: GameButton(
-                  text: 'Daily Challenge',
-                  icon: Icons.calendar_today,
-                  isPrimary: false,
-                  isSmall: true,
-                  onPressed: () => _openDailyChallenge(context),
-                ),
-              ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        children: [
+          SizedBox(
+            width: double.infinity,
+            child: GameButton(
+              text: _isDailyCompleted ? 'Daily Complete ✓' : 'Daily Challenge',
+              icon: Icons.calendar_today,
+              isPrimary: false,
+              isSmall: true,
+              onPressed: () => _openDailyChallenge(context),
             ),
-            // Notification dot if not completed
-            if (!_isDailyCompleted)
-              Positioned(
-                top: -4,
-                right: -4,
-                child: Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: GameColors.errorGlow,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: GameColors.background, width: 2),
-                  ),
-                ),
-              ),
+          ),
+          if (_dailyStreak > 0) ...[
+            const SizedBox(height: 8),
+            DailyStreakBadge(streak: _dailyStreak, highlight: _highlightStreak),
           ],
-        ),
-        const SizedBox(height: 10),
-        if (_dailyStreak > 0)
-          DailyStreakBadge(streak: _dailyStreak, highlight: _highlightStreak),
-      ],
+        ],
+      ),
     );
   }
 
@@ -601,24 +510,28 @@ class _HomeScreenState extends State<HomeScreen>
                 title: 'Easy',
                 subtitle: '4 colors • Relaxed',
                 icon: Icons.wb_sunny,
+                accentColor: const Color(0xFF4CAF50), // Soft green
                 onTap: () => _startZen('easy'),
               ),
               _buildDifficultyOption(
                 title: 'Medium',
                 subtitle: '5 colors • Focused',
                 icon: Icons.cloud,
+                accentColor: const Color(0xFFFFB74D), // Warm amber
                 onTap: () => _startZen('medium'),
               ),
               _buildDifficultyOption(
                 title: 'Hard',
                 subtitle: '6 colors • Challenge',
                 icon: Icons.bolt,
+                accentColor: const Color(0xFFFF9800), // Warm orange
                 onTap: () => _startZen('hard'),
               ),
               _buildDifficultyOption(
                 title: 'Ultra',
                 subtitle: '7 colors • For masters',
                 icon: Icons.whatshot,
+                accentColor: const Color(0xFFE74C3C), // Deep red/crimson
                 onTap: () => _startZen('ultra'),
               ),
               const SizedBox(height: 8),
@@ -664,6 +577,7 @@ class _HomeScreenState extends State<HomeScreen>
     required String title,
     required String subtitle,
     required IconData icon,
+    required Color accentColor,
     required VoidCallback onTap,
   }) {
     return Padding(
@@ -676,12 +590,13 @@ class _HomeScreenState extends State<HomeScreen>
             color: GameColors.background.withValues(alpha: 0.4),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: GameColors.accent.withValues(alpha: 0.25),
+              color: accentColor.withValues(alpha: 0.4),
+              width: 2,
             ),
           ),
           child: Row(
             children: [
-              Icon(icon, color: GameColors.textMuted),
+              Icon(icon, color: accentColor, size: 24),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -689,9 +604,10 @@ class _HomeScreenState extends State<HomeScreen>
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
-                        color: GameColors.text,
+                      style: TextStyle(
+                        color: accentColor,
                         fontWeight: FontWeight.w600,
+                        fontSize: 16,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -708,7 +624,7 @@ class _HomeScreenState extends State<HomeScreen>
               Icon(
                 Icons.arrow_forward_ios,
                 size: 14,
-                color: GameColors.textMuted.withValues(alpha: 0.6),
+                color: accentColor.withValues(alpha: 0.6),
               ),
             ],
           ),
@@ -717,49 +633,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildSecondaryButton({
-    required String text,
-    required IconData icon,
-    required VoidCallback onPressed,
-    String? badge,
-  }) {
-    return Stack(
-      fit: StackFit.passthrough,
-      clipBehavior: Clip.none,
-      children: [
-        SizedBox(
-          width: double.infinity,
-          child: GameButton(
-            text: text,
-            icon: icon,
-            isPrimary: false,
-            isSmall: true,
-            onPressed: onPressed,
-          ),
-        ),
-        if (badge != null)
-          Positioned(
-            top: -8,
-            right: 8,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: GameColors.accent,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                badge,
-                style: const TextStyle(
-                  color: GameColors.text,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
 }
 
 class AnimatedBackground extends StatefulWidget {
