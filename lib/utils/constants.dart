@@ -110,7 +110,7 @@ class GameSizes {
 
 /// Animation durations
 class GameDurations {
-  static const Duration layerMove = Duration(milliseconds: 200);
+  static const Duration layerMove = Duration(milliseconds: 150);
   static const Duration stackClear = Duration(milliseconds: 400);
   static const Duration levelComplete = Duration(milliseconds: 800);
   static const Duration buttonPress = Duration(milliseconds: 100);

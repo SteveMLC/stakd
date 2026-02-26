@@ -19,7 +19,6 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _soundEnabled = true;
   bool _hapticsEnabled = true;
-  bool _textureSkinsEnabled = false;
   bool _colorblindMode = false;
 
   @override
@@ -33,7 +32,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _soundEnabled = storage.getSoundEnabled();
       _hapticsEnabled = storage.getHapticsEnabled();
-      _textureSkinsEnabled = storage.getTextureSkinsEnabled();
       _colorblindMode = storage.getColorblindMode();
     });
   }
@@ -69,26 +67,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     setState(() => _colorblindMode = nextValue);
     await storage.setColorblindMode(nextValue);
-
-    if (_soundEnabled) {
-      AudioService().playTap();
-    }
-  }
-
-  Future<void> _toggleTextureSkins() async {
-    final storage = StorageService();
-    final nextValue = !_textureSkinsEnabled;
-
-    if (nextValue) {
-      // Pre-cache texture image before enabling to avoid freeze
-      await precacheImage(
-        const AssetImage('assets/images/textures/cherry_blossom.png'),
-        context,
-      );
-    }
-
-    setState(() => _textureSkinsEnabled = nextValue);
-    await storage.setTextureSkinsEnabled(nextValue);
 
     if (_soundEnabled) {
       AudioService().playTap();
@@ -145,16 +123,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onToggle: _toggleHaptics,
                     ),
                     const SizedBox(height: 24),
-                    _buildSectionTitle('Visuals'),
-                    _buildToggleTile(
-                      icon: Icons.texture,
-                      title: 'Texture Skins',
-                      value: _textureSkinsEnabled,
-                      onToggle: _toggleTextureSkins,
-                    ),
+                    _buildSectionTitle('Accessibility'),
                     _buildToggleTile(
                       icon: Icons.accessibility_new,
-                      title: 'Colorblind Mode',
+                      title: 'Colorblind Patterns',
                       value: _colorblindMode,
                       onToggle: _toggleColorblindMode,
                     ),

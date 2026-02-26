@@ -214,6 +214,7 @@ class StorageService {
   /// Set ads removed (after IAP purchase)
   Future<void> setAdsRemoved(bool removed) async {
     try {
+      _prefs ??= await SharedPreferences.getInstance();
       await _prefs?.setBool(_keyAdsRemoved, removed);
     } catch (e) {
       debugPrint('StorageService setAdsRemoved failed: $e');
@@ -233,6 +234,7 @@ class StorageService {
   /// Set remaining hints
   Future<void> setHintCount(int count) async {
     try {
+      _prefs ??= await SharedPreferences.getInstance();
       await _prefs?.setInt(_keyHintCount, count);
     } catch (e) {
       debugPrint('StorageService setHintCount failed: $e');
@@ -272,6 +274,7 @@ class StorageService {
   /// Mark daily challenge completed and update streak, returns updated streak
   Future<int> markDailyChallengeCompleted(String dateKey) async {
     try {
+      _prefs ??= await SharedPreferences.getInstance();
       final lastDateKey = getLastDailyChallengeDate();
       var streak = getDailyChallengeStreak();
 
@@ -324,6 +327,7 @@ class StorageService {
   /// Set tutorial as completed
   Future<void> setTutorialCompleted(bool completed) async {
     try {
+      _prefs ??= await SharedPreferences.getInstance();
       await _prefs?.setBool(_keyTutorialCompleted, completed);
     } catch (e) {
       debugPrint('StorageService setTutorialCompleted failed: $e');
@@ -343,6 +347,7 @@ class StorageService {
   /// Set onboarding as shown
   Future<void> setOnboardingShown() async {
     try {
+      _prefs ??= await SharedPreferences.getInstance();
       await _prefs?.setBool(_keyOnboardingShown, true);
     } catch (e) {
       debugPrint('StorageService setOnboardingShown failed: $e');
@@ -362,6 +367,7 @@ class StorageService {
   /// Mark multi-grab hint as seen
   Future<void> setMultiGrabHintSeen() async {
     try {
+      _prefs ??= await SharedPreferences.getInstance();
       await _prefs?.setBool(_keyMultiGrabHintSeen, true);
     } catch (e) {
       debugPrint('StorageService setMultiGrabHintSeen failed: $e');
@@ -381,6 +387,7 @@ class StorageService {
   /// Mark multi-grab as used
   Future<void> setMultiGrabUsed() async {
     try {
+      _prefs ??= await SharedPreferences.getInstance();
       await _prefs?.setBool(_keyMultiGrabUsed, true);
     } catch (e) {
       debugPrint('StorageService setMultiGrabUsed failed: $e');
@@ -400,6 +407,7 @@ class StorageService {
   /// Increment multi-grab usage count
   Future<void> incrementMultiGrabUsage() async {
     try {
+      _prefs ??= await SharedPreferences.getInstance();
       final count = getMultiGrabUsageCount() + 1;
       await _prefs?.setInt(_keyMultiGrabUsageCount, count);
     } catch (e) {
@@ -420,6 +428,7 @@ class StorageService {
   /// Set multi-grab hint visibility setting
   Future<void> setMultiGrabHintsEnabled(bool enabled) async {
     try {
+      _prefs ??= await SharedPreferences.getInstance();
       await _prefs?.setBool(_keyMultiGrabHintsEnabled, enabled);
     } catch (e) {
       debugPrint('StorageService setMultiGrabHintsEnabled failed: $e');
@@ -480,6 +489,7 @@ class StorageService {
   /// Returns true if stars were updated (new record)
   Future<bool> setLevelStars(int level, int stars) async {
     try {
+      _prefs ??= await SharedPreferences.getInstance();
       final currentStars = getLevelStars(level);
       if (stars > currentStars) {
         await _prefs?.setInt('$_keyLevelStarsPrefix$level', stars);
@@ -535,6 +545,7 @@ class StorageService {
   /// Set power-up count for a type
   Future<void> setPowerUpCount(PowerUpType type, int count) async {
     try {
+      _prefs ??= await SharedPreferences.getInstance();
       await _prefs?.setInt('$_keyPowerUpPrefix${type.name}', count);
     } catch (e) {
       debugPrint('StorageService setPowerUpCount failed: $e');
@@ -554,6 +565,7 @@ class StorageService {
   /// Set power-ups initialized flag
   Future<void> setPowerUpsInitialized(bool initialized) async {
     try {
+      _prefs ??= await SharedPreferences.getInstance();
       await _prefs?.setBool(_keyPowerUpsInitialized, initialized);
     } catch (e) {
       debugPrint('StorageService setPowerUpsInitialized failed: $e');
@@ -575,6 +587,7 @@ class StorageService {
   /// Update max chain if new chain is higher
   Future<bool> updateMaxChain(int chainLevel) async {
     try {
+      _prefs ??= await SharedPreferences.getInstance();
       final currentMax = getMaxChainEver();
       if (chainLevel > currentMax) {
         await _prefs?.setInt('max_chain_ever', chainLevel);
@@ -600,6 +613,7 @@ class StorageService {
   /// Increment total chains count
   Future<void> incrementTotalChains() async {
     try {
+      _prefs ??= await SharedPreferences.getInstance();
       final count = getTotalChains() + 1;
       await _prefs?.setInt('total_chains', count);
     } catch (e) {
@@ -610,6 +624,7 @@ class StorageService {
   /// Clear all data (for testing)
   Future<void> clearAll() async {
     try {
+      _prefs ??= await SharedPreferences.getInstance();
       await _prefs?.clear();
     } catch (e) {
       debugPrint('StorageService clearAll failed: $e');

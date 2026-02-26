@@ -204,7 +204,7 @@ class _GardenMiniFooterState extends State<GardenMiniFooter>
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '${widget.puzzlesSolvedInStage}/${widget.puzzlesNeededForNextStage}',
+                      '${widget.puzzlesSolvedInStage.clamp(0, 999)}/${widget.puzzlesNeededForNextStage}',
                       style: TextStyle(
                         color: progressColor,
                         fontSize: 14,

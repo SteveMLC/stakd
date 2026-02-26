@@ -57,7 +57,6 @@ class _GameBoardState extends State<GameBoard>
   bool _showConfetti = false;
   late AnimationController _shakeController;
   late Animation<double> _shakeAnimation;
-  bool _textureSkinsEnabled = false;
 
   // Drag-and-drop state
   bool _isDragging = false;
@@ -71,7 +70,6 @@ class _GameBoardState extends State<GameBoard>
     super.initState();
     // Use provided keys or create new ones
     _stackKeys = widget.stackKeys ?? {};
-    _textureSkinsEnabled = StorageService().getTextureSkinsEnabled();
 
     // Initialize shake animation
     _shakeController = AnimationController(
@@ -94,7 +92,6 @@ class _GameBoardState extends State<GameBoard>
   @override
   void didUpdateWidget(covariant GameBoard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _textureSkinsEnabled = StorageService().getTextureSkinsEnabled();
   }
 
   @override
@@ -288,7 +285,6 @@ class _GameBoardState extends State<GameBoard>
                                         actualIndex,
                                       ) ??
                                       false,
-                                  textureSkinsEnabled: _textureSkinsEnabled,
                                   onDragStart: _onDragStart,
                                   onDragUpdate: _onDragUpdate,
                                   onDragEnd: _onDragEnd,
@@ -695,7 +691,6 @@ class _StackWidget extends StatefulWidget {
   final VoidCallback onTap;
   final VoidCallback onMultiGrab;
   final bool isPowerUpHighlighted;
-  final bool textureSkinsEnabled;
   final void Function(int tubeIndex, Offset globalPosition)? onDragStart;
   final void Function(Offset globalPosition)? onDragUpdate;
   final VoidCallback? onDragEnd;
@@ -714,7 +709,6 @@ class _StackWidget extends StatefulWidget {
     required this.onTap,
     required this.onMultiGrab,
     this.isPowerUpHighlighted = false,
-    this.textureSkinsEnabled = false,
     this.onDragStart,
     this.onDragUpdate,
     this.onDragEnd,
@@ -729,7 +723,6 @@ class _StackWidget extends StatefulWidget {
 
 class _StackWidgetState extends State<_StackWidget>
     with TickerProviderStateMixin {
-  static const _textureImage = AssetImage('assets/images/textures/cherry_blossom.png');
   late AnimationController _controller;
   late Animation<double> _bounceAnimation;
   late Animation<double> _glowAnimation;
@@ -1251,8 +1244,6 @@ class _StackWidgetState extends State<_StackWidget>
         ? _multiGrabPulseAnimation.value
         : 0.0;
 
-    final textureSkinsEnabled = widget.textureSkinsEnabled;
-
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
       children: layers.asMap().entries.toList().reversed.map<Widget>((entry) {
@@ -1271,14 +1262,6 @@ class _StackWidgetState extends State<_StackWidget>
             end: Alignment.bottomCenter,
             colors: gradientColors,
           ),
-          // Texture skin overlay when enabled
-          image: textureSkinsEnabled
-              ? const DecorationImage(
-                  image: _textureImage,
-                  fit: BoxFit.cover,
-                  opacity: 0.3,
-                )
-              : null,
           borderRadius: BorderRadius.circular(4),
           border: isInGrabZone
               ? Border.all(
@@ -1496,17 +1479,17 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
   void initState() {
     super.initState();
 
-    // Slightly longer animation for multi-grab
+    // Snappy animations - shorter durations
     final duration = widget.animatingLayer.isMultiGrab
-        ? const Duration(milliseconds: 400)
-        : const Duration(milliseconds: 350);
+        ? const Duration(milliseconds: 200)
+        : const Duration(milliseconds: 150);
 
     _controller = AnimationController(vsync: this, duration: duration);
 
-    // Main curve for position - ease out for natural arc
+    // Main curve for position - snappier cubic easing
     _curveAnimation = CurvedAnimation(
       parent: _controller,
-      curve: Curves.easeOutQuad,
+      curve: Curves.easeOutCubic,
     );
 
     // Horizontal scale: squash wide on pickup (1.08), stretch narrow on drop (0.92)
@@ -1527,12 +1510,12 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
         ).chain(CurveTween(curve: Curves.linear)),
         weight: 50,
       ),
-      // Drop: stretch narrow (1.0 → 0.85)
+      // Drop: stretch narrow (1.0 → 0.85) with subtle bounce
       TweenSequenceItem(
         tween: Tween<double>(
           begin: 1.0,
           end: 0.85,
-        ).chain(CurveTween(curve: Curves.easeIn)),
+        ).chain(CurveTween(curve: Curves.easeOutBack)),
         weight: 15,
       ),
       // Bounce back: elasticOut (0.85 → 1.0)
@@ -1563,12 +1546,12 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
         ).chain(CurveTween(curve: Curves.linear)),
         weight: 50,
       ),
-      // Drop: stretch tall (1.0 → 1.15)
+      // Drop: stretch tall (1.0 → 1.15) with subtle bounce
       TweenSequenceItem(
         tween: Tween<double>(
           begin: 1.0,
           end: 1.15,
-        ).chain(CurveTween(curve: Curves.easeIn)),
+        ).chain(CurveTween(curve: Curves.easeOutBack)),
         weight: 15,
       ),
       // Bounce back: elasticOut (1.15 → 1.0)
@@ -1908,9 +1891,6 @@ class _DragOverlay extends StatelessWidget {
     final totalHeight = GameSizes.layerHeight * layers.length + (2 * (layers.length - 1));
     final layerColor = GameColors.getColor(layers.last.colorIndex);
 
-    // Check if texture skins are enabled
-    final textureSkinsEnabled = StorageService().getTextureSkinsEnabled();
-
     return Positioned(
       left: localPos.dx - GameSizes.stackWidth / 2,
       top: localPos.dy - totalHeight - 16, // Offset above finger
@@ -1949,15 +1929,6 @@ class _DragOverlay extends StatelessWidget {
                       end: Alignment.bottomCenter,
                       colors: gradientColors,
                     ),
-                    image: textureSkinsEnabled
-                        ? const DecorationImage(
-                            image: AssetImage(
-                              'assets/images/textures/cherry_blossom.png',
-                            ),
-                            fit: BoxFit.cover,
-                            opacity: 0.3,
-                          )
-                        : null,
                     borderRadius: BorderRadius.circular(4),
                     border: Border.all(
                       color: Colors.white.withValues(alpha: 0.8),

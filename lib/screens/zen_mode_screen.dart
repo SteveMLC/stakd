@@ -71,8 +71,10 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   DateTime? _puzzleStart;
   DateTime? _sessionStart;
   Timer? _sessionTimer;
+  Timer? _liveTimerUpdater;
   Duration _sessionDuration = Duration.zero;
   bool _showMoveCounter = true;
+  final Stopwatch _liveStopwatch = Stopwatch();
   bool _isTransitioning = false;
   bool _isLoading = false;
   bool _showGardenView = false;
@@ -150,6 +152,8 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   void dispose() {
     GameColors.setUltraPalette(false);
     _sessionTimer?.cancel();
+    _liveTimerUpdater?.cancel();
+    _liveStopwatch.stop();
     _fadeController.dispose();
     _particleController.dispose();
     
@@ -209,10 +213,16 @@ class _ZenModeScreenState extends State<ZenModeScreen>
       _showCompletionOverlay = false;
     });
     _puzzleStart = DateTime.now();
+    // Reset live timer
+    _liveStopwatch.reset();
+    _liveTimerUpdater?.cancel();
   }
 
   void _loadNewPuzzle() {
     _puzzleStart = DateTime.now();
+    // Reset live timer for new puzzle
+    _liveStopwatch.reset();
+    _liveTimerUpdater?.cancel();
     final params = _getAdaptiveDifficulty();
     final seed = _puzzleSeed;
     setState(() => _isLoading = true);
