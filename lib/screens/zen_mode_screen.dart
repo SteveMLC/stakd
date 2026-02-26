@@ -259,6 +259,8 @@ class _ZenModeScreenState extends State<ZenModeScreen>
         .then((encodedStacks) {
           if (!mounted) return;
           final stacks = decodeStacksFromIsolate(encodedStacks, activeParams.depth);
+          // Apply special blocks (locked/frozen) based on difficulty params
+          LevelGenerator().applySpecialBlocks(stacks, params);
           _initialStacks = stacks.map((s) => GameStack(
             layers: s.layers.map((l) => Layer(colorIndex: l.colorIndex, type: l.type, colors: l.colors, lockedUntil: l.lockedUntil, isFrozen: l.isFrozen)).toList(),
             maxDepth: s.maxDepth,
@@ -370,6 +372,8 @@ class _ZenModeScreenState extends State<ZenModeScreen>
         .then((encodedStacks) {
           if (!mounted) return;
           final stacks = decodeStacksFromIsolate(encodedStacks, activeParams.depth);
+          // Apply special blocks (locked/frozen) based on difficulty params
+          LevelGenerator().applySpecialBlocks(stacks, params);
           _preGeneratedStacks = stacks;
           _isPreGenerating = false;
         })
@@ -396,18 +400,20 @@ class _ZenModeScreenState extends State<ZenModeScreen>
         if (puzzleNumber <= 2) {
           return const LevelParams(colors: 3, depth: 3, stacks: 5, emptySlots: 2, shuffleMoves: 30);
         } else if (puzzleNumber <= 4) {
-          return const LevelParams(colors: 3, depth: 4, stacks: 5, emptySlots: 2, shuffleMoves: 40);
+          return const LevelParams(colors: 3, depth: 4, stacks: 5, emptySlots: 2, shuffleMoves: 40, lockedBlockProbability: 0.06);
         } else if (puzzleNumber <= 7) {
-          return const LevelParams(colors: 4, depth: 4, stacks: 6, emptySlots: 2, shuffleMoves: 45);
+          return const LevelParams(colors: 4, depth: 4, stacks: 6, emptySlots: 2, shuffleMoves: 45, lockedBlockProbability: 0.08);
         } else {
           return ZenParams.medium;
         }
 
       case ZenDifficulty.hard:
-        if (puzzleNumber <= 2) {
-          return const LevelParams(colors: 3, depth: 4, stacks: 5, emptySlots: 2, shuffleMoves: 40);
+        if (puzzleNumber <= 1) {
+          return const LevelParams(colors: 4, depth: 4, stacks: 6, emptySlots: 2, shuffleMoves: 50, lockedBlockProbability: 0.08);
+        } else if (puzzleNumber <= 3) {
+          return const LevelParams(colors: 5, depth: 4, stacks: 7, emptySlots: 2, shuffleMoves: 60, lockedBlockProbability: 0.10, frozenBlockProbability: 0.06);
         } else if (puzzleNumber <= 5) {
-          return const LevelParams(colors: 4, depth: 4, stacks: 6, emptySlots: 2, shuffleMoves: 50);
+          return const LevelParams(colors: 5, depth: 5, stacks: 7, emptySlots: 2, shuffleMoves: 70, lockedBlockProbability: 0.12, frozenBlockProbability: 0.08);
         } else {
           return ZenParams.hard;
         }

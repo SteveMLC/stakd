@@ -576,14 +576,14 @@ class LevelGenerator {
 
     // Apply special blocks (locked/frozen) after building solvable state
     if (params != null) {
-      _applySpecialBlocks(stacks, params);
+      applySpecialBlocks(stacks, params);
     }
 
     return stacks;
   }
 
   /// Apply locked and frozen blocks to an already-generated puzzle
-  void _applySpecialBlocks(List<GameStack> stacks, LevelParams params) {
+  void applySpecialBlocks(List<GameStack> stacks, LevelParams params) {
     if (params.lockedBlockProbability <= 0 &&
         params.frozenBlockProbability <= 0) {
       return;
