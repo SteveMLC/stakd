@@ -193,7 +193,7 @@ class _CompletionOverlayState extends State<CompletionOverlay>
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Text(
-        '⭐ Complete puzzle\n⭐⭐ Under ${widget.par! + 1} moves\n⭐⭐⭐ Under ${(widget.par! * 0.75).ceil() + 1} moves, no undo',
+        '⭐ Complete puzzle\n⭐⭐ ${widget.par!} moves or fewer\n⭐⭐⭐ ${(widget.par! * 0.7).ceil()} moves or fewer, no undo',
         style: TextStyle(
           color: GameColors.textMuted.withValues(alpha: 0.7),
           fontSize: 12,
