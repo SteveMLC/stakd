@@ -260,7 +260,12 @@ class _ZenModeScreenState extends State<ZenModeScreen>
           if (!mounted) return;
           final stacks = decodeStacksFromIsolate(encodedStacks, activeParams.depth);
           // Apply special blocks (locked/frozen) based on difficulty params
-          LevelGenerator().applySpecialBlocks(stacks, params);
+          try {
+            LevelGenerator().applySpecialBlocks(stacks, params);
+          } catch (e) {
+            debugPrint('applySpecialBlocks failed: $e');
+            // Continue without special blocks rather than crash
+          }
           _initialStacks = stacks.map((s) => GameStack(
             layers: s.layers.map((l) => Layer(colorIndex: l.colorIndex, type: l.type, colors: l.colors, lockedUntil: l.lockedUntil, isFrozen: l.isFrozen)).toList(),
             maxDepth: s.maxDepth,
@@ -373,7 +378,11 @@ class _ZenModeScreenState extends State<ZenModeScreen>
           if (!mounted) return;
           final stacks = decodeStacksFromIsolate(encodedStacks, activeParams.depth);
           // Apply special blocks (locked/frozen) based on difficulty params
-          LevelGenerator().applySpecialBlocks(stacks, params);
+          try {
+            LevelGenerator().applySpecialBlocks(stacks, params);
+          } catch (e) {
+            debugPrint('applySpecialBlocks (pre-gen) failed: $e');
+          }
           _preGeneratedStacks = stacks;
           _isPreGenerating = false;
         })
@@ -586,7 +595,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: const Color(0xFF0F1622),
       body: Stack(
         fit: StackFit.expand,
         children: [
