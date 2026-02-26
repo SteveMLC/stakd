@@ -600,7 +600,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                                 gameState: gameState,
                                 stackKeys: _stackKeys,
                                 onTap: () => AudioService().playTap(),
-                                onMove: () => AudioService().playSlide(),
+                                onMove: _onMove,
                                 onClear: () => AudioService().playClear(),
                               );
                             },
@@ -866,6 +866,14 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     final statsService = StatsService();
     final difficulty = _difficulty.label;
     
+    // Format live timer as mm:ss
+    String formatLiveTime() {
+      final elapsed = _liveStopwatch.elapsed;
+      final minutes = elapsed.inMinutes;
+      final seconds = elapsed.inSeconds % 60;
+      return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    }
+    
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Row(
@@ -885,8 +893,10 @@ class _ZenModeScreenState extends State<ZenModeScreen>
           ),
           _StatChip(
             icon: Icons.timer, 
-            value: statsService.formatTime(statsService.getBestTime(difficulty)), 
-            label: 'Best Time'
+            value: _liveStopwatch.isRunning || _liveStopwatch.elapsed.inSeconds > 0
+                ? formatLiveTime()
+                : statsService.formatTime(statsService.getBestTime(difficulty)), 
+            label: _liveStopwatch.isRunning ? 'Time' : 'Best Time'
           ),
           _StatChip(
             icon: Icons.stars, 
