@@ -134,8 +134,8 @@ class LayerWidget extends StatelessWidget {
                 ),
               ),
             ),
-          // Pattern overlay for colorblind accessibility only
-          if (StorageService().getColorblindMode() && !isLocked)
+          // Pattern overlay on blocks (enabled by default, toggled in settings)
+          if ((StorageService().getTextureSkinsEnabled() || StorageService().getColorblindMode()) && !isLocked)
             Positioned.fill(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(ThemeColors.blockBorderRadius),

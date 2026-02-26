@@ -439,7 +439,7 @@ class StorageService {
   /// Get texture skins enabled setting
   bool getTextureSkinsEnabled() {
     try {
-      return _prefs?.getBool(_keyTextureSkinsEnabled) ?? false;
+      return _prefs?.getBool(_keyTextureSkinsEnabled) ?? true;
     } catch (e) {
       debugPrint('StorageService getTextureSkinsEnabled failed: $e');
       return false;
