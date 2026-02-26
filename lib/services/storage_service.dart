@@ -57,6 +57,7 @@ class StorageService {
   /// Set the highest unlocked level
   Future<void> setHighestLevel(int level) async {
     try {
+      _prefs ??= await SharedPreferences.getInstance();
       await _prefs?.setInt(_keyHighestLevel, level);
     } catch (e) {
       debugPrint('StorageService setHighestLevel failed: $e');
@@ -80,6 +81,7 @@ class StorageService {
   /// Mark a level as completed
   Future<void> markLevelCompleted(int level) async {
     try {
+      _prefs ??= await SharedPreferences.getInstance();
       final completed = getCompletedLevels();
       if (!completed.contains(level)) {
         completed.add(level);
@@ -191,6 +193,7 @@ class StorageService {
   /// Add to total moves count
   Future<void> addMoves(int moves) async {
     try {
+      _prefs ??= await SharedPreferences.getInstance();
       final total = getTotalMoves() + moves;
       await _prefs?.setInt(_keyTotalMoves, total);
     } catch (e) {
@@ -436,6 +439,7 @@ class StorageService {
   /// Set texture skins enabled setting
   Future<void> setTextureSkinsEnabled(bool enabled) async {
     try {
+      _prefs ??= await SharedPreferences.getInstance();
       await _prefs?.setBool(_keyTextureSkinsEnabled, enabled);
     } catch (e) {
       debugPrint('StorageService setTextureSkinsEnabled failed: $e');
@@ -455,6 +459,7 @@ class StorageService {
   /// Set colorblind mode setting
   Future<void> setColorblindMode(bool enabled) async {
     try {
+      _prefs ??= await SharedPreferences.getInstance();
       await _prefs?.setBool(_keyColorblindMode, enabled);
     } catch (e) {
       debugPrint('StorageService setColorblindMode failed: $e');

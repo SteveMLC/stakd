@@ -12,7 +12,12 @@ import '../widgets/game_board.dart';
 import '../widgets/name_entry_dialog.dart';
 
 // Top-level function for isolate-based puzzle generation
-List<GameStack> _generateStacksInIsolate(DailyChallenge challenge) {
+List<GameStack> _generateStacksInIsolate(Map<String, dynamic> params) {
+  final challenge = DailyChallenge(
+    date: DateTime.parse(params['date']),
+    seed: params['seed'],
+    difficulty: params['difficulty'],
+  );
   return challenge.generateStacks();
 }
 
@@ -56,7 +61,12 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
     final history = await _service.getHistory();
 
     // Generate puzzle in isolate to avoid blocking UI
-    final stacks = await compute(_generateStacksInIsolate, challenge);
+    final params = {
+      'date': challenge.date.toIso8601String(),
+      'seed': challenge.seed,
+      'difficulty': challenge.difficulty,
+    };
+    final stacks = await compute(_generateStacksInIsolate, params);
     _gameState.initGame(stacks, challenge.getDayNumber());
 
     if (!mounted) return;

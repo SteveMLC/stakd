@@ -128,8 +128,8 @@ class LayerWidget extends StatelessWidget {
                 ),
               ),
             ),
-          // Pattern overlay for ultra mode or colorblind mode
-          if ((GameColors.isUltraMode || StorageService().getColorblindMode()) && !isLocked)
+          // Pattern overlay for colorblind accessibility only
+          if (StorageService().getColorblindMode() && !isLocked)
             Positioned.fill(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(ThemeColors.blockBorderRadius),
