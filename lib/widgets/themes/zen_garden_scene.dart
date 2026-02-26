@@ -984,6 +984,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
 
   Widget _buildGroundAssets() {
     final elements = <Widget>[];
+    final rocksScale = _archetype.scaleMultiplierFor('rocks');
 
     // Stage 0: Sand foundation
     if (isUnlocked('ground')) {
@@ -1016,8 +1017,8 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
             revealType: GardenRevealType.growUp,
             child: Image.asset(
               'assets/images/zen-garden/zen_rocks_small.png',
-              width: 60,
-              height: 40,
+              width: (60 * rocksScale).round().toDouble(),
+              height: (40 * rocksScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
           )),
@@ -1036,8 +1037,8 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
             revealType: GardenRevealType.fadeScale,
             child: Image.asset(
               'assets/images/zen-garden/zen_stepping_stones.png',
-              width: 120,
-              height: 40,
+              width: (120 * rocksScale).round().toDouble(),
+              height: (40 * rocksScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
           )),

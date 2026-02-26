@@ -103,13 +103,26 @@ class _ZenGardenScreenState extends State<ZenGardenScreen>
                     color: GameColors.surface.withValues(alpha: 0.7),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text(
-                    '${state.stageIcon} ${state.stageName}  •  ${state.totalPuzzlesSolved} puzzles',
-                    style: const TextStyle(
-                      color: GameColors.text,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${state.stageIcon} ${state.stageName}  •  ${state.totalPuzzlesSolved} puzzles',
+                        style: const TextStyle(
+                          color: GameColors.text,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        state.gardenArchetype.displayName,
+                        style: const TextStyle(
+                          color: GameColors.textMuted,
+                          fontSize: 11,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const Spacer(),
