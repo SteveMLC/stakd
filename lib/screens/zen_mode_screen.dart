@@ -9,6 +9,7 @@ import '../models/stack_model.dart';
 import '../services/level_generator.dart';
 import '../services/zen_puzzle_isolate.dart';
 import '../services/audio_service.dart';
+import '../services/zen_audio_service.dart';
 import '../services/haptic_service.dart';
 import '../services/storage_service.dart';
 import '../services/garden_service.dart';
@@ -21,6 +22,7 @@ import '../widgets/achievement_toast_overlay.dart';
 import '../widgets/completion_overlay.dart';
 import '../widgets/zen_session_summary.dart';
 import '../widgets/atmospheric_overlay.dart';
+import '../widgets/garden_mini_footer.dart';
 import '../services/achievement_service.dart';
 import '../services/stats_service.dart';
 
@@ -89,6 +91,9 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   // Onboarding hint
   bool _showOnboardingHint = false;
   bool _hasCheckedOnboarding = false;
+
+  // Garden footer celebration
+  bool _justSolvedPuzzle = false;
 
   // Fade animation for puzzle transitions
   late AnimationController _fadeController;
@@ -209,7 +214,28 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     final seed = _puzzleSeed;
     setState(() => _isLoading = true);
     final encoded = encodeParamsForIsolate(params, seed: seed);
+    
+    // Add timeout to prevent infinite generation
     compute<List<int>, List<List<int>>>(generateZenPuzzleInIsolate, encoded)
+        .timeout(
+          const Duration(seconds: 5),
+          onTimeout: () {
+            // Fallback: use simpler params that will generate quickly
+            final fallbackParams = LevelParams(
+              colors: params.colors,
+              depth: params.depth,
+              stacks: params.colors + params.emptySlots,
+              emptySlots: params.emptySlots,
+              shuffleMoves: 50, // Reduced shuffle for faster generation
+              minDifficultyScore: 0,
+            );
+            final fallbackEncoded = encodeParamsForIsolate(fallbackParams, seed: seed);
+            return compute<List<int>, List<List<int>>>(
+              generateZenPuzzleInIsolate, 
+              fallbackEncoded,
+            );
+          },
+        )
         .then((encodedStacks) {
           if (!mounted) return;
           final stacks = decodeStacksFromIsolate(encodedStacks, params.depth);
@@ -231,7 +257,12 @@ class _ZenModeScreenState extends State<ZenModeScreen>
           _checkOnboarding();
         })
         .catchError((e, st) {
-          if (mounted) setState(() => _isLoading = false);
+          if (mounted) {
+            setState(() => _isLoading = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Failed to generate puzzle. Please try again.')),
+            );
+          }
         });
   }
 
@@ -277,7 +308,28 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     // Calculate params for the NEXT puzzle
     final params = _getAdaptiveDifficultyFor(nextPuzzleNumber, savedDifficulty);
     final encoded = encodeParamsForIsolate(params, seed: savedSeed);
+    
+    // Add timeout to pre-generation too
     compute<List<int>, List<List<int>>>(generateZenPuzzleInIsolate, encoded)
+        .timeout(
+          const Duration(seconds: 5),
+          onTimeout: () {
+            // Fallback for pre-generation
+            final fallbackParams = LevelParams(
+              colors: params.colors,
+              depth: params.depth,
+              stacks: params.colors + params.emptySlots,
+              emptySlots: params.emptySlots,
+              shuffleMoves: 50,
+              minDifficultyScore: 0,
+            );
+            final fallbackEncoded = encodeParamsForIsolate(fallbackParams, seed: savedSeed);
+            return compute<List<int>, List<List<int>>>(
+              generateZenPuzzleInIsolate,
+              fallbackEncoded,
+            );
+          },
+        )
         .then((encodedStacks) {
           if (!mounted) return;
           final stacks = decodeStacksFromIsolate(encodedStacks, params.depth);
@@ -418,6 +470,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
 
   void _setDifficulty(ZenDifficulty difficulty) {
     if (_difficulty == difficulty) return;
+    if (_isLoading) return; // Prevent switching while generating
     setState(() {
       _difficulty = difficulty;
     });
@@ -455,10 +508,8 @@ class _ZenModeScreenState extends State<ZenModeScreen>
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Background: slate texture for puzzle, ZenGardenScene for garden view
-          if (_showGardenView)
-            const ZenGardenScene(showStats: false, interactive: false)
-          else
+          // Background: slate texture for puzzle (no garden background when in garden view to avoid duplicate)
+          if (!_showGardenView)
             Image.asset(
               'assets/images/backgrounds/slate_bg.jpg',
               fit: BoxFit.cover,
@@ -476,11 +527,11 @@ class _ZenModeScreenState extends State<ZenModeScreen>
           SafeArea(
             child: Column(
               children: [
-                // Top bar
-                _buildTopBar(),
+                // Top bar (hidden in garden view)
+                if (!_showGardenView) _buildTopBar(),
 
-                // Difficulty slider
-                _buildDifficultySlider(),
+                // Difficulty slider (hidden in garden view)
+                if (!_showGardenView) _buildDifficultySlider(),
 
                 // Stats bar
                 if (!_showGardenView) _buildStatsBar(),
@@ -696,48 +747,51 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   Widget _buildDifficultySlider() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        decoration: BoxDecoration(
-          color: GameColors.surface.withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: ZenDifficulty.values.map((diff) {
-            final isSelected = _difficulty == diff;
-            return Expanded(
-              child: GestureDetector(
-                onTap: () => _setDifficulty(diff),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? GameColors.accent.withValues(alpha: 0.3)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    diff.label,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
+      child: Opacity(
+        opacity: _isLoading ? 0.5 : 1.0, // Dim when loading
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: GameColors.surface.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: ZenDifficulty.values.map((diff) {
+              final isSelected = _difficulty == diff;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: _isLoading ? null : () => _setDifficulty(diff), // Disable when loading
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
                       color: isSelected
-                          ? GameColors.text
-                          : GameColors.textMuted,
-                      fontSize: 13,
-                      fontWeight: isSelected
-                          ? FontWeight.w600
-                          : FontWeight.w400,
+                          ? GameColors.accent.withValues(alpha: 0.3)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      diff.label,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: isSelected
+                            ? GameColors.text
+                            : GameColors.textMuted,
+                        fontSize: 13,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.w400,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            );
-          }).toList(),
+              );
+            }).toList(),
+          ),
         ),
       ),
     );
@@ -874,26 +928,30 @@ class _ZenModeScreenState extends State<ZenModeScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _ZenActionButton(
-                    icon: Icons.undo,
-                    label: 'Undo',
-                    badgeCount: gameState.undosRemaining,
-                    enabled: gameState.canUndo,
-                    onPressed: gameState.canUndo ? () => gameState.undo() : null,
-                  ),
-                  _ZenActionButton(
-                    icon: Icons.lightbulb_outline,
-                    label: 'Hint',
-                    badgeCount: _hintsRemaining,
-                    enabled: _hintsRemaining > 0,
-                    onPressed: _hintsRemaining > 0 ? _showHint : null,
-                  ),
-                  _ZenActionButton(
-                    icon: Icons.refresh,
-                    label: 'Restart',
-                    enabled: _initialStacks != null && gameState.moveCount > 0,
-                    onPressed: _initialStacks != null && gameState.moveCount > 0 ? _restartPuzzle : null,
-                  ),
+                  // In garden view: only show Puzzle button
+                  // In puzzle view: show all buttons
+                  if (!_showGardenView) ...[
+                    _ZenActionButton(
+                      icon: Icons.undo,
+                      label: 'Undo',
+                      badgeCount: gameState.undosRemaining,
+                      enabled: gameState.canUndo,
+                      onPressed: gameState.canUndo ? () => gameState.undo() : null,
+                    ),
+                    _ZenActionButton(
+                      icon: Icons.lightbulb_outline,
+                      label: 'Hint',
+                      badgeCount: _hintsRemaining,
+                      enabled: _hintsRemaining > 0,
+                      onPressed: _hintsRemaining > 0 ? _showHint : null,
+                    ),
+                    _ZenActionButton(
+                      icon: Icons.refresh,
+                      label: 'Restart',
+                      enabled: _initialStacks != null && gameState.moveCount > 0,
+                      onPressed: _initialStacks != null && gameState.moveCount > 0 ? _restartPuzzle : null,
+                    ),
+                  ],
                   _ZenActionButton(
                     icon: _showGardenView ? Icons.grid_view : Icons.park_outlined,
                     label: _showGardenView ? 'Puzzle' : 'Garden',
@@ -901,6 +959,10 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                     onPressed: () {
                       setState(() {
                         _showGardenView = !_showGardenView;
+                        // Stop garden audio when leaving garden view
+                        if (!_showGardenView) {
+                          ZenAudioService().stopAmbience();
+                        }
                       });
                     },
                   ),

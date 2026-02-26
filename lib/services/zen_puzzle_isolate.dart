@@ -13,8 +13,8 @@ List<List<int>> generateZenPuzzleInIsolate(List<int> args) {
   final seed = args.length > 6 ? args[6] : 0;
   final random = seed == 0 ? Random() : Random(seed);
 
-  const maxAttempts = 50;
-  const maxSolvableStates = 100000;
+  const maxAttempts = 30;
+  const maxSolvableStates = 50000; // Reduced for faster generation
 
   for (int attempt = 0; attempt < maxAttempts; attempt++) {
     final blocks = <int>[];

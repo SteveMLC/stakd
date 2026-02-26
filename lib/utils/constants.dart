@@ -305,12 +305,12 @@ class ZenParams {
   );
 
   static const LevelParams ultra = LevelParams(
-    colors: 7,
-    depth: 6,
-    stacks: 9,
+    colors: 6,
+    depth: 5,
+    stacks: 8,
     emptySlots: 2,
-    shuffleMoves: 120,
-    minDifficultyScore: 22,
+    shuffleMoves: 100,
+    minDifficultyScore: 18,
     lockedBlockProbability: 0.15,
     frozenBlockProbability: 0.12,
   );
