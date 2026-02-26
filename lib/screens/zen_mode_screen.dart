@@ -26,6 +26,58 @@ import '../widgets/garden_mini_footer.dart';
 import '../services/achievement_service.dart';
 import '../services/stats_service.dart';
 
+/// Top-level function for par calculation in isolate.
+/// Takes encoded stacks, returns par or null.
+int? _calculateParInIsolate(List<List<int>> encodedStacks) {
+  // Reconstruct minimal stacks for BFS
+  final depth = encodedStacks.where((s) => s.isNotEmpty).fold<int>(0, (max, s) => s.length > max ? s.length : max);
+  final stacks = encodedStacks.map((layers) => layers.toList()).toList();
+  
+  // Simple BFS par calculator (pure dart, no Flutter)
+  final visited = <String, int>{};
+  final queue = <(List<List<int>>, int)>[(stacks.map((s) => List<int>.from(s)).toList(), 0)];
+  
+  bool isSolved(List<List<int>> state) {
+    for (final tube in state) {
+      if (tube.isEmpty) continue;
+      if (tube.length != depth) return false;
+      if (!tube.every((c) => c == tube.first)) return false;
+    }
+    return true;
+  }
+  
+  String serialize(List<List<int>> state) => state.map((t) => t.join(',')).join('|');
+  
+  if (isSolved(stacks)) return 0;
+  
+  while (queue.isNotEmpty && visited.length < 5000) {
+    final (current, moves) = queue.removeAt(0);
+    final key = serialize(current);
+    if (visited.containsKey(key)) continue;
+    visited[key] = moves;
+    
+    if (isSolved(current)) return moves;
+    
+    for (int from = 0; from < current.length; from++) {
+      if (current[from].isEmpty) continue;
+      for (int to = 0; to < current.length; to++) {
+        if (from == to) continue;
+        if (current[to].length >= depth) continue;
+        
+        final next = current.map((t) => List<int>.from(t)).toList();
+        final block = next[from].removeLast();
+        next[to].add(block);
+        final nextKey = serialize(next);
+        if (!visited.containsKey(nextKey)) {
+          queue.add((next, moves + 1));
+        }
+      }
+    }
+  }
+  
+  return null; // Couldn't determine par within limit
+}
+
 /// Zen Mode difficulty levels
 enum ZenDifficulty {
   easy(3, 2, 3, 'Easy'),
@@ -272,17 +324,21 @@ class _ZenModeScreenState extends State<ZenModeScreen>
           )).toList();
           context.read<GameState>().initZenGame(stacks);
           
-          // Calculate par after puzzle generation (asynchronously to avoid blocking)
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) return;
-            final generator = LevelGenerator();
-            final par = generator.calculatePar(stacks, maxStates: 15000);
-            if (mounted) {
-              setState(() {
-                _currentPar = par;
-              });
-            }
-          });
+          // Calculate par — skip if puzzle has special blocks (BFS can't handle them)
+          // and use a light limit to avoid main thread freeze
+          final hasSpecials = stacks.any((s) => s.layers.any((l) => l.isLocked || l.isFrozen));
+          if (!hasSpecials) {
+            // Run par calculation in isolate to avoid main thread freeze
+            compute<List<List<int>>, int?>(_calculateParInIsolate, encodedStacks).then((par) {
+              if (mounted) {
+                setState(() => _currentPar = par);
+              }
+            }).catchError((_) {});
+          } else {
+            // For special block puzzles, estimate par from move count
+            final estimatedPar = params.colors * params.depth;
+            _currentPar = estimatedPar;
+          }
           
           setState(() {
             _isLoading = false;
