@@ -231,45 +231,34 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     setState(() => _isLoading = true);
     final encoded = encodeParamsForIsolate(params, seed: seed);
     
+    // Store params for decode (fallback may use different params)
+    LevelParams activeParams = params;
+    
     // Add timeout to prevent infinite generation
     compute<List<int>, List<List<int>>>(generateZenPuzzleInIsolate, encoded)
         .timeout(
-          const Duration(seconds: 5),
+          const Duration(seconds: 8),
           onTimeout: () {
-            // Fallback: use simpler params that will generate quickly
+            // Fallback: same colors/depth but no difficulty threshold, no special blocks
             final fallbackParams = LevelParams(
               colors: params.colors,
               depth: params.depth,
               stacks: params.colors + params.emptySlots,
               emptySlots: params.emptySlots,
-              shuffleMoves: 50, // Reduced shuffle for faster generation
+              shuffleMoves: 50,
               minDifficultyScore: 0,
             );
+            activeParams = fallbackParams;
             final fallbackEncoded = encodeParamsForIsolate(fallbackParams, seed: seed);
             return compute<List<int>, List<List<int>>>(
               generateZenPuzzleInIsolate, 
               fallbackEncoded,
-            ).timeout(
-              const Duration(seconds: 3),
-              onTimeout: () {
-                // Last resort: generate trivially simple puzzle synchronously
-                final simpleParams = LevelParams(
-                  colors: 4,
-                  depth: 4,
-                  stacks: 6,
-                  emptySlots: 2,
-                  shuffleMoves: 30,
-                  minDifficultyScore: 0,
-                );
-                final simpleEncoded = encodeParamsForIsolate(simpleParams, seed: seed);
-                return generateZenPuzzleInIsolate(simpleEncoded);
-              },
             );
           },
         )
         .then((encodedStacks) {
           if (!mounted) return;
-          final stacks = decodeStacksFromIsolate(encodedStacks, params.depth);
+          final stacks = decodeStacksFromIsolate(encodedStacks, activeParams.depth);
           _initialStacks = stacks.map((s) => GameStack(
             layers: s.layers.map((l) => Layer(colorIndex: l.colorIndex, type: l.type, colors: l.colors, lockedUntil: l.lockedUntil, isFrozen: l.isFrozen)).toList(),
             maxDepth: s.maxDepth,
@@ -353,12 +342,15 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     final params = _getAdaptiveDifficultyFor(nextPuzzleNumber, savedDifficulty);
     final encoded = encodeParamsForIsolate(params, seed: savedSeed);
     
+    // Store params for decode (fallback may use different params)
+    LevelParams activeParams = params;
+    
     // Add timeout to pre-generation too
     compute<List<int>, List<List<int>>>(generateZenPuzzleInIsolate, encoded)
         .timeout(
-          const Duration(seconds: 5),
+          const Duration(seconds: 8),
           onTimeout: () {
-            // Fallback for pre-generation
+            // Fallback: same colors/depth but no difficulty threshold
             final fallbackParams = LevelParams(
               colors: params.colors,
               depth: params.depth,
@@ -367,31 +359,17 @@ class _ZenModeScreenState extends State<ZenModeScreen>
               shuffleMoves: 50,
               minDifficultyScore: 0,
             );
+            activeParams = fallbackParams;
             final fallbackEncoded = encodeParamsForIsolate(fallbackParams, seed: savedSeed);
             return compute<List<int>, List<List<int>>>(
               generateZenPuzzleInIsolate,
               fallbackEncoded,
-            ).timeout(
-              const Duration(seconds: 3),
-              onTimeout: () {
-                // Last resort: generate trivially simple puzzle synchronously
-                final simpleParams = LevelParams(
-                  colors: 4,
-                  depth: 4,
-                  stacks: 6,
-                  emptySlots: 2,
-                  shuffleMoves: 30,
-                  minDifficultyScore: 0,
-                );
-                final simpleEncoded = encodeParamsForIsolate(simpleParams, seed: savedSeed);
-                return generateZenPuzzleInIsolate(simpleEncoded);
-              },
             );
           },
         )
         .then((encodedStacks) {
           if (!mounted) return;
-          final stacks = decodeStacksFromIsolate(encodedStacks, params.depth);
+          final stacks = decodeStacksFromIsolate(encodedStacks, activeParams.depth);
           _preGeneratedStacks = stacks;
           _isPreGenerating = false;
         })
