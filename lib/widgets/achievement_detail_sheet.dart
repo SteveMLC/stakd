@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/achievement.dart';
-import '../screens/achievements_screen.dart';
 
 /// Bottom sheet showing achievement details
 class AchievementDetailSheet extends StatefulWidget {
@@ -281,10 +280,9 @@ class _AchievementDetailSheetState extends State<AchievementDetailSheet>
               ),
             ],
           ),
-          child: Icon(
+          child: Text(
             RarityColors.categoryIcon(widget.achievement.category),
-            color: isCompleted ? color : const Color(0xFFBBBBBB),
-            size: 36,
+            style: const TextStyle(fontSize: 32),
           ),
         );
       },

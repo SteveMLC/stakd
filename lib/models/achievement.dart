@@ -1,6 +1,8 @@
 /// Achievement model for the achievement system
 library;
 
+import 'dart:ui' show Color;
+
 /// Achievement rarity levels affecting visual styling
 enum AchievementRarity {
   common,
@@ -17,6 +19,52 @@ enum AchievementCategory {
   mastery,     // Skill-based achievements
   social,      // Community/social achievements
   special,     // Special/holiday achievements
+}
+
+/// Color helpers for achievement rarity styling
+class RarityColors {
+  static Color primary(AchievementRarity rarity) {
+    switch (rarity) {
+      case AchievementRarity.common:
+        return const Color(0xFF9E9E9E);
+      case AchievementRarity.rare:
+        return const Color(0xFF2FB9B3);
+      case AchievementRarity.epic:
+        return const Color(0xFF7C4DFF);
+      case AchievementRarity.legendary:
+        return const Color(0xFFFFD700);
+    }
+  }
+
+  static String label(AchievementRarity rarity) {
+    switch (rarity) {
+      case AchievementRarity.common:
+        return 'Common';
+      case AchievementRarity.rare:
+        return 'Rare';
+      case AchievementRarity.epic:
+        return 'Epic';
+      case AchievementRarity.legendary:
+        return 'Legendary';
+    }
+  }
+
+  static String categoryIcon(AchievementCategory category) {
+    switch (category) {
+      case AchievementCategory.gameplay:
+        return '🎯';
+      case AchievementCategory.speed:
+        return '⚡';
+      case AchievementCategory.collection:
+        return '🌸';
+      case AchievementCategory.mastery:
+        return '🏆';
+      case AchievementCategory.social:
+        return '🎨';
+      case AchievementCategory.special:
+        return '🎁';
+    }
+  }
 }
 
 /// Represents an unlocked or unlockable achievement
