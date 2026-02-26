@@ -439,6 +439,9 @@ class _ZenModeScreenState extends State<ZenModeScreen>
 
   void _showCompletion(GameState gameState) {
     if (_showCompletionOverlay) return;
+    if (_isTransitioning) return;
+    if (_isLoading) return;
+    if (gameState.moveCount == 0) return; // Don't trigger on fresh puzzle load
     
     // Stop live timer
     _liveStopwatch.stop();
@@ -521,6 +524,8 @@ class _ZenModeScreenState extends State<ZenModeScreen>
 
     if (_preGeneratedStacks != null) {
       // Use the pre-generated puzzle — no loading screen!
+      final nextParams = _getAdaptiveDifficulty();
+      _currentPar = (nextParams.colors * nextParams.depth * 1.5).ceil();
       _fadeController.animateTo(0.0).then((_) {
         if (!mounted) return;
         _initialStacks = _preGeneratedStacks!.map((s) => GameStack(
