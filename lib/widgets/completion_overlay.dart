@@ -225,32 +225,35 @@ class _CompletionOverlayState extends State<CompletionOverlay>
     return AnimatedBuilder(
       animation: _fadeAnimation,
       builder: (context, child) {
-        // Wrap entire overlay in AbsorbPointer to block ALL touch events to underlying UI
-        return AbsorbPointer(
-          absorbing: true,
-          child: Stack(
-            children: [
-              // Modal barrier to block interaction with underlying UI
-              ModalBarrier(
-                color: GameColors.backgroundDark.withValues(alpha: 0.85 * _fadeAnimation.value),
-                dismissible: false,
+        return Stack(
+          children: [
+            // Modal barrier to block interaction with underlying UI
+            // Wrap in GestureDetector to absorb any taps that get through
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () {}, // Absorb taps
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  color: GameColors.backgroundDark.withValues(alpha: 0.85 * _fadeAnimation.value),
+                ),
               ),
-              // Content stack
-              Stack(
-                children: [
-                  AnimatedBuilder(
-                    animation: _confettiController,
-                    builder: (context, _) {
-                      return CustomPaint(
-                        painter: _ConfettiPainter(
-                          particles: _confetti,
-                          progress: _confettiController.value,
-                        ),
-                        size: Size.infinite,
-                      );
-                    },
-                  ),
-                  Center(
+            ),
+            // Content stack
+            Stack(
+              children: [
+                AnimatedBuilder(
+                  animation: _confettiController,
+                  builder: (context, _) {
+                    return CustomPaint(
+                      painter: _ConfettiPainter(
+                        particles: _confetti,
+                        progress: _confettiController.value,
+                      ),
+                      size: Size.infinite,
+                    );
+                  },
+                ),
+                Center(
                 child: AnimatedBuilder(
                   animation: _scaleAnimation,
                   builder: (context, child) {
@@ -502,8 +505,7 @@ class _CompletionOverlayState extends State<CompletionOverlay>
               ],
             ),
           ],
-        ), // Close AbsorbPointer
-      );
+        );
       },
     );
   }
