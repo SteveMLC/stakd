@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/constants.dart';
 import '../services/storage_service.dart';
 import '../services/daily_challenge_service.dart';
@@ -34,7 +35,6 @@ class _HomeScreenState extends State<HomeScreen>
   bool _highlightStreak = false;
   bool _hasUnclaimedReward = false;
   int _coinBalance = 0;
-  bool _dailyRewardsShown = false;
 
   @override
   void initState() {
@@ -94,14 +94,20 @@ class _HomeScreenState extends State<HomeScreen>
       _coinBalance = coins;
     });
 
-    // Show popup automatically if reward is available (only once per session)
-    if (canClaim && !_dailyRewardsShown) {
-      _dailyRewardsShown = true;
-      await Future.delayed(const Duration(milliseconds: 500));
-      if (mounted) {
-        await DailyRewardsPopup.show(context);
-        // Refresh after popup closes
-        await _refreshAfterRewards();
+    // Show popup automatically if reward is available and not shown today
+    if (canClaim) {
+      final prefs = await SharedPreferences.getInstance();
+      final today = DateTime.now().toIso8601String().split('T')[0]; // YYYY-MM-DD
+      final lastShown = prefs.getString('daily_rewards_last_shown');
+      
+      if (lastShown != today) {
+        await prefs.setString('daily_rewards_last_shown', today);
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (mounted) {
+          await DailyRewardsPopup.show(context);
+          // Refresh after popup closes
+          await _refreshAfterRewards();
+        }
       }
     }
   }

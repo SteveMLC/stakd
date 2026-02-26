@@ -49,6 +49,7 @@ class _CompletionOverlayState extends State<CompletionOverlay>
   final List<_ConfettiParticle> _confetti = [];
   final Random _random = Random();
 
+  static const int maxStars = 3; // Always show exactly 3 stars
   static const Color starGold = Color(0xFFFFD700);
   static const Color starEmpty = Color(0xFF3A3A4A);
 
@@ -71,7 +72,7 @@ class _CompletionOverlayState extends State<CompletionOverlay>
 
     // Create controllers for each star animation (pop effect)
     _starControllers = List.generate(
-      3,
+      maxStars,
       (index) => AnimationController(
         vsync: this,
         duration: const Duration(milliseconds: 400),
@@ -106,7 +107,7 @@ class _CompletionOverlayState extends State<CompletionOverlay>
   }
 
   void _animateStars() async {
-    for (int i = 0; i < widget.stars && i < 3; i++) {
+    for (int i = 0; i < widget.stars && i < maxStars; i++) {
       await Future.delayed(const Duration(milliseconds: 200));
       if (mounted) {
         _starControllers[i].forward();
@@ -151,7 +152,7 @@ class _CompletionOverlayState extends State<CompletionOverlay>
   Widget _buildStarRating() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(3, (index) {
+      children: List.generate(maxStars, (index) {
         final isFilled = index < widget.stars;
         return AnimatedBuilder(
           animation: _starAnimations[index],
@@ -187,23 +188,29 @@ class _CompletionOverlayState extends State<CompletionOverlay>
     return AnimatedBuilder(
       animation: _fadeAnimation,
       builder: (context, child) {
-        return Container(
-          color: GameColors.backgroundDark.withValues(alpha: 0.85 * _fadeAnimation.value),
-          child: Stack(
-            children: [
-              AnimatedBuilder(
-                animation: _confettiController,
-                builder: (context, _) {
-                  return CustomPaint(
-                    painter: _ConfettiPainter(
-                      particles: _confetti,
-                      progress: _confettiController.value,
-                    ),
-                    size: Size.infinite,
-                  );
-                },
-              ),
-              Center(
+        return Stack(
+          children: [
+            // Modal barrier to block interaction with underlying UI
+            ModalBarrier(
+              color: GameColors.backgroundDark.withValues(alpha: 0.85 * _fadeAnimation.value),
+              dismissible: false,
+            ),
+            // Content stack
+            Stack(
+              children: [
+                AnimatedBuilder(
+                  animation: _confettiController,
+                  builder: (context, _) {
+                    return CustomPaint(
+                      painter: _ConfettiPainter(
+                        particles: _confetti,
+                        progress: _confettiController.value,
+                      ),
+                      size: Size.infinite,
+                    );
+                  },
+                ),
+                Center(
                 child: AnimatedBuilder(
                   animation: _scaleAnimation,
                   builder: (context, child) {
@@ -412,8 +419,9 @@ class _CompletionOverlayState extends State<CompletionOverlay>
                   },
                 ),
               ),
-            ],
-          ),
+              ],
+            ),
+          ],
         );
       },
     );
