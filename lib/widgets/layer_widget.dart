@@ -59,11 +59,17 @@ class LayerWidget extends StatelessWidget {
       ),
     ];
     
+    // Check if gradients are enabled
+    final useGradient = StorageService().getGradientBlocks();
+    final blockGradient = useGradient ? _buildBlockGradient() : null;
+    final blockColor = useGradient ? null : _getFlatColor();
+    
     return Container(
       width: width,
       height: height,
       decoration: BoxDecoration(
-        gradient: _buildBlockGradient(),
+        color: blockColor,
+        gradient: blockGradient,
         borderRadius: BorderRadius.circular(ThemeColors.blockBorderRadius),
         boxShadow: shadows,
       ),
@@ -295,6 +301,31 @@ class LayerWidget extends StatelessWidget {
       (hslColor.saturation * (1 - amount)).clamp(0.0, 1.0),
     );
     return desaturated.toColor();
+  }
+
+  /// Get flat color for non-gradient blocks
+  Color _getFlatColor() {
+    // Multi-color blocks: use first color
+    if (layer.isMultiColor) {
+      final colors = layer.allColors;
+      return colors.isNotEmpty ? colors[0] : ThemeColors.getGradient(layer.colorIndex)[1];
+    }
+    
+    // Use the middle color from the gradient (main color)
+    final gradientColors = ThemeColors.getGradient(layer.colorIndex);
+    Color baseColor = gradientColors[1]; // Middle color
+    
+    // Apply desaturation to locked blocks
+    if (layer.isLocked) {
+      return _desaturate(baseColor, 0.5);
+    }
+
+    // Slightly darken frozen blocks
+    if (layer.isFrozen) {
+      return _desaturate(baseColor, 0.2);
+    }
+    
+    return baseColor;
   }
 }
 

@@ -20,6 +20,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _soundEnabled = true;
   bool _hapticsEnabled = true;
   bool _colorblindMode = false;
+  bool _gradientBlocks = true;
 
   @override
   void initState() {
@@ -33,6 +34,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _soundEnabled = storage.getSoundEnabled();
       _hapticsEnabled = storage.getHapticsEnabled();
       _colorblindMode = storage.getColorblindMode();
+      _gradientBlocks = storage.getGradientBlocks();
     });
   }
 
@@ -67,6 +69,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     setState(() => _colorblindMode = nextValue);
     await storage.setColorblindMode(nextValue);
+
+    if (_soundEnabled) {
+      AudioService().playTap();
+    }
+  }
+
+  Future<void> _toggleGradientBlocks() async {
+    final storage = StorageService();
+    final nextValue = !_gradientBlocks;
+
+    setState(() => _gradientBlocks = nextValue);
+    await storage.setGradientBlocks(nextValue);
 
     if (_soundEnabled) {
       AudioService().playTap();
@@ -129,6 +143,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       title: 'Colorblind Patterns',
                       value: _colorblindMode,
                       onToggle: _toggleColorblindMode,
+                    ),
+                    const SizedBox(height: 24),
+                    _buildSectionTitle('Visuals'),
+                    _buildToggleTile(
+                      icon: Icons.gradient,
+                      title: 'Gradient Blocks',
+                      value: _gradientBlocks,
+                      onToggle: _toggleGradientBlocks,
                     ),
                     const SizedBox(height: 8),
                     _buildThemeButton(),

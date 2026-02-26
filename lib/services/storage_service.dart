@@ -33,6 +33,7 @@ class StorageService {
   static const String _keyLevelStarsPrefix = 'level_stars_';
   static const String _keyPowerUpPrefix = 'power_up_';
   static const String _keyPowerUpsInitialized = 'power_ups_initialized';
+  static const String _keyGradientBlocks = 'setting_gradient_blocks';
 
   /// Initialize the storage service
   Future<void> init() async {
@@ -472,6 +473,26 @@ class StorageService {
       await _prefs?.setBool(_keyColorblindMode, enabled);
     } catch (e) {
       debugPrint('StorageService setColorblindMode failed: $e');
+    }
+  }
+
+  /// Get gradient blocks setting
+  bool getGradientBlocks() {
+    try {
+      return _prefs?.getBool(_keyGradientBlocks) ?? true; // ON by default
+    } catch (e) {
+      debugPrint('StorageService getGradientBlocks failed: $e');
+      return true;
+    }
+  }
+
+  /// Set gradient blocks setting
+  Future<void> setGradientBlocks(bool value) async {
+    try {
+      _prefs ??= await SharedPreferences.getInstance();
+      await _prefs?.setBool(_keyGradientBlocks, value);
+    } catch (e) {
+      debugPrint('StorageService setGradientBlocks failed: $e');
     }
   }
 
