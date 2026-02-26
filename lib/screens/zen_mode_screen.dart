@@ -454,45 +454,15 @@ class _ZenModeScreenState extends State<ZenModeScreen>
       body: Stack(
         fit: StackFit.expand,
         children: [
-          const ZenGardenScene(showStats: false, interactive: false),
-
-          // Ambient particles background (reduced opacity to show garden)
-          if (!_showGardenView)
-            Positioned.fill(
-              child: Opacity(
-                opacity: 0.3,
-                child: AnimatedBuilder(
-                  animation: _particleController,
-                  builder: (context, _) => CustomPaint(
-                    painter: AmbientParticlesPainter(
-                      progress: _particleController.value,
-                      seed: _puzzleSeed,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-          // Subtle overlay for readability (reduced to barely visible to show garden)
-          if (!_showGardenView)
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      const Color(
-                        0xFF0B0F14,
-                      ).withValues(alpha: 0.05),
-                      Colors.transparent,
-                      const Color(
-                        0xFF0B0F14,
-                      ).withValues(alpha: 0.05),
-                    ],
-                  ),
-                ),
-              ),
+          // Background: slate texture for puzzle, ZenGardenScene for garden view
+          if (_showGardenView)
+            const ZenGardenScene(showStats: false, interactive: false)
+          else
+            Image.asset(
+              'assets/images/backgrounds/slate_bg.jpg',
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
             ),
 
           // Main content
