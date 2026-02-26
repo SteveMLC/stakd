@@ -413,6 +413,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
 
   Widget _buildWater() {
     final elements = <Widget>[];
+    final waterScale = _archetype.scaleMultiplierFor('water');
 
     // Stage 4: Pond
     if (isUnlocked('pond_full')) {
@@ -425,8 +426,8 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
             revealType: GardenRevealType.rippleIn,
             child: Image.asset(
               'assets/images/zen-garden/zen_pond.png',
-              width: 140,
-              height: 85,
+              width: (140 * waterScale).round().toDouble(),
+              height: (85 * waterScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
           )),
@@ -445,8 +446,8 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
             revealType: GardenRevealType.bloomOut,
             child: Image.asset(
               'assets/images/zen-garden/zen_lily_pads.png',
-              width: 80,
-              height: 50,
+              width: (80 * waterScale).round().toDouble(),
+              height: (50 * waterScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
           )),
@@ -465,8 +466,8 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
             revealType: GardenRevealType.rippleIn,
             child: Image.asset(
               'assets/images/zen-garden/zen_waterfall.png',
-              width: 100,
-              height: 140,
+              width: (100 * waterScale).round().toDouble(),
+              height: (140 * waterScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
           )),
@@ -724,8 +725,8 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
             revealDuration: const Duration(milliseconds: 2000),
             child: Image.asset(
               'assets/images/zen-garden/zen_shrine.png',
-              width: 60,
-              height: 80,
+              width: (60 * structureScale).round().toDouble(),
+              height: (80 * structureScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
           )),
@@ -744,8 +745,8 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
             revealType: GardenRevealType.fadeScale,
             child: Image.asset(
               'assets/images/zen-garden/zen_bridge.png',
-              width: 80,
-              height: 50,
+              width: (80 * structureScale).round().toDouble(),
+              height: (50 * structureScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
           )),

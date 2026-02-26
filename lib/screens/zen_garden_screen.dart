@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/constants.dart';
+import '../models/garden_archetype.dart';
 import '../services/garden_service.dart';
 import '../widgets/themes/zen_garden_scene.dart';
 
@@ -47,6 +48,23 @@ class _ZenGardenScreenState extends State<ZenGardenScreen>
         });
       }
       await prefs.setBool('garden_archetype_revealed', true);
+    }
+  }
+
+  String _getArchetypeEmoji(GardenArchetype archetype) {
+    switch (archetype) {
+      case GardenArchetype.minimalist:
+        return '⚪';
+      case GardenArchetype.stoneKeeper:
+        return '🪨';
+      case GardenArchetype.lanternGarden:
+        return '🏮';
+      case GardenArchetype.waterGarden:
+        return '💧';
+      case GardenArchetype.bloomGarden:
+        return '🌸';
+      case GardenArchetype.wildZen:
+        return '🌿';
     }
   }
 
