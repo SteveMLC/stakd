@@ -1,8 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/achievement.dart';
 
-/// Achievement categories
-enum AchievementCategory {
+/// Extended achievement categories for the new system
+enum AchievementCategoryExt {
   mastery,
   speed,
   streak,
@@ -12,12 +13,12 @@ enum AchievementCategory {
   hidden,
 }
 
-/// Achievement definition
+/// Achievement definition with XP and coin rewards
 class AchievementDef {
   final String id;
   final String name;
   final String description;
-  final AchievementCategory category;
+  final AchievementCategoryExt category;
   final int xpReward;
   final int coinReward;
   final int? target;
@@ -72,6 +73,16 @@ class AchievementService extends ChangeNotifier {
   SharedPreferences? _prefs;
   final Map<String, AchievementState> _states = {};
   final List<AchievementDef> _recentlyUnlocked = [];
+  final List<Achievement> _pendingToasts = [];
+
+  /// Achievements waiting to be shown as toasts (legacy support)
+  List<Achievement> get pendingToasts => List.unmodifiable(_pendingToasts);
+
+  /// Clear a pending toast after it's been displayed (legacy support)
+  void dismissToast(Achievement achievement) {
+    _pendingToasts.remove(achievement);
+    notifyListeners();
+  }
 
   // ============================================================================
   // ACHIEVEMENT DEFINITIONS (48 total)
@@ -83,7 +94,7 @@ class AchievementService extends ChangeNotifier {
       id: 'first_steps',
       name: 'First Steps',
       description: 'Solve any puzzle',
-      category: AchievementCategory.mastery,
+      category: AchievementCategoryExt.mastery,
       xpReward: 100,
       coinReward: 50,
     ),
@@ -91,7 +102,7 @@ class AchievementService extends ChangeNotifier {
       id: 'perfectionist',
       name: 'Perfectionist',
       description: '3-star any puzzle',
-      category: AchievementCategory.mastery,
+      category: AchievementCategoryExt.mastery,
       xpReward: 200,
       coinReward: 75,
     ),
@@ -99,7 +110,7 @@ class AchievementService extends ChangeNotifier {
       id: 'star_collector',
       name: 'Star Collector',
       description: '3-star 10 puzzles',
-      category: AchievementCategory.mastery,
+      category: AchievementCategoryExt.mastery,
       xpReward: 500,
       coinReward: 150,
       target: 10,
@@ -108,7 +119,7 @@ class AchievementService extends ChangeNotifier {
       id: 'star_hoarder',
       name: 'Star Hoarder',
       description: '3-star 50 puzzles',
-      category: AchievementCategory.mastery,
+      category: AchievementCategoryExt.mastery,
       xpReward: 1500,
       coinReward: 500,
       target: 50,
@@ -117,7 +128,7 @@ class AchievementService extends ChangeNotifier {
       id: 'constellation',
       name: 'Constellation',
       description: '3-star 100 puzzles',
-      category: AchievementCategory.mastery,
+      category: AchievementCategoryExt.mastery,
       xpReward: 3000,
       coinReward: 1000,
       target: 100,
@@ -126,7 +137,7 @@ class AchievementService extends ChangeNotifier {
       id: 'under_par',
       name: 'Under Par',
       description: 'Complete under par moves',
-      category: AchievementCategory.mastery,
+      category: AchievementCategoryExt.mastery,
       xpReward: 300,
       coinReward: 100,
     ),
@@ -134,7 +145,7 @@ class AchievementService extends ChangeNotifier {
       id: 'efficiency_expert',
       name: 'Efficiency Expert',
       description: '25 under-par wins',
-      category: AchievementCategory.mastery,
+      category: AchievementCategoryExt.mastery,
       xpReward: 1000,
       coinReward: 300,
       target: 25,
@@ -143,7 +154,7 @@ class AchievementService extends ChangeNotifier {
       id: 'optimal_path',
       name: 'Optimal Path',
       description: 'Complete at exact par',
-      category: AchievementCategory.mastery,
+      category: AchievementCategoryExt.mastery,
       xpReward: 500,
       coinReward: 200,
     ),
@@ -151,7 +162,7 @@ class AchievementService extends ChangeNotifier {
       id: 'no_mistakes',
       name: 'No Mistakes',
       description: 'Complete without undo',
-      category: AchievementCategory.mastery,
+      category: AchievementCategoryExt.mastery,
       xpReward: 400,
       coinReward: 150,
     ),
@@ -159,7 +170,7 @@ class AchievementService extends ChangeNotifier {
       id: 'flawless_mind',
       name: 'Flawless Mind',
       description: '20 no-undo puzzles',
-      category: AchievementCategory.mastery,
+      category: AchievementCategoryExt.mastery,
       xpReward: 1200,
       coinReward: 400,
       target: 20,
@@ -168,7 +179,7 @@ class AchievementService extends ChangeNotifier {
       id: 'marathon_runner',
       name: 'Marathon Runner',
       description: '500 total solves',
-      category: AchievementCategory.mastery,
+      category: AchievementCategoryExt.mastery,
       xpReward: 5000,
       coinReward: 2000,
       target: 500,
@@ -177,7 +188,7 @@ class AchievementService extends ChangeNotifier {
       id: 'thousand_stacks',
       name: 'Thousand Stacks',
       description: '1000 total solves',
-      category: AchievementCategory.mastery,
+      category: AchievementCategoryExt.mastery,
       xpReward: 10000,
       coinReward: 5000,
       target: 1000,
@@ -188,7 +199,7 @@ class AchievementService extends ChangeNotifier {
       id: 'lightning',
       name: 'Lightning Reflexes',
       description: 'Solve under 30s',
-      category: AchievementCategory.speed,
+      category: AchievementCategoryExt.speed,
       xpReward: 300,
       coinReward: 100,
     ),
@@ -196,7 +207,7 @@ class AchievementService extends ChangeNotifier {
       id: 'speed_demon',
       name: 'Speed Demon',
       description: '10 solves under 30s',
-      category: AchievementCategory.speed,
+      category: AchievementCategoryExt.speed,
       xpReward: 800,
       coinReward: 250,
       target: 10,
@@ -205,7 +216,7 @@ class AchievementService extends ChangeNotifier {
       id: 'blink_twice',
       name: 'Blink Twice',
       description: 'Solve under 15s',
-      category: AchievementCategory.speed,
+      category: AchievementCategoryExt.speed,
       xpReward: 600,
       coinReward: 200,
     ),
@@ -213,7 +224,7 @@ class AchievementService extends ChangeNotifier {
       id: 'bullet_time',
       name: 'Bullet Time',
       description: 'Easy under 10s',
-      category: AchievementCategory.speed,
+      category: AchievementCategoryExt.speed,
       xpReward: 400,
       coinReward: 150,
     ),
@@ -221,7 +232,7 @@ class AchievementService extends ChangeNotifier {
       id: 'zen_flash',
       name: 'Zen Flash',
       description: 'Medium under 20s',
-      category: AchievementCategory.speed,
+      category: AchievementCategoryExt.speed,
       xpReward: 500,
       coinReward: 175,
     ),
@@ -229,7 +240,7 @@ class AchievementService extends ChangeNotifier {
       id: 'rapid_master',
       name: 'Rapid Master',
       description: 'Hard under 40s',
-      category: AchievementCategory.speed,
+      category: AchievementCategoryExt.speed,
       xpReward: 700,
       coinReward: 225,
     ),
@@ -237,7 +248,7 @@ class AchievementService extends ChangeNotifier {
       id: 'ultra_velocity',
       name: 'Ultra Velocity',
       description: 'Ultra under 60s',
-      category: AchievementCategory.speed,
+      category: AchievementCategoryExt.speed,
       xpReward: 1000,
       coinReward: 350,
     ),
@@ -245,7 +256,7 @@ class AchievementService extends ChangeNotifier {
       id: 'speedrun_legend',
       name: 'Speedrun Legend',
       description: '20 puzzles avg under 60s',
-      category: AchievementCategory.speed,
+      category: AchievementCategoryExt.speed,
       xpReward: 2000,
       coinReward: 750,
       target: 20,
@@ -256,7 +267,7 @@ class AchievementService extends ChangeNotifier {
       id: 'hot_start',
       name: 'Hot Start',
       description: '5-puzzle streak',
-      category: AchievementCategory.streak,
+      category: AchievementCategoryExt.streak,
       xpReward: 400,
       coinReward: 125,
       target: 5,
@@ -265,7 +276,7 @@ class AchievementService extends ChangeNotifier {
       id: 'on_fire',
       name: 'On Fire',
       description: '10-puzzle streak',
-      category: AchievementCategory.streak,
+      category: AchievementCategoryExt.streak,
       xpReward: 800,
       coinReward: 250,
       target: 10,
@@ -274,7 +285,7 @@ class AchievementService extends ChangeNotifier {
       id: 'unstoppable',
       name: 'Unstoppable',
       description: '25-puzzle streak',
-      category: AchievementCategory.streak,
+      category: AchievementCategoryExt.streak,
       xpReward: 2000,
       coinReward: 600,
       target: 25,
@@ -283,7 +294,7 @@ class AchievementService extends ChangeNotifier {
       id: 'legendary_flow',
       name: 'Legendary Flow',
       description: '50-puzzle streak',
-      category: AchievementCategory.streak,
+      category: AchievementCategoryExt.streak,
       xpReward: 5000,
       coinReward: 1500,
       target: 50,
@@ -292,7 +303,7 @@ class AchievementService extends ChangeNotifier {
       id: 'daily_devotee',
       name: 'Daily Devotee',
       description: '7-day streak',
-      category: AchievementCategory.streak,
+      category: AchievementCategoryExt.streak,
       xpReward: 700,
       coinReward: 200,
       target: 7,
@@ -301,7 +312,7 @@ class AchievementService extends ChangeNotifier {
       id: 'monthly_master',
       name: 'Monthly Master',
       description: '30-day streak',
-      category: AchievementCategory.streak,
+      category: AchievementCategoryExt.streak,
       xpReward: 3000,
       coinReward: 1000,
       target: 30,
@@ -312,7 +323,7 @@ class AchievementService extends ChangeNotifier {
       id: 'ice_breaker',
       name: 'Ice Breaker',
       description: 'Clear 1 frozen',
-      category: AchievementCategory.specialBlocks,
+      category: AchievementCategoryExt.specialBlocks,
       xpReward: 200,
       coinReward: 75,
     ),
@@ -320,7 +331,7 @@ class AchievementService extends ChangeNotifier {
       id: 'frost_fighter',
       name: 'Frost Fighter',
       description: 'Clear 25 frozen',
-      category: AchievementCategory.specialBlocks,
+      category: AchievementCategoryExt.specialBlocks,
       xpReward: 600,
       coinReward: 200,
       target: 25,
@@ -329,7 +340,7 @@ class AchievementService extends ChangeNotifier {
       id: 'glacial_master',
       name: 'Glacial Master',
       description: 'Clear 100 frozen',
-      category: AchievementCategory.specialBlocks,
+      category: AchievementCategoryExt.specialBlocks,
       xpReward: 1500,
       coinReward: 500,
       target: 100,
@@ -338,7 +349,7 @@ class AchievementService extends ChangeNotifier {
       id: 'lock_picker',
       name: 'Lock Picker',
       description: 'Clear 1 locked',
-      category: AchievementCategory.specialBlocks,
+      category: AchievementCategoryExt.specialBlocks,
       xpReward: 200,
       coinReward: 75,
     ),
@@ -346,7 +357,7 @@ class AchievementService extends ChangeNotifier {
       id: 'chain_breaker',
       name: 'Chain Breaker',
       description: 'Clear 25 locked',
-      category: AchievementCategory.specialBlocks,
+      category: AchievementCategoryExt.specialBlocks,
       xpReward: 600,
       coinReward: 200,
       target: 25,
@@ -355,7 +366,7 @@ class AchievementService extends ChangeNotifier {
       id: 'liberation_expert',
       name: 'Liberation Expert',
       description: 'Clear 100 locked',
-      category: AchievementCategory.specialBlocks,
+      category: AchievementCategoryExt.specialBlocks,
       xpReward: 1500,
       coinReward: 500,
       target: 100,
@@ -366,7 +377,7 @@ class AchievementService extends ChangeNotifier {
       id: 'garden_sprout',
       name: 'Garden Sprout',
       description: 'Reach stage 3',
-      category: AchievementCategory.garden,
+      category: AchievementCategoryExt.garden,
       xpReward: 500,
       coinReward: 150,
     ),
@@ -374,7 +385,7 @@ class AchievementService extends ChangeNotifier {
       id: 'blooming_garden',
       name: 'Blooming Garden',
       description: 'Reach stage 5',
-      category: AchievementCategory.garden,
+      category: AchievementCategoryExt.garden,
       xpReward: 1000,
       coinReward: 300,
     ),
@@ -382,7 +393,7 @@ class AchievementService extends ChangeNotifier {
       id: 'sacred_grove',
       name: 'Sacred Grove',
       description: 'Reach stage 7',
-      category: AchievementCategory.garden,
+      category: AchievementCategoryExt.garden,
       xpReward: 2000,
       coinReward: 600,
     ),
@@ -390,7 +401,7 @@ class AchievementService extends ChangeNotifier {
       id: 'paradise_found',
       name: 'Paradise Found',
       description: 'Reach stage 10',
-      category: AchievementCategory.garden,
+      category: AchievementCategoryExt.garden,
       xpReward: 5000,
       coinReward: 1500,
     ),
@@ -398,7 +409,7 @@ class AchievementService extends ChangeNotifier {
       id: 'collectors_pride',
       name: "Collector's Pride",
       description: '25 garden elements',
-      category: AchievementCategory.garden,
+      category: AchievementCategoryExt.garden,
       xpReward: 1500,
       coinReward: 500,
       target: 25,
@@ -407,7 +418,7 @@ class AchievementService extends ChangeNotifier {
       id: 'garden_completionist',
       name: 'Garden Completionist',
       description: 'All garden elements',
-      category: AchievementCategory.garden,
+      category: AchievementCategoryExt.garden,
       xpReward: 10000,
       coinReward: 3000,
     ),
@@ -417,7 +428,7 @@ class AchievementService extends ChangeNotifier {
       id: 'color_explorer',
       name: 'Color Explorer',
       description: 'Try all 4 difficulties',
-      category: AchievementCategory.variety,
+      category: AchievementCategoryExt.variety,
       xpReward: 400,
       coinReward: 150,
     ),
@@ -425,7 +436,7 @@ class AchievementService extends ChangeNotifier {
       id: 'difficulty_warrior',
       name: 'Difficulty Warrior',
       description: '10 each difficulty',
-      category: AchievementCategory.variety,
+      category: AchievementCategoryExt.variety,
       xpReward: 1200,
       coinReward: 400,
       target: 40,
@@ -434,7 +445,7 @@ class AchievementService extends ChangeNotifier {
       id: 'jack_of_all',
       name: 'Jack of All Stacks',
       description: '3-star one each difficulty',
-      category: AchievementCategory.variety,
+      category: AchievementCategoryExt.variety,
       xpReward: 1000,
       coinReward: 350,
     ),
@@ -442,7 +453,7 @@ class AchievementService extends ChangeNotifier {
       id: 'challenge_accepted',
       name: 'Challenge Accepted',
       description: '10 daily challenges',
-      category: AchievementCategory.variety,
+      category: AchievementCategoryExt.variety,
       xpReward: 1500,
       coinReward: 500,
       target: 10,
@@ -451,7 +462,7 @@ class AchievementService extends ChangeNotifier {
       id: 'challenge_master',
       name: 'Challenge Master',
       description: '50 daily challenges',
-      category: AchievementCategory.variety,
+      category: AchievementCategoryExt.variety,
       xpReward: 5000,
       coinReward: 1500,
       target: 50,
@@ -462,7 +473,7 @@ class AchievementService extends ChangeNotifier {
       id: 'midnight_stacker',
       name: 'Midnight Stacker 🌙',
       description: 'Play 12-3AM',
-      category: AchievementCategory.hidden,
+      category: AchievementCategoryExt.hidden,
       xpReward: 300,
       coinReward: 100,
       isHidden: true,
@@ -471,7 +482,7 @@ class AchievementService extends ChangeNotifier {
       id: 'century_score',
       name: 'Century Score',
       description: 'Score exactly 100',
-      category: AchievementCategory.hidden,
+      category: AchievementCategoryExt.hidden,
       xpReward: 500,
       coinReward: 200,
       isHidden: true,
@@ -480,7 +491,7 @@ class AchievementService extends ChangeNotifier {
       id: 'lucky_seven',
       name: 'Lucky Seven',
       description: 'Complete in exactly 7 moves',
-      category: AchievementCategory.hidden,
+      category: AchievementCategoryExt.hidden,
       xpReward: 777,
       coinReward: 250,
       isHidden: true,
@@ -489,7 +500,7 @@ class AchievementService extends ChangeNotifier {
       id: 'zen_moment',
       name: 'Zen Moment',
       description: 'Pause 60s mid-puzzle then complete',
-      category: AchievementCategory.hidden,
+      category: AchievementCategoryExt.hidden,
       xpReward: 400,
       coinReward: 150,
       isHidden: true,
@@ -498,7 +509,7 @@ class AchievementService extends ChangeNotifier {
       id: 'backwards_brain',
       name: 'Backwards Brain',
       description: 'Retry and improve 3×',
-      category: AchievementCategory.hidden,
+      category: AchievementCategoryExt.hidden,
       xpReward: 600,
       coinReward: 200,
       isHidden: true,
@@ -579,7 +590,58 @@ class AchievementService extends ChangeNotifier {
   }
 
   // ============================================================================
-  // CHECK METHODS
+  // LEGACY SUPPORT METHODS
+  // ============================================================================
+
+  /// Check if an achievement is unlocked (legacy support)
+  bool isUnlocked(String achievementId) {
+    final state = _states[achievementId];
+    if (state != null) return state.unlocked;
+    
+    // Fallback to old prefs format
+    try {
+      return _prefs?.getBool('achievement_$achievementId') ?? false;
+    } catch (e) {
+      debugPrint('AchievementService isUnlocked failed: $e');
+      return false;
+    }
+  }
+
+  /// Unlock an achievement (legacy support, returns true if newly unlocked)
+  Future<bool> unlock(Achievement achievement) async {
+    if (isUnlocked(achievement.id)) return false;
+    
+    try {
+      await _prefs?.setBool('achievement_${achievement.id}', true);
+      await _prefs?.setString(
+        'achievement_${achievement.id}_date',
+        DateTime.now().toIso8601String(),
+      );
+      
+      // Add to pending toasts
+      _pendingToasts.add(achievement.unlock());
+      notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint('AchievementService unlock failed: $e');
+      return false;
+    }
+  }
+
+  /// Check and unlock star-based achievements (legacy support)
+  Future<void> checkStarAchievements() async {
+    // This is kept for backward compatibility
+    // The new system handles this via checkPuzzleComplete
+  }
+
+  /// Check and unlock chain reaction achievements (legacy support)
+  Future<void> checkChainAchievements(int chainLevel, int maxChainEver) async {
+    // This is kept for backward compatibility
+    // Chain achievements will be implemented in the new system if needed
+  }
+
+  // ============================================================================
+  // NEW CHECK METHODS
   // ============================================================================
 
   List<AchievementDef> checkPuzzleComplete({
