@@ -534,12 +534,13 @@ class _ZenModeScreenState extends State<ZenModeScreen>
 
     // Calculate stars based on par
     int stars = 1; // 1 star for completing
-    if (_currentPar != null) {
+    if (_currentPar != null && _currentPar! > 0) {
+      final threeStarTarget = (_currentPar! * 0.75).ceil().clamp(1, _currentPar!);
       if (gameState.moveCount <= _currentPar!) {
-        stars = 2; // 2 stars for meeting par
+        stars = 2; // 2 stars for at or under par
       }
-      if (gameState.moveCount <= _currentPar! - 2 && gameState.undosRemaining == 3) {
-        stars = 3; // 3 stars for beating par by 2+ with no undos used
+      if (gameState.moveCount <= threeStarTarget && gameState.undosRemaining == 3) {
+        stars = 3; // 3 stars for under 75% of par with no undos
       }
     }
 
