@@ -104,17 +104,17 @@ class _GardenMiniFooterState extends State<GardenMiniFooter>
         return Container(
           height: 70,
           decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             border: Border(
               top: BorderSide(
-                color: GameColors.zen.withOpacity(0.15),
+                color: GameColors.zen.withValues(alpha: 0.15),
                 width: 1,
               ),
             ),
             boxShadow: glowIntensity > 0
                 ? [
                     BoxShadow(
-                      color: progressColor.withOpacity(0.4 * glowIntensity),
+                      color: progressColor.withValues(alpha: 0.4 * glowIntensity),
                       blurRadius: 20 * glowIntensity,
                       spreadRadius: 5 * glowIntensity,
                     ),
@@ -130,10 +130,10 @@ class _GardenMiniFooterState extends State<GardenMiniFooter>
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: GameColors.surface.withOpacity(0.5),
+                    color: GameColors.surface.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: progressColor.withOpacity(0.3),
+                      color: progressColor.withValues(alpha: 0.3),
                       width: 1,
                     ),
                   ),
@@ -170,7 +170,7 @@ class _GardenMiniFooterState extends State<GardenMiniFooter>
                           Container(
                             height: 6,
                             decoration: BoxDecoration(
-                              color: GameColors.empty.withOpacity(0.5),
+                              color: GameColors.empty.withValues(alpha: 0.5),
                               borderRadius: BorderRadius.circular(3),
                             ),
                           ),
@@ -184,7 +184,7 @@ class _GardenMiniFooterState extends State<GardenMiniFooter>
                                 borderRadius: BorderRadius.circular(3),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: progressColor.withOpacity(0.5),
+                                    color: progressColor.withValues(alpha: 0.5),
                                     blurRadius: 4,
                                   ),
                                 ],

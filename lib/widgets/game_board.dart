@@ -1217,11 +1217,14 @@ class _StackWidgetState extends State<_StackWidget>
                         ),
                       if (_shouldShowMultiGrabIndicator)
                         Positioned(
-                          top: -6,
-                          right: -6,
-                          child: _MultiGrabIndicator(
-                            count: widget.stack.topGroupSize,
-                            animation: _multiGrabIndicatorAnimation,
+                          top: -14,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: _MultiGrabIndicator(
+                              count: widget.stack.topGroupSize,
+                              animation: _multiGrabIndicatorAnimation,
+                            ),
                           ),
                         ),
                     ],
@@ -1422,33 +1425,37 @@ class _MultiGrabIndicator extends StatelessWidget {
       animation: animation,
       builder: (context, child) {
         final pulse = animation.value;
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.2 + pulse * 0.1),
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.2 + pulse * 0.15),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.layers,
-                size: 9,
-                color: Colors.white.withValues(alpha: 0.6),
+        return Tooltip(
+          message: 'Multi-grab: $count blocks can be moved together',
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.3 + pulse * 0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.3 + pulse * 0.15),
+                width: 1.5,
               ),
-              const SizedBox(width: 1),
-              Text(
-                '🔥$count',
-                style: TextStyle(
-                  fontSize: 8,
-                  fontWeight: FontWeight.w600,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.layers,
+                  size: 13,
                   color: Colors.white.withValues(alpha: 0.7),
                 ),
-              ),
-            ],
+                const SizedBox(width: 2),
+                Text(
+                  '🔥$count',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white.withValues(alpha: 0.8),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },

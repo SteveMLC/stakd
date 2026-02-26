@@ -412,6 +412,16 @@ class _ZenModeScreenState extends State<ZenModeScreen>
       _completionStars = gameState.calculateStars();
       _coinsEarned = 0;
       _showCompletionOverlay = true;
+      _justSolvedPuzzle = true; // Trigger garden footer celebration
+    });
+
+    // Reset the celebration flag after animation completes
+    Future.delayed(const Duration(milliseconds: 800), () {
+      if (mounted) {
+        setState(() {
+          _justSolvedPuzzle = false;
+        });
+      }
     });
 
     AudioService().playWin();
@@ -575,6 +585,22 @@ class _ZenModeScreenState extends State<ZenModeScreen>
               ],
             ),
           ),
+
+          // Garden mini-footer (between puzzle and bottom toolbar)
+          if (!_showGardenView)
+            Positioned(
+              bottom: 80, // above the bottom toolbar
+              left: 0,
+              right: 0,
+              child: GardenMiniFooter(
+                gardenStage: GardenService.state.currentStage,
+                progress: GardenService.state.progressToNextStage,
+                stageName: GardenService.state.stageName,
+                justSolved: _justSolvedPuzzle,
+                puzzlesSolvedInStage: GardenService.state.puzzlesSolvedInStage,
+                puzzlesNeededForNextStage: GardenService.state.puzzlesNeededForNextStage,
+              ),
+            ),
 
           // (Garden progress and session stats moved into bottom bar)
           // Hint overlay
@@ -935,28 +961,28 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                       icon: Icons.undo,
                       label: 'Undo',
                       badgeCount: gameState.undosRemaining,
-                      enabled: gameState.canUndo,
-                      onPressed: gameState.canUndo ? () => gameState.undo() : null,
+                      enabled: !_isLoading && gameState.canUndo,
+                      onPressed: !_isLoading && gameState.canUndo ? () => gameState.undo() : null,
                     ),
                     _ZenActionButton(
                       icon: Icons.lightbulb_outline,
                       label: 'Hint',
                       badgeCount: _hintsRemaining,
-                      enabled: _hintsRemaining > 0,
-                      onPressed: _hintsRemaining > 0 ? _showHint : null,
+                      enabled: !_isLoading && _hintsRemaining > 0,
+                      onPressed: !_isLoading && _hintsRemaining > 0 ? _showHint : null,
                     ),
                     _ZenActionButton(
                       icon: Icons.refresh,
                       label: 'Restart',
-                      enabled: _initialStacks != null && gameState.moveCount > 0,
-                      onPressed: _initialStacks != null && gameState.moveCount > 0 ? _restartPuzzle : null,
+                      enabled: !_isLoading && _initialStacks != null && gameState.moveCount > 0,
+                      onPressed: !_isLoading && _initialStacks != null && gameState.moveCount > 0 ? _restartPuzzle : null,
                     ),
                   ],
                   _ZenActionButton(
                     icon: _showGardenView ? Icons.grid_view : Icons.park_outlined,
                     label: _showGardenView ? 'Puzzle' : 'Garden',
-                    enabled: true,
-                    onPressed: () {
+                    enabled: !_isLoading,
+                    onPressed: !_isLoading ? () {
                       setState(() {
                         _showGardenView = !_showGardenView;
                         // Stop garden audio when leaving garden view
@@ -964,7 +990,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                           ZenAudioService().stopAmbience();
                         }
                       });
-                    },
+                    } : null,
                   ),
                 ],
               ),
