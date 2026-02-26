@@ -393,8 +393,26 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     }
   }
 
+  void _onMove() {
+    // Start live timer on first move
+    if (!_liveStopwatch.isRunning) {
+      _liveStopwatch.start();
+      // Update UI every second
+      _liveTimerUpdater = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (mounted && _liveStopwatch.isRunning) {
+          setState(() {});
+        }
+      });
+    }
+    AudioService().playSlide();
+  }
+
   void _showCompletion(GameState gameState) {
     if (_showCompletionOverlay) return;
+    
+    // Stop live timer
+    _liveStopwatch.stop();
+    _liveTimerUpdater?.cancel();
     
     // Clear any active combo/chain overlays BEFORE showing completion modal
     GameBoard.clearOverlays(context);
