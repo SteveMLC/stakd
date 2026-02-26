@@ -4,6 +4,7 @@ class GardenState {
   final DateTime? lastPlayedAt;
   final String season; // spring, summer, fall, winter
   final List<String> unlockedElements;
+  final int userSeed;
 
   GardenState({
     this.totalPuzzlesSolved = 0,
@@ -11,6 +12,7 @@ class GardenState {
     this.lastPlayedAt,
     this.season = 'spring',
     this.unlockedElements = const [],
+    this.userSeed = 0,
   });
 
   /// Calculate stage from total puzzles
@@ -103,6 +105,7 @@ class GardenState {
     DateTime? lastPlayedAt,
     String? season,
     List<String>? unlockedElements,
+    int? userSeed,
   }) {
     return GardenState(
       totalPuzzlesSolved: totalPuzzlesSolved ?? this.totalPuzzlesSolved,
@@ -110,6 +113,7 @@ class GardenState {
       lastPlayedAt: lastPlayedAt ?? this.lastPlayedAt,
       season: season ?? this.season,
       unlockedElements: unlockedElements ?? this.unlockedElements,
+      userSeed: userSeed ?? this.userSeed,
     );
   }
 

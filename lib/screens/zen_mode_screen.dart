@@ -20,6 +20,7 @@ import '../widgets/themes/zen_garden_scene.dart';
 import '../widgets/achievement_toast_overlay.dart';
 import '../widgets/completion_overlay.dart';
 import '../widgets/zen_session_summary.dart';
+import '../widgets/atmospheric_overlay.dart';
 import '../services/achievement_service.dart';
 import '../services/stats_service.dart';
 
@@ -463,6 +464,12 @@ class _ZenModeScreenState extends State<ZenModeScreen>
               fit: BoxFit.cover,
               width: double.infinity,
               height: double.infinity,
+            ),
+
+          // Atmospheric overlay (behind puzzle UI)
+          if (!_showGardenView)
+            AtmosphericOverlay(
+              gardenStage: GardenService.state.currentStage,
             ),
 
           // Main content
