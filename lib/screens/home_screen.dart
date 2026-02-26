@@ -42,7 +42,15 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadDailyData() async {
     final service = DailyChallengeService();
     final completed = await service.isTodayCompleted();
-    final streak = await service.getStreak();
+    
+    // Get daily rewards streak (unified with popup display)
+    final rewardsService = DailyRewardsService();
+    await rewardsService.init();
+    final currentDay = await rewardsService.getCurrentDay();
+    
+    // Only show streak if we've claimed at least one reward
+    final lastClaim = await rewardsService.getLastClaimDate();
+    final streak = lastClaim != null ? currentDay : 0;
 
     setState(() {
       _isDailyCompleted = completed;

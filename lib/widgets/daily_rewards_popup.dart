@@ -143,14 +143,16 @@ class _DailyRewardsPopupState extends State<DailyRewardsPopup>
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // Main content
-          Container(
+    return GestureDetector(
+      onTap: () {}, // Block touches to barrier
+      child: Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            // Main content
+            Container(
             clipBehavior: Clip.hardEdge,
             constraints: const BoxConstraints(maxWidth: 400),
             decoration: BoxDecoration(
@@ -567,6 +569,7 @@ class _DailyRewardsPopupState extends State<DailyRewardsPopup>
             ),
           ),
         ],
+      ),
       ),
     );
   }

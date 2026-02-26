@@ -771,55 +771,63 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   }
 
   Widget _buildDifficultySlider() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
-      child: Opacity(
-        opacity: _isLoading ? 0.5 : 1.0, // Dim when loading
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          decoration: BoxDecoration(
-            color: GameColors.surface.withValues(alpha: 0.3),
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: ZenDifficulty.values.map((diff) {
-              final isSelected = _difficulty == diff;
-              return Expanded(
-                child: GestureDetector(
-                  onTap: _isLoading ? null : () => _setDifficulty(diff), // Disable when loading
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? GameColors.accent.withValues(alpha: 0.3)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      diff.label,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: isSelected
-                            ? GameColors.text
-                            : GameColors.textMuted,
-                        fontSize: 13,
-                        fontWeight: isSelected
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                      ),
-                    ),
-                  ),
+    return Consumer<GameState>(
+      builder: (context, gameState, _) {
+        final isLocked = gameState.moveCount > 0;
+        return IgnorePointer(
+          ignoring: isLocked || _isLoading,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
+            child: Opacity(
+              opacity: (isLocked || _isLoading) ? 0.5 : 1.0, // Dim when locked or loading
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                decoration: BoxDecoration(
+                  color: GameColors.surface.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(24),
                 ),
-              );
-            }).toList(),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: ZenDifficulty.values.map((diff) {
+                    final isSelected = _difficulty == diff;
+                    return Expanded(
+                      child: GestureDetector(
+                        onTap: () => _setDifficulty(diff),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? GameColors.accent.withValues(alpha: 0.3)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            diff.label,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: isSelected
+                                  ? GameColors.text
+                                  : GameColors.textMuted,
+                              fontSize: 13,
+                              fontWeight: isSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -863,27 +871,47 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     return Consumer<GameState>(
       builder: (context, gameState, _) {
         return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.only(bottom: 12),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             decoration: BoxDecoration(
-              color: GameColors.surface.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(20),
+              color: GameColors.surface.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: GameColors.zen.withValues(alpha: 0.3),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.15),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
                   Icons.touch_app,
-                  size: 16,
-                  color: GameColors.textMuted.withValues(alpha: 0.6),
+                  size: 20,
+                  color: GameColors.zen.withValues(alpha: 0.8),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 8),
                 Text(
                   '${gameState.moveCount}',
                   style: TextStyle(
-                    color: GameColors.textMuted.withValues(alpha: 0.6),
-                    fontSize: 14,
+                    color: GameColors.text,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'moves',
+                  style: TextStyle(
+                    color: GameColors.textMuted.withValues(alpha: 0.7),
+                    fontSize: 12,
                   ),
                 ),
               ],
