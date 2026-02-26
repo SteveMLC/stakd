@@ -17,6 +17,8 @@ class CompletionOverlay extends StatefulWidget {
   final bool isNewMoveBest;
   final bool isNewTimeBest;
   final int currentStreak;
+  final int score;
+  final int xpEarned;
 
   const CompletionOverlay({
     super.key,
@@ -32,6 +34,8 @@ class CompletionOverlay extends StatefulWidget {
     this.isNewMoveBest = false,
     this.isNewTimeBest = false,
     this.currentStreak = 0,
+    this.score = 0,
+    this.xpEarned = 0,
   });
 
   @override
@@ -369,6 +373,26 @@ class _CompletionOverlayState extends State<CompletionOverlay>
                                   ),
                                 ),
                               ),
+                            // Score and XP display
+                            if (widget.score > 0) ...[
+                              const SizedBox(height: 12),
+                              Text(
+                                'Score: ${widget.score}',
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFFFFD700),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '+${widget.xpEarned} XP  +${widget.coinsEarned} 💎',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: GameColors.textMuted.withValues(alpha: 0.9),
+                                ),
+                              ),
+                            ],
                             const SizedBox(height: 20),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,

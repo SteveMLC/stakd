@@ -5,6 +5,9 @@ import '../utils/constants.dart';
 import '../services/daily_challenge_service.dart';
 import '../services/daily_rewards_service.dart';
 import '../services/currency_service.dart';
+import '../services/progression_service.dart';
+import '../widgets/rank_badge.dart';
+import '../widgets/xp_progress_bar.dart';
 import '../widgets/game_button.dart';
 import '../widgets/daily_streak_badge.dart';
 import '../widgets/daily_rewards_popup.dart';
@@ -16,6 +19,7 @@ import 'zen_garden_screen.dart';
 import 'leaderboard_screen.dart';
 import '../utils/route_transitions.dart';
 import 'theme_store_screen.dart';
+import 'achievements_screen.dart';
 
 /// Main menu screen
 class HomeScreen extends StatefulWidget {
@@ -206,6 +210,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Expanded(
                         child: GameButton(
+                          text: 'Achievements',
+                          icon: Icons.emoji_events,
+                          isPrimary: false,
+                          isSmall: true,
+                          onPressed: () => _openAchievements(context),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: GameButton(
                           text: 'Leaderboards',
                           icon: Icons.leaderboard,
                           isPrimary: false,
@@ -213,7 +227,15 @@ class _HomeScreenState extends State<HomeScreen> {
                           onPressed: () => _openLeaderboards(context),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
                       Expanded(
                         child: GameButton(
                           text: 'Settings',
@@ -236,99 +258,128 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildTopBar() {
+    final progressionService = ProgressionService();
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
         children: [
-          // Coin balance
-          GestureDetector(
-            onTap: _openDailyRewards,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: GameColors.surface.withValues(alpha: 0.7),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: const Color(0xFFFFD700).withValues(alpha: 0.3),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.monetization_on,
-                    color: Color(0xFFFFD700),
-                    size: 20,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    '$_coinBalance',
-                    style: TextStyle(
-                      color: GameColors.text,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Daily rewards button
-          GestureDetector(
-            onTap: _openDailyRewards,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Coin balance
+              GestureDetector(
+                onTap: _openDailyRewards,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
                     color: GameColors.surface.withValues(alpha: 0.7),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: _hasUnclaimedReward
-                          ? GameColors.accent.withValues(alpha: 0.5)
-                          : GameColors.textMuted.withValues(alpha: 0.2),
+                      color: const Color(0xFFFFD700).withValues(alpha: 0.3),
                     ),
-                    boxShadow: _hasUnclaimedReward
-                        ? [
-                            BoxShadow(
-                              color: GameColors.accent.withValues(alpha: 0.3),
-                              blurRadius: 10,
-                              spreadRadius: 1,
-                            ),
-                          ]
-                        : null,
                   ),
-                  child: Icon(
-                    Icons.card_giftcard,
-                    color: _hasUnclaimedReward
-                        ? GameColors.accent
-                        : GameColors.textMuted,
-                    size: 24,
-                  ),
-                ),
-                // Notification badge
-                if (_hasUnclaimedReward)
-                  Positioned(
-                    top: -4,
-                    right: -4,
-                    child: Container(
-                      width: 14,
-                      height: 14,
-                      decoration: BoxDecoration(
-                        color: GameColors.errorGlow,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: GameColors.background,
-                          width: 2,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.monetization_on,
+                        color: Color(0xFFFFD700),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '$_coinBalance',
+                        style: TextStyle(
+                          color: GameColors.text,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
                         ),
                       ),
-                    ),
+                    ],
                   ),
-              ],
-            ),
+                ),
+              ),
+
+              const Spacer(),
+
+              // Rank badge
+              RankBadge(
+                rank: progressionService.currentRank,
+                tierEmoji: progressionService.tierEmoji,
+                title: progressionService.rankTitle,
+                showTitle: false,
+              ),
+
+              const SizedBox(width: 12),
+
+              // Daily rewards button
+              GestureDetector(
+                onTap: _openDailyRewards,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: GameColors.surface.withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: _hasUnclaimedReward
+                              ? GameColors.accent.withValues(alpha: 0.5)
+                              : GameColors.textMuted.withValues(alpha: 0.2),
+                        ),
+                        boxShadow: _hasUnclaimedReward
+                            ? [
+                                BoxShadow(
+                                  color: GameColors.accent.withValues(alpha: 0.3),
+                                  blurRadius: 10,
+                                  spreadRadius: 1,
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Icon(
+                        Icons.card_giftcard,
+                        color: _hasUnclaimedReward
+                            ? GameColors.accent
+                            : GameColors.textMuted,
+                        size: 24,
+                      ),
+                    ),
+                    // Notification badge
+                    if (_hasUnclaimedReward)
+                      Positioned(
+                        top: -4,
+                        right: -4,
+                        child: Container(
+                          width: 14,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: GameColors.errorGlow,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: GameColors.background,
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          // XP progress bar
+          const SizedBox(height: 12),
+          XPProgressBar(
+            currentXP: progressionService.totalXP,
+            xpForCurrentRank: progressionService.xpForCurrentRank,
+            xpForNextRank: progressionService.xpForNextRank,
+            rank: progressionService.currentRank,
+            rankTitle: progressionService.rankTitle,
+            nextRankTitle: progressionService.currentRank < 25
+                ? ProgressionService.ranks[progressionService.currentRank].title
+                : 'Max Rank',
           ),
         ],
       ),
@@ -488,6 +539,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openLeaderboards(BuildContext context) {
     Navigator.of(context).push(fadeSlideRoute(const LeaderboardScreen()));
+  }
+
+  void _openAchievements(BuildContext context) {
+    Navigator.of(context).push(fadeSlideRoute(const AchievementsScreen()));
   }
 
   void _showZenDifficultyPicker() {

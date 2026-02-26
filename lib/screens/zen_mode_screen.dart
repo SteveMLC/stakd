@@ -25,6 +25,11 @@ import '../widgets/atmospheric_overlay.dart';
 import '../widgets/garden_mini_footer.dart';
 import '../services/achievement_service.dart';
 import '../services/stats_service.dart';
+import '../services/score_service.dart';
+import '../services/progression_service.dart';
+import '../services/currency_service.dart';
+import '../widgets/rank_up_overlay.dart';
+import '../widgets/achievement_toast.dart';
 
 /// Zen Mode difficulty levels
 enum ZenDifficulty {
@@ -99,6 +104,11 @@ class _ZenModeScreenState extends State<ZenModeScreen>
 
   // Par calculation for star system
   int? _currentPar;
+
+  // Progression system
+  PuzzleScore? _lastScore;
+  RankUpResult? _lastRankUp;
+  List<AchievementDef> _newAchievements = [];
 
   // Fade animation for puzzle transitions
   late AnimationController _fadeController;
@@ -483,11 +493,54 @@ class _ZenModeScreenState extends State<ZenModeScreen>
       }
     }
 
+    // 1. Calculate score
+    final scoreResult = ScoreService().calculateScore(
+      difficulty: difficulty,
+      stars: stars,
+      moves: gameState.moveCount,
+      parMoves: _currentPar ?? 14,
+      time: duration,
+      undosUsed: 3 - gameState.undosRemaining,
+      maxUndos: 3,
+      comboCount: gameState.currentCombo,
+      lockedCleared: 0, // TODO: track these later
+      frozenCleared: 0,
+      isDailyChallenge: false,
+    );
+
+    // 2. Award XP and check for rank up
+    ProgressionService().addXP(scoreResult.xpEarned).then((rankUp) {
+      if (mounted && rankUp != null) {
+        setState(() {
+          _lastRankUp = rankUp;
+        });
+      }
+    });
+    ProgressionService().addScore(scoreResult.totalScore);
+
+    // 3. Award coins
+    CurrencyService().addCoins(scoreResult.coinsEarned);
+
+    // 4. Check achievements
+    final newAchievements = AchievementService().checkPuzzleComplete(
+      difficulty: difficulty,
+      stars: stars,
+      moves: gameState.moveCount,
+      parMoves: _currentPar ?? 14,
+      time: duration,
+      undosUsed: 3 - gameState.undosRemaining,
+      streak: _puzzlesSolved,
+      totalSolved: statsService.totalPuzzlesSolved,
+      score: scoreResult.totalScore,
+    );
+
     setState(() {
       _completionDuration = duration;
       _completionMoves = gameState.moveCount;
       _completionStars = stars;
-      _coinsEarned = 0;
+      _coinsEarned = scoreResult.coinsEarned;
+      _lastScore = scoreResult;
+      _newAchievements = newAchievements;
       _showCompletionOverlay = true;
       _justSolvedPuzzle = true; // Trigger garden footer celebration
     });
@@ -705,8 +758,41 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                 isNewMoveBest: _isNewMoveBest,
                 isNewTimeBest: _isNewTimeBest,
                 currentStreak: StatsService().currentStreak,
+                score: _lastScore?.totalScore ?? 0,
+                xpEarned: _lastScore?.xpEarned ?? 0,
               ),
             ),
+          // Rank-up overlay (shown after completion overlay is dismissed)
+          if (_lastRankUp != null)
+            Positioned.fill(
+              child: RankUpOverlay(
+                newRank: _lastRankUp!.newRank,
+                newTitle: _lastRankUp!.newRankDef.title,
+                tierEmoji: _lastRankUp!.newRankDef.emoji,
+                tier: _lastRankUp!.newRankDef.tier,
+                onDismiss: () => setState(() => _lastRankUp = null),
+              ),
+            ),
+          // Achievement toasts
+          ..._newAchievements.asMap().entries.map((entry) {
+            final index = entry.key;
+            final achievement = entry.value;
+            return Positioned(
+              top: 40.0 + (index * 140.0), // Stack toasts vertically
+              left: 0,
+              right: 0,
+              child: AchievementToast(
+                achievementName: achievement.name,
+                xpReward: achievement.xpReward,
+                coinReward: achievement.coinReward,
+                onDismiss: () {
+                  setState(() {
+                    _newAchievements.remove(achievement);
+                  });
+                },
+              ),
+            );
+          }),
           if (_showSessionSummary)
             Positioned.fill(
               child: ZenSessionSummary(
