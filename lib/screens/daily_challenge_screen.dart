@@ -1,13 +1,20 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/daily_challenge.dart';
 import '../models/game_state.dart';
+import '../models/stack_model.dart';
 import '../services/daily_challenge_service.dart';
 import '../services/leaderboard_service.dart';
 import '../utils/constants.dart';
 import '../widgets/game_board.dart';
 import '../widgets/name_entry_dialog.dart';
+
+// Top-level function for isolate-based puzzle generation
+List<GameStack> _generateStacksInIsolate(DailyChallenge challenge) {
+  return challenge.generateStacks();
+}
 
 class DailyChallengeScreen extends StatefulWidget {
   const DailyChallengeScreen({super.key});
@@ -48,8 +55,11 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
     final streak = await _service.getStreak();
     final history = await _service.getHistory();
 
-    final stacks = challenge.generateStacks();
+    // Generate puzzle in isolate to avoid blocking UI
+    final stacks = await compute(_generateStacksInIsolate, challenge);
     _gameState.initGame(stacks, challenge.getDayNumber());
+
+    if (!mounted) return;
 
     setState(() {
       _challenge = challenge;

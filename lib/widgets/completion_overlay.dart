@@ -192,30 +192,14 @@ class _CompletionOverlayState extends State<CompletionOverlay>
 
     return Padding(
       padding: const EdgeInsets.only(top: 8),
-      child: Column(
-        children: [
-          Text(
-            '⭐ Complete puzzle',
-            style: TextStyle(
-              fontSize: 11,
-              color: GameColors.textMuted.withValues(alpha: 0.7),
-            ),
-          ),
-          Text(
-            '⭐⭐ ${widget.par} moves or less',
-            style: TextStyle(
-              fontSize: 11,
-              color: GameColors.textMuted.withValues(alpha: 0.7),
-            ),
-          ),
-          Text(
-            '⭐⭐⭐ ${widget.par! - 2} moves or no undo',
-            style: TextStyle(
-              fontSize: 11,
-              color: GameColors.textMuted.withValues(alpha: 0.7),
-            ),
-          ),
-        ],
+      child: Text(
+        '⭐ Complete puzzle\n⭐⭐ Under ${widget.par} moves\n⭐⭐⭐ Under ${widget.par! - 2} moves, no undo',
+        style: TextStyle(
+          color: GameColors.textMuted.withValues(alpha: 0.7),
+          fontSize: 12,
+          height: 1.4,
+        ),
+        textAlign: TextAlign.center,
       ),
     );
   }
@@ -425,73 +409,85 @@ class _CompletionOverlayState extends State<CompletionOverlay>
                               ),
                             ],
                             const SizedBox(height: 32),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                            Column(
                               children: [
-                                OutlinedButton(
-                                  onPressed: () {
-                                    AudioService().playTap();
-                                    widget.onHome();
-                                  },
-                                  style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 24,
-                                      vertical: 16,
+                                // Next Puzzle — primary, full width
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      AudioService().playTap();
+                                      widget.onNextPuzzle();
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: GameColors.accent,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 32,
+                                        vertical: 16,
+                                      ),
                                     ),
-                                    side: BorderSide(
-                                      color: GameColors.textMuted.withValues(alpha: 0.3),
-                                      width: 1.5,
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    'Home',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                OutlinedButton(
-                                  onPressed: () {
-                                    AudioService().playTap();
-                                    widget.onReplay();
-                                  },
-                                  style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 24,
-                                      vertical: 16,
-                                    ),
-                                    side: BorderSide(
-                                      color: GameColors.textMuted.withValues(alpha: 0.3),
-                                      width: 1.5,
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    'Replay',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
+                                    child: const Text(
+                                      'Next Puzzle',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 12),
-                                ElevatedButton(
-                                  onPressed: () {
-                                    AudioService().playTap();
-                                    widget.onNextPuzzle();
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: GameColors.accent,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 32,
-                                      vertical: 16,
+                                const SizedBox(height: 8),
+                                // Row with Home and Replay side by side
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: OutlinedButton(
+                                        onPressed: () {
+                                          AudioService().playTap();
+                                          widget.onHome();
+                                        },
+                                        style: OutlinedButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 24,
+                                            vertical: 16,
+                                          ),
+                                          side: BorderSide(
+                                            color: GameColors.textMuted.withValues(alpha: 0.3),
+                                            width: 1.5,
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'Home',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                  child: const Text(
-                                    'Next Puzzle',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: OutlinedButton(
+                                        onPressed: () {
+                                          AudioService().playTap();
+                                          widget.onReplay();
+                                        },
+                                        style: OutlinedButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 24,
+                                            vertical: 16,
+                                          ),
+                                          side: BorderSide(
+                                            color: GameColors.textMuted.withValues(alpha: 0.3),
+                                            width: 1.5,
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'Replay',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
                                     ),
-                                  ),
+                                  ],
                                 ),
                               ],
                             ),

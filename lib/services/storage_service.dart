@@ -131,6 +131,7 @@ class StorageService {
   /// Set sound enabled setting
   Future<void> setSoundEnabled(bool enabled) async {
     try {
+      _prefs ??= await SharedPreferences.getInstance();
       await _prefs?.setBool(_keySoundEnabled, enabled);
     } catch (e) {
       debugPrint('StorageService setSoundEnabled failed: $e');
@@ -150,6 +151,7 @@ class StorageService {
   /// Set music enabled setting
   Future<void> setMusicEnabled(bool enabled) async {
     try {
+      _prefs ??= await SharedPreferences.getInstance();
       await _prefs?.setBool(_keyMusicEnabled, enabled);
     } catch (e) {
       debugPrint('StorageService setMusicEnabled failed: $e');
@@ -169,6 +171,7 @@ class StorageService {
   /// Set haptics enabled setting
   Future<void> setHapticsEnabled(bool enabled) async {
     try {
+      _prefs ??= await SharedPreferences.getInstance();
       await _prefs?.setBool(_keyHapticsEnabled, enabled);
     } catch (e) {
       debugPrint('StorageService setHapticsEnabled failed: $e');
