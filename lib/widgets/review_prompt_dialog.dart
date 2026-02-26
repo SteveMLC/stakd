@@ -124,7 +124,7 @@ class _ReviewPromptDialogState extends State<ReviewPromptDialog>
 
                 // Title
                 const Text(
-                  'Enjoying Stakd?',
+                  'Enjoying SortBloom?',
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,

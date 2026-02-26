@@ -499,7 +499,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ).createShader(bounds),
           child: const Text(
-            'STAKD',
+            'SORTBLOOM',
             style: TextStyle(
               fontSize: 56,
               fontWeight: FontWeight.bold,

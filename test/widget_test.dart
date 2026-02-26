@@ -4,6 +4,6 @@ import 'package:stakd/app.dart';
 void main() {
   testWidgets('App launches', (WidgetTester tester) async {
     await tester.pumpWidget(const StakdApp());
-    expect(find.text('STAKD'), findsOneWidget);
+    expect(find.text('SORTBLOOM'), findsOneWidget);
   });
 }

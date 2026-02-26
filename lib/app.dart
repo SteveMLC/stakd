@@ -18,7 +18,7 @@ class StakdApp extends StatelessWidget {
         final isDark = theme.backgroundColor.computeLuminance() < 0.5;
         
         return MaterialApp(
-          title: 'Stakd',
+          title: 'SortBloom',
           debugShowCheckedModeBanner: false,
           theme: ThemeData(
             useMaterial3: true,
