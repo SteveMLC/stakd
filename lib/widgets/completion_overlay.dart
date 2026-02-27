@@ -190,6 +190,53 @@ class _CompletionOverlayState extends State<CompletionOverlay>
   }
 
 
+  Widget _buildStarCriteria() {
+    final par = widget.par!;
+    final threeStarTarget = (par * 0.7).ceil();
+
+    Widget criteriaRow(int starCount, String text, bool achieved) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 1.5),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Star icons
+            ...List.generate(starCount, (_) => Icon(
+              Icons.star,
+              size: 14,
+              color: achieved ? starGold : starEmpty,
+            )),
+            // Pad remaining stars as empty for alignment
+            ...List.generate(maxStars - starCount, (_) => const SizedBox(width: 14)),
+            const SizedBox(width: 8),
+            Text(
+              text,
+              style: TextStyle(
+                fontSize: 12,
+                color: achieved
+                    ? GameColors.text.withValues(alpha: 0.9)
+                    : GameColors.textMuted.withValues(alpha: 0.5),
+                fontWeight: achieved ? FontWeight.w500 : FontWeight.w400,
+              ),
+            ),
+            if (achieved) ...[
+              const SizedBox(width: 6),
+              Icon(Icons.check_circle, size: 14, color: const Color(0xFF4CAF50)),
+            ],
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        criteriaRow(1, 'Complete puzzle', widget.stars >= 1),
+        criteriaRow(2, '$par moves or fewer', widget.stars >= 2),
+        criteriaRow(3, '$threeStarTarget moves or fewer, no undo', widget.stars >= 3),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -253,6 +300,11 @@ class _CompletionOverlayState extends State<CompletionOverlay>
                           children: [
                             // Top: Stars
                             _buildStarRating(),
+                            // Star criteria — shows the bar to beat
+                            if (widget.par != null && widget.par! > 0) ...[
+                              const SizedBox(height: 8),
+                              _buildStarCriteria(),
+                            ],
                             // Record badges (compact inline)
                             if (widget.isNewMoveBest || widget.isNewTimeBest)
                               Padding(
