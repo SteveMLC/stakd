@@ -582,7 +582,10 @@ class LevelGenerator {
     return stacks;
   }
 
-  /// Apply locked and frozen blocks to an already-generated puzzle
+  /// Apply locked and frozen blocks to an already-generated puzzle.
+  /// Caps: max 1 locked block, max 2 frozen blocks per puzzle.
+  /// Never locks a block at the bottom of a mixed-color stack.
+  /// Lock timer capped at 3 moves.
   void applySpecialBlocks(List<GameStack> stacks, LevelParams params) {
     if (params.lockedBlockProbability <= 0 &&
         params.frozenBlockProbability <= 0) {
@@ -590,29 +593,42 @@ class LevelGenerator {
     }
 
     final random = Random();
+    int lockedCount = 0;
+    int frozenCount = 0;
+    const maxLocked = 1;
+    const maxFrozen = 2;
 
     for (int s = 0; s < stacks.length; s++) {
       final stack = stacks[s];
       if (stack.isEmpty) continue;
+
+      // Check if this stack has mixed colors
+      final colors = stack.layers.map((l) => l.colorIndex).toSet();
+      final isMixed = colors.length > 1;
 
       final newLayers = <Layer>[];
       for (int i = 0; i < stack.layers.length; i++) {
         final layer = stack.layers[i];
         final isBottom = (i == 0);
 
-        // Locked blocks: prefer bottom positions
-        if (params.lockedBlockProbability > 0 &&
+        // Locked blocks: prefer bottom positions, but skip if mixed stack bottom
+        if (lockedCount < maxLocked &&
+            params.lockedBlockProbability > 0 &&
             isBottom &&
+            !isMixed &&
             random.nextDouble() < params.lockedBlockProbability) {
-          final lockedFor = random.nextInt(params.maxLockedMoves) + 1;
+          final lockedFor = (random.nextInt(3) + 1).clamp(1, 3);
           newLayers.add(
             Layer.locked(colorIndex: layer.colorIndex, lockedFor: lockedFor),
           );
+          lockedCount++;
         }
         // Frozen blocks: can be anywhere
-        else if (params.frozenBlockProbability > 0 &&
+        else if (frozenCount < maxFrozen &&
+            params.frozenBlockProbability > 0 &&
             random.nextDouble() < params.frozenBlockProbability) {
           newLayers.add(Layer.frozen(colorIndex: layer.colorIndex));
+          frozenCount++;
         } else {
           newLayers.add(layer);
         }

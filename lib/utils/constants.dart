@@ -234,7 +234,7 @@ class LevelParams {
         multiColorProbability: multiColorProb,
         lockedBlockProbability: lockedProb,
         frozenBlockProbability: frozenProb,
-        maxLockedMoves: 4,
+        maxLockedMoves: 3,
       );
     }
     if (level <= 100) {
@@ -253,7 +253,7 @@ class LevelParams {
         multiColorProbability: multiColorProb,
         lockedBlockProbability: lockedProb,
         frozenBlockProbability: frozenProb,
-        maxLockedMoves: 4,
+        maxLockedMoves: 3,
       );
     }
     // Master 100+: max difficulty
@@ -268,7 +268,7 @@ class LevelParams {
       multiColorProbability: 0.3,
       lockedBlockProbability: 0.2,
       frozenBlockProbability: 0.15,
-      maxLockedMoves: 5,
+      maxLockedMoves: 3,
     );
   }
 }
@@ -280,7 +280,6 @@ class ZenParams {
     stacks: 6,
     emptySlots: 2,
     shuffleMoves: 35,
-    minDifficultyScore: 6,
   );
 
   static const LevelParams medium = LevelParams(
@@ -289,8 +288,7 @@ class ZenParams {
     stacks: 7,
     emptySlots: 2,
     shuffleMoves: 55,
-    minDifficultyScore: 10,
-    lockedBlockProbability: 0.1,
+    lockedBlockProbability: 0.06,
   );
 
   static const LevelParams hard = LevelParams(
@@ -299,9 +297,8 @@ class ZenParams {
     stacks: 8,
     emptySlots: 2,
     shuffleMoves: 80,
-    minDifficultyScore: 15,
-    lockedBlockProbability: 0.12,
-    frozenBlockProbability: 0.1,
+    lockedBlockProbability: 0.08,
+    frozenBlockProbability: 0.04,
   );
 
   static const LevelParams ultra = LevelParams(
@@ -310,8 +307,7 @@ class ZenParams {
     stacks: 8,
     emptySlots: 2,
     shuffleMoves: 100,
-    minDifficultyScore: 18,
-    lockedBlockProbability: 0.15,
-    frozenBlockProbability: 0.12,
+    lockedBlockProbability: 0.1,
+    frozenBlockProbability: 0.06,
   );
 }

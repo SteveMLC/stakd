@@ -623,19 +623,16 @@ class _ZenModeScreenState extends State<ZenModeScreen>
         } else if (puzzleNumber <= 4) {
           return const LevelParams(colors: 3, depth: 4, stacks: 5, emptySlots: 2, shuffleMoves: 40, lockedBlockProbability: 0.06);
         } else if (puzzleNumber <= 7) {
-          return const LevelParams(colors: 4, depth: 4, stacks: 6, emptySlots: 2, shuffleMoves: 45, lockedBlockProbability: 0.08);
+          return const LevelParams(colors: 4, depth: 4, stacks: 6, emptySlots: 2, shuffleMoves: 45, lockedBlockProbability: 0.06);
         } else if (puzzleNumber <= 10) {
-          return const LevelParams(colors: 4, depth: 4, stacks: 6, emptySlots: 2, shuffleMoves: 50, lockedBlockProbability: 0.1);
+          return const LevelParams(colors: 4, depth: 4, stacks: 6, emptySlots: 2, shuffleMoves: 50, lockedBlockProbability: 0.06);
         } else if (puzzleNumber <= 15) {
-          return const LevelParams(colors: 4, depth: 5, stacks: 6, emptySlots: 2, shuffleMoves: 55, lockedBlockProbability: 0.1);
+          return const LevelParams(colors: 4, depth: 5, stacks: 6, emptySlots: 2, shuffleMoves: 55, lockedBlockProbability: 0.06);
         } else if (puzzleNumber <= 25) {
-          // Gradual ramp: manageable params that generate quickly
-          return const LevelParams(colors: 4, depth: 5, stacks: 6, emptySlots: 2, shuffleMoves: 60, lockedBlockProbability: 0.1, minDifficultyScore: 8);
+          return const LevelParams(colors: 4, depth: 5, stacks: 6, emptySlots: 2, shuffleMoves: 60, lockedBlockProbability: 0.06);
         } else if (puzzleNumber <= 40) {
-          // More colors but shallower — avoids BFS explosion
-          return const LevelParams(colors: 5, depth: 4, stacks: 7, emptySlots: 2, shuffleMoves: 65, lockedBlockProbability: 0.1, minDifficultyScore: 8);
+          return const LevelParams(colors: 5, depth: 4, stacks: 7, emptySlots: 2, shuffleMoves: 65, lockedBlockProbability: 0.06);
         } else {
-          // Full difficulty only for committed players (puzzle 41+)
           return ZenParams.medium;
         }
 
@@ -643,11 +640,11 @@ class _ZenModeScreenState extends State<ZenModeScreen>
         if (puzzleNumber <= 1) {
           return const LevelParams(colors: 4, depth: 4, stacks: 6, emptySlots: 2, shuffleMoves: 50, lockedBlockProbability: 0.08);
         } else if (puzzleNumber <= 3) {
-          return const LevelParams(colors: 5, depth: 4, stacks: 7, emptySlots: 2, shuffleMoves: 60, lockedBlockProbability: 0.10, frozenBlockProbability: 0.06);
+          return const LevelParams(colors: 5, depth: 4, stacks: 7, emptySlots: 2, shuffleMoves: 60, lockedBlockProbability: 0.08, frozenBlockProbability: 0.04);
         } else if (puzzleNumber <= 5) {
-          return const LevelParams(colors: 5, depth: 5, stacks: 7, emptySlots: 2, shuffleMoves: 70, lockedBlockProbability: 0.12, frozenBlockProbability: 0.08);
+          return const LevelParams(colors: 5, depth: 5, stacks: 7, emptySlots: 2, shuffleMoves: 70, lockedBlockProbability: 0.08, frozenBlockProbability: 0.04);
         } else if (puzzleNumber <= 10) {
-          return const LevelParams(colors: 5, depth: 5, stacks: 7, emptySlots: 2, shuffleMoves: 75, lockedBlockProbability: 0.12, frozenBlockProbability: 0.08);
+          return const LevelParams(colors: 5, depth: 5, stacks: 7, emptySlots: 2, shuffleMoves: 75, lockedBlockProbability: 0.08, frozenBlockProbability: 0.04);
         } else {
           return ZenParams.hard;
         }
