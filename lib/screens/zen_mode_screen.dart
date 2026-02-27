@@ -70,6 +70,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   int _completionMoves = 0;
   int _completionStars = 0;
   int _coinsEarned = 0;
+  bool _completionUndoUsed = false;
 
   late ZenDifficulty _difficulty;
   int _puzzlesSolved = 0;
@@ -107,8 +108,10 @@ class _ZenModeScreenState extends State<ZenModeScreen>
 
   // Progression system
   PuzzleScore? _lastScore;
-  RankUpResult? _lastRankUp;
-  List<AchievementDef> _newAchievements = [];
+  RankUpResult? _pendingRankUp; // queued, shown after completion dismissed
+  List<AchievementDef> _pendingAchievements = []; // queued achievements
+  AchievementDef? _currentAchievementToast; // currently showing toast
+  bool _showRankUp = false;
 
   // Fade animation for puzzle transitions
   late AnimationController _fadeController;
@@ -224,6 +227,10 @@ class _ZenModeScreenState extends State<ZenModeScreen>
       _hintsRemaining = 3;
       _showingHint = false;
       _showCompletionOverlay = false;
+      _currentAchievementToast = null;
+      _pendingAchievements.clear();
+      _showRankUp = false;
+      _pendingRankUp = null;
     });
     _puzzleStart = DateTime.now();
     // Reset live timer
@@ -233,6 +240,11 @@ class _ZenModeScreenState extends State<ZenModeScreen>
 
   void _loadNewPuzzle() {
     _puzzleStart = DateTime.now();
+    // Force-dismiss all overlays on puzzle transition
+    _currentAchievementToast = null;
+    _pendingAchievements.clear();
+    _showRankUp = false;
+    _pendingRankUp = null;
     // Reset live timer for new puzzle
     _liveStopwatch.reset();
     _liveTimerUpdater?.cancel();
@@ -288,7 +300,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
           context.read<GameState>().initZenGame(stacks);
           
           // Formula-based par: deterministic, scales with puzzle complexity, zero computation
-          _currentPar = (params.colors * params.depth * 1.5).ceil();
+          _currentPar = (params.colors * params.depth * 1.2).ceil();
           
           setState(() {
             _isLoading = false;
@@ -496,14 +508,15 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     );
 
     // Calculate stars based on par
+    final undoUsed = gameState.undosRemaining < 3;
     int stars = 1; // 1 star for completing
     if (_currentPar != null && _currentPar! > 0) {
       final par = _currentPar!;
       final threeStarTarget = (par * 0.7).ceil();
       if (gameState.moveCount <= par) {
-        stars = 2; // 2 stars for at or under par
+        stars = 2; // 2 stars for at or under par (undo OK)
       }
-      if (gameState.moveCount <= threeStarTarget && gameState.undosRemaining == 3) {
+      if (gameState.moveCount <= threeStarTarget && !undoUsed) {
         stars = 3; // 3 stars for under 70% of par with no undos
       }
     }
@@ -527,7 +540,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     ProgressionService().addXP(scoreResult.xpEarned).then((rankUp) {
       if (mounted && rankUp != null) {
         setState(() {
-          _lastRankUp = rankUp;
+          _pendingRankUp = rankUp;
         });
       }
     });
@@ -554,8 +567,11 @@ class _ZenModeScreenState extends State<ZenModeScreen>
       _completionMoves = gameState.moveCount;
       _completionStars = stars;
       _coinsEarned = scoreResult.coinsEarned;
+      _completionUndoUsed = undoUsed;
       _lastScore = scoreResult;
-      _newAchievements = newAchievements;
+      _pendingAchievements = newAchievements;
+      _currentAchievementToast = null;
+      _showRankUp = false;
       _showCompletionOverlay = true;
       _justSolvedPuzzle = true; // Trigger garden footer celebration
     });
@@ -576,13 +592,50 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     _preGenerateNextPuzzle();
   }
 
+  /// Called when "Next Puzzle" is tapped on completion overlay.
+  /// Sequences: Completion → Achievement toasts → Rank Up → advance.
   void _advanceAfterCompletion() async {
     if (_isTransitioning) return;
+
+    // Step 1: Dismiss completion overlay
+    setState(() {
+      _showCompletionOverlay = false;
+    });
+
+    // Step 2: Show achievement toasts one at a time
+    while (_pendingAchievements.isNotEmpty) {
+      final achievement = _pendingAchievements.removeAt(0);
+      setState(() {
+        _currentAchievementToast = achievement;
+      });
+      // Wait for toast animation (slide in 0.4s + hold 2s + slide out 0.4s)
+      await Future.delayed(const Duration(milliseconds: 2800));
+      if (!mounted) return;
+      setState(() {
+        _currentAchievementToast = null;
+      });
+      // Brief gap between toasts
+      await Future.delayed(const Duration(milliseconds: 200));
+      if (!mounted) return;
+    }
+
+    // Step 3: Show rank up if pending (holds until tap)
+    if (_pendingRankUp != null) {
+      setState(() {
+        _showRankUp = true;
+      });
+      // Wait until user dismisses rank up (handled by _dismissRankUp)
+      while (_showRankUp && mounted) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+      if (!mounted) return;
+    }
+
+    // Step 4: Actually advance to next puzzle
     _isTransitioning = true;
 
     setState(() {
       _puzzlesSolved++;
-      _showCompletionOverlay = false;
     });
 
     // Save progress
@@ -593,7 +646,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     if (_preGeneratedStacks != null) {
       // Use the pre-generated puzzle — no loading screen!
       final nextParams = _getAdaptiveDifficulty();
-      _currentPar = (nextParams.colors * nextParams.depth * 1.5).ceil();
+      _currentPar = (nextParams.colors * nextParams.depth * 1.2).ceil();
       _fadeController.animateTo(0.0).then((_) {
         if (!mounted) return;
         _initialStacks = _preGeneratedStacks!.map((s) => GameStack(
@@ -687,8 +740,8 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                 // Top bar (hidden in garden view)
                 if (!_showGardenView) _buildTopBar(),
 
-                // Difficulty slider (hidden in garden view)
-                if (!_showGardenView) _buildDifficultySlider(),
+                // Rank indicator + Difficulty slider (hidden in garden view)
+                if (!_showGardenView) _buildRankAndDifficulty(),
 
                 // Stats bar
                 if (!_showGardenView) _buildStatsBar(),
@@ -738,8 +791,9 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                 // Move counter (always visible during gameplay)
                 if (!_showGardenView) _buildMoveCounter(),
 
-                // Bottom bar: stats + action buttons
-                _buildBottomBar(),
+                // Bottom bar: stats + action buttons (hidden during modals)
+                if (!_showCompletionOverlay && !_showSessionSummary && _lastRankUp == null)
+                  _buildBottomBar(),
               ],
             ),
           ),
@@ -775,39 +829,41 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                 currentStreak: StatsService().currentStreak,
                 score: _lastScore?.totalScore ?? 0,
                 xpEarned: _lastScore?.xpEarned ?? 0,
+                undoUsed: _completionUndoUsed,
               ),
             ),
-          // Rank-up overlay (shown after completion overlay is dismissed)
-          if (_lastRankUp != null)
+          // Rank-up overlay (sequenced after achievements)
+          if (_showRankUp && _pendingRankUp != null)
             Positioned.fill(
               child: RankUpOverlay(
-                newRank: _lastRankUp!.newRank,
-                newTitle: _lastRankUp!.newRankDef.title,
-                tierEmoji: _lastRankUp!.newRankDef.emoji,
-                tier: _lastRankUp!.newRankDef.tier,
-                onDismiss: () => setState(() => _lastRankUp = null),
+                newRank: _pendingRankUp!.newRank,
+                newTitle: _pendingRankUp!.newRankDef.title,
+                tierEmoji: _pendingRankUp!.newRankDef.emoji,
+                tier: _pendingRankUp!.newRankDef.tier,
+                onDismiss: () => setState(() {
+                  _showRankUp = false;
+                  _pendingRankUp = null;
+                }),
               ),
             ),
-          // Achievement toasts
-          ..._newAchievements.asMap().entries.map((entry) {
-            final index = entry.key;
-            final achievement = entry.value;
-            return Positioned(
-              top: 40.0 + (index * 140.0), // Stack toasts vertically
+          // Single achievement toast (sequenced one at a time)
+          if (_currentAchievementToast != null)
+            Positioned(
+              top: 40.0,
               left: 0,
               right: 0,
               child: AchievementToast(
-                achievementName: achievement.name,
-                xpReward: achievement.xpReward,
-                coinReward: achievement.coinReward,
+                key: ValueKey(_currentAchievementToast!.id),
+                achievementName: _currentAchievementToast!.name,
+                xpReward: _currentAchievementToast!.xpReward,
+                coinReward: _currentAchievementToast!.coinReward,
                 onDismiss: () {
                   setState(() {
-                    _newAchievements.remove(achievement);
+                    _currentAchievementToast = null;
                   });
                 },
               ),
-            );
-          }),
+            ),
           if (_showSessionSummary)
             Positioned.fill(
               child: ZenSessionSummary(
@@ -933,15 +989,39 @@ class _ZenModeScreenState extends State<ZenModeScreen>
 
           const Spacer(),
 
-          // Toggle move counter
+          // Toggle move counter visibility
           _ZenIconButton(
             icon: _showMoveCounter ? Icons.visibility : Icons.visibility_off,
             onPressed: _toggleMoveCounter,
-            tooltip: 'Toggle moves',
+            tooltip: 'Show/hide move counter',
             isActive: _showMoveCounter,
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildRankAndDifficulty() {
+    final ps = ProgressionService();
+    return Column(
+      children: [
+        // Small rank indicator
+        Padding(
+          padding: const EdgeInsets.only(left: 40, right: 40, bottom: 2),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              '${ps.tierEmoji} ${ps.rankTitle}',
+              style: TextStyle(
+                color: GameColors.textMuted.withValues(alpha: 0.5),
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ),
+        _buildDifficultySlider(),
+      ],
     );
   }
 
@@ -965,6 +1045,13 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                   mainAxisSize: MainAxisSize.min,
                   children: ZenDifficulty.values.map((diff) {
                     final isSelected = _difficulty == diff;
+                    // Color coding per difficulty
+                    final diffColor = switch (diff) {
+                      ZenDifficulty.easy => const Color(0xFF4CAF50),
+                      ZenDifficulty.medium => const Color(0xFFFFB74D),
+                      ZenDifficulty.hard => const Color(0xFFFF9800),
+                      ZenDifficulty.ultra => const Color(0xFFE74C3C),
+                    };
                     return Expanded(
                       child: GestureDetector(
                         onTap: () => _setDifficulty(diff),
@@ -976,8 +1063,8 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                           ),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? GameColors.accent.withValues(alpha: 0.3)
-                                : Colors.transparent,
+                                ? diffColor.withValues(alpha: 0.3)
+                                : GameColors.surface.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -985,8 +1072,8 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: isSelected
-                                  ? GameColors.text
-                                  : GameColors.textMuted,
+                                  ? diffColor
+                                  : GameColors.textMuted.withValues(alpha: 0.6),
                               fontSize: 13,
                               fontWeight: isSelected
                                   ? FontWeight.w600
@@ -1029,18 +1116,16 @@ class _ZenModeScreenState extends State<ZenModeScreen>
             label: 'Streak'
           ),
           _StatChip(
-            icon: Icons.emoji_events, 
-            value: statsService.getBestMoves(difficulty) == 999999 
-                ? '--' 
-                : '${statsService.getBestMoves(difficulty)}', 
-            label: 'Best Moves'
+            icon: Icons.tag, 
+            value: '${_puzzlesSolved + 1}', 
+            label: 'Puzzle'
           ),
           _StatChip(
             icon: Icons.timer, 
             value: _liveStopwatch.isRunning || _liveStopwatch.elapsed.inSeconds > 0
                 ? formatLiveTime()
                 : statsService.formatTime(statsService.getBestTime(difficulty)), 
-            label: _liveStopwatch.isRunning ? 'Time' : 'Best Time'
+            label: 'Time'
           ),
           _StatChip(
             icon: Icons.stars, 
@@ -1172,17 +1257,27 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                   if (!_showGardenView) ...[
                     _ZenActionButton(
                       icon: Icons.undo,
-                      label: 'Undo',
-                      badgeCount: gameState.undosRemaining,
+                      label: gameState.undosRemaining > 0
+                          ? 'Undo (${gameState.undosRemaining})'
+                          : 'Undo (25🪙)',
                       enabled: !_isLoading && gameState.canUndo,
                       onPressed: !_isLoading && gameState.canUndo ? () => gameState.undo() : null,
+                      countText: gameState.undosRemaining > 0
+                          ? '×${gameState.undosRemaining}'
+                          : null,
+                      isExhausted: gameState.undosRemaining <= 0,
                     ),
                     _ZenActionButton(
                       icon: Icons.lightbulb_outline,
-                      label: 'Hint',
-                      badgeCount: _hintsRemaining,
+                      label: _hintsRemaining > 0
+                          ? 'Hint (${_hintsRemaining})'
+                          : 'Hint (25🪙)',
                       enabled: !_isLoading && _hintsRemaining > 0,
                       onPressed: !_isLoading && _hintsRemaining > 0 ? _showHint : null,
+                      countText: _hintsRemaining > 0
+                          ? '×${_hintsRemaining}'
+                          : null,
+                      isExhausted: _hintsRemaining <= 0,
                     ),
                     _ZenActionButton(
                       icon: Icons.refresh,
@@ -1220,16 +1315,18 @@ class _ZenModeScreenState extends State<ZenModeScreen>
 class _ZenActionButton extends StatelessWidget {
   final IconData icon;
   final String label;
-  final int? badgeCount;
   final bool enabled;
   final VoidCallback? onPressed;
+  final String? countText;
+  final bool isExhausted;
 
   const _ZenActionButton({
     required this.icon,
     required this.label,
-    this.badgeCount,
     required this.enabled,
     this.onPressed,
+    this.countText,
+    this.isExhausted = false,
   });
 
   @override
@@ -1257,20 +1354,35 @@ class _ZenActionButton extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Badge(
-              isLabelVisible: badgeCount != null && badgeCount! > 0,
-              label: badgeCount != null ? Text('$badgeCount') : null,
-              child: Icon(icon, color: color, size: 24),
-            ),
+            Icon(icon, color: color, size: 24),
             const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
+            if (countText != null)
+              Text(
+                countText!,
+                style: TextStyle(
+                  color: GameColors.zen,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              )
+            else if (isExhausted)
+              Text(
+                '25🪙',
+                style: TextStyle(
+                  color: GameColors.textMuted.withValues(alpha: 0.5),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
+              )
+            else
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-            ),
           ],
         ),
       ),
@@ -1307,14 +1419,14 @@ class _StatChip extends StatelessWidget {
         children: [
           Icon(
             icon,
-            size: 16,
+            size: 21,
             color: GameColors.zen.withValues(alpha: 0.8),
           ),
           const SizedBox(height: 2),
           Text(
             value,
-            style: TextStyle(
-              color: GameColors.text,
+            style: const TextStyle(
+              color: Colors.white,
               fontSize: 14,
               fontWeight: FontWeight.w600,
             ),
@@ -1338,12 +1450,14 @@ class _ZenIconButton extends StatelessWidget {
   final VoidCallback onPressed;
   final String? tooltip;
   final bool isActive;
+  final String? label;
 
   const _ZenIconButton({
     required this.icon,
     required this.onPressed,
     this.tooltip,
     this.isActive = false,
+    this.label,
   });
 
   @override
@@ -1360,10 +1474,25 @@ class _ZenIconButton extends StatelessWidget {
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(
-            icon,
-            color: GameColors.textMuted.withValues(alpha: isActive ? 0.8 : 0.5),
-            size: 22,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                color: GameColors.textMuted.withValues(alpha: isActive ? 0.8 : 0.5),
+                size: 22,
+              ),
+              if (label != null) ...[
+                const SizedBox(width: 4),
+                Text(
+                  label!,
+                  style: TextStyle(
+                    color: GameColors.textMuted.withValues(alpha: isActive ? 0.7 : 0.4),
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
       ),

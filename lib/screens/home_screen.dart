@@ -281,10 +281,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
-                        Icons.monetization_on,
-                        color: Color(0xFFFFD700),
-                        size: 20,
+                      const Text(
+                        '🪙',
+                        style: TextStyle(fontSize: 18),
                       ),
                       const SizedBox(width: 6),
                       Text(
@@ -731,7 +730,7 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
 
     final random = Random();
     _stars = List.generate(
-      30,
+      15,
       (index) => _Star(
         x: random.nextDouble(),
         y: random.nextDouble(),

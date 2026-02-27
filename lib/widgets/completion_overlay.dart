@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../utils/constants.dart';
 import '../services/haptic_service.dart';
@@ -19,6 +20,7 @@ class CompletionOverlay extends StatefulWidget {
   final int currentStreak;
   final int score;
   final int xpEarned;
+  final bool undoUsed;
 
   const CompletionOverlay({
     super.key,
@@ -36,6 +38,7 @@ class CompletionOverlay extends StatefulWidget {
     this.currentStreak = 0,
     this.score = 0,
     this.xpEarned = 0,
+    this.undoUsed = false,
   });
 
   @override
@@ -215,14 +218,19 @@ class _CompletionOverlayState extends State<CompletionOverlay>
       builder: (context, child) {
         return Stack(
           children: [
-            // Modal barrier to block interaction with underlying UI
-            // Wrap in GestureDetector to absorb any taps that get through
+            // Modal barrier with blur + dark overlay to hide board behind
             Positioned.fill(
               child: GestureDetector(
                 onTap: () {}, // Absorb taps
                 behavior: HitTestBehavior.opaque,
-                child: Container(
-                  color: GameColors.backgroundDark.withValues(alpha: 0.85 * _fadeAnimation.value),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(
+                    sigmaX: 10 * _fadeAnimation.value,
+                    sigmaY: 10 * _fadeAnimation.value,
+                  ),
+                  child: Container(
+                    color: Colors.black.withValues(alpha: 0.6 * _fadeAnimation.value),
+                  ),
                 ),
               ),
             ),
@@ -386,7 +394,7 @@ class _CompletionOverlayState extends State<CompletionOverlay>
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                '+${widget.xpEarned} XP  +${widget.coinsEarned} 💎',
+                                '+${widget.xpEarned} XP  +${widget.coinsEarned} 🪙',
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: GameColors.textMuted.withValues(alpha: 0.9),
@@ -401,7 +409,7 @@ class _CompletionOverlayState extends State<CompletionOverlay>
                                   icon: Icons.touch_app,
                                   label: '${widget.moves}',
                                   subtitle: widget.par != null
-                                      ? 'moves (par ${widget.par})'
+                                      ? 'moves (target ${widget.par})'
                                       : 'moves',
                                 ),
                                 const SizedBox(width: 24),
@@ -411,6 +419,20 @@ class _CompletionOverlayState extends State<CompletionOverlay>
                                   subtitle: 'time',
                                 ),
                               ],
+                            ),
+                            // Undo indicator
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                widget.undoUsed ? 'Undo used ✗' : 'No undo used ✓',
+                                style: TextStyle(
+                                  color: widget.undoUsed
+                                      ? GameColors.textMuted.withValues(alpha: 0.7)
+                                      : const Color(0xFF4CAF50),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                             ),
                             // Coin reward display
                             if (widget.coinsEarned > 0) ...[

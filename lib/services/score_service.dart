@@ -4,7 +4,7 @@ class ScoreService {
   factory ScoreService() => _instance ??= ScoreService._();
   ScoreService._();
 
-  static const int _baseScore = 100;
+  static const int _baseScore = 50;
 
   /// Calculate score for a completed puzzle
   PuzzleScore calculateScore({
@@ -53,9 +53,9 @@ class ScoreService {
     // 8. Total score
     final totalScore = baseScoreValue + flatBonus;
 
-    // 9. XP and coins
-    final xpEarned = (totalScore / 10).round();
-    final coinsEarned = (xpEarned / 10).round().clamp(1, double.infinity).toInt();
+    // 9. XP and coins (reduced for slower progression)
+    final xpEarned = (totalScore / 5).round();
+    final coinsEarned = (totalScore / 8).round().clamp(1, double.infinity).toInt();
 
     return PuzzleScore(
       totalScore: totalScore,
@@ -100,9 +100,9 @@ class ScoreService {
       case 'medium':
         return 1.5;
       case 'hard':
-        return 2.0;
-      case 'ultra':
         return 2.5;
+      case 'ultra':
+        return 4.0;
       default:
         return 1.0;
     }
@@ -111,11 +111,11 @@ class ScoreService {
   double _getStarMultiplier(int stars) {
     switch (stars) {
       case 3:
-        return 3.0;
+        return 2.5; // +150% bonus
       case 2:
-        return 2.0;
+        return 1.5; // +50% bonus
       case 1:
-        return 1.2;
+        return 1.0; // +0% bonus
       default:
         return 1.0;
     }

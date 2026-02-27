@@ -74,6 +74,8 @@ class _ZenGardenScreenState extends State<ZenGardenScreen>
     super.dispose();
   }
 
+  int _selectedTab = 0;
+
   @override
   Widget build(BuildContext context) {
     final state = GardenService.state;
@@ -81,6 +83,37 @@ class _ZenGardenScreenState extends State<ZenGardenScreen>
     
     return Scaffold(
       backgroundColor: Colors.transparent,
+      bottomNavigationBar: Theme(
+        data: Theme.of(context).copyWith(
+          canvasColor: const Color(0xFF1A1A1A),
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _selectedTab,
+          onTap: (index) {
+            if (index == 1) {
+              // Navigate to zen/puzzle mode
+              Navigator.pop(context);
+            } else {
+              setState(() => _selectedTab = index);
+            }
+          },
+          selectedItemColor: const Color(0xFFFFB7C5),
+          unselectedItemColor: Colors.white54,
+          backgroundColor: const Color(0xFF1A1A1A),
+          items: const [
+            BottomNavigationBarItem(
+              icon: Text('🌸', style: TextStyle(fontSize: 20)),
+              activeIcon: Text('🌸', style: TextStyle(fontSize: 24)),
+              label: 'Garden',
+            ),
+            BottomNavigationBarItem(
+              icon: Text('🧩', style: TextStyle(fontSize: 20)),
+              activeIcon: Text('🧩', style: TextStyle(fontSize: 24)),
+              label: 'Puzzle',
+            ),
+          ],
+        ),
+      ),
       body: Stack(
         fit: StackFit.expand,
         children: [

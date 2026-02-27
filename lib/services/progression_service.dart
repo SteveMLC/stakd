@@ -109,7 +109,7 @@ class ProgressionService {
       title: 'Stone Apprentice',
       tier: 'Seedling',
       emoji: '🌱',
-      xpRequired: 500,
+      xpRequired: 1500,
       iconDesc: 'A young plant',
     ),
     RankDefinition(
@@ -117,7 +117,7 @@ class ProgressionService {
       title: 'Block Novice',
       tier: 'Seedling',
       emoji: '🌱',
-      xpRequired: 1500,
+      xpRequired: 4000,
       iconDesc: 'Growing seedling',
     ),
     RankDefinition(
@@ -125,7 +125,7 @@ class ProgressionService {
       title: 'Color Seeker',
       tier: 'Seedling',
       emoji: '🌱',
-      xpRequired: 3000,
+      xpRequired: 8000,
       iconDesc: 'Strong seedling',
     ),
     RankDefinition(
@@ -133,7 +133,7 @@ class ProgressionService {
       title: 'Garden Tender',
       tier: 'Seedling',
       emoji: '🌱',
-      xpRequired: 5500,
+      xpRequired: 14000,
       iconDesc: 'Mature seedling',
     ),
     RankDefinition(
@@ -141,7 +141,7 @@ class ProgressionService {
       title: 'Mindful Stacker',
       tier: 'Sprout',
       emoji: '🌿',
-      xpRequired: 9000,
+      xpRequired: 22000,
       iconDesc: 'Young sprout',
     ),
     RankDefinition(
@@ -149,7 +149,7 @@ class ProgressionService {
       title: 'Balance Keeper',
       tier: 'Sprout',
       emoji: '🌿',
-      xpRequired: 13500,
+      xpRequired: 33000,
       iconDesc: 'Growing sprout',
     ),
     RankDefinition(
@@ -157,7 +157,7 @@ class ProgressionService {
       title: 'Flow Finder',
       tier: 'Sprout',
       emoji: '🌿',
-      xpRequired: 19000,
+      xpRequired: 47000,
       iconDesc: 'Strong sprout',
     ),
     RankDefinition(
@@ -165,7 +165,7 @@ class ProgressionService {
       title: 'Harmony Weaver',
       tier: 'Sprout',
       emoji: '🌿',
-      xpRequired: 26000,
+      xpRequired: 65000,
       iconDesc: 'Flourishing sprout',
     ),
     RankDefinition(
@@ -173,7 +173,7 @@ class ProgressionService {
       title: 'Garden Guardian',
       tier: 'Sprout',
       emoji: '🌿',
-      xpRequired: 35000,
+      xpRequired: 88000,
       iconDesc: 'Mature sprout',
     ),
     RankDefinition(
@@ -181,7 +181,7 @@ class ProgressionService {
       title: 'Zen Adept',
       tier: 'Blossom',
       emoji: '🌸',
-      xpRequired: 46000,
+      xpRequired: 115000,
       iconDesc: 'Early blossom',
     ),
     RankDefinition(
@@ -189,7 +189,7 @@ class ProgressionService {
       title: 'Pattern Master',
       tier: 'Blossom',
       emoji: '🌸',
-      xpRequired: 59000,
+      xpRequired: 148000,
       iconDesc: 'Budding flower',
     ),
     RankDefinition(
@@ -197,7 +197,7 @@ class ProgressionService {
       title: 'Tranquil Mind',
       tier: 'Blossom',
       emoji: '🌸',
-      xpRequired: 74000,
+      xpRequired: 185000,
       iconDesc: 'Opening blossom',
     ),
     RankDefinition(
@@ -205,7 +205,7 @@ class ProgressionService {
       title: 'Color Sage',
       tier: 'Blossom',
       emoji: '🌸',
-      xpRequired: 91000,
+      xpRequired: 228000,
       iconDesc: 'Full bloom',
     ),
     RankDefinition(
@@ -213,7 +213,7 @@ class ProgressionService {
       title: 'Serenity Guide',
       tier: 'Blossom',
       emoji: '🌸',
-      xpRequired: 110000,
+      xpRequired: 275000,
       iconDesc: 'Radiant blossom',
     ),
     RankDefinition(
@@ -221,7 +221,7 @@ class ProgressionService {
       title: 'Wisdom Keeper',
       tier: 'Ancient',
       emoji: '🌳',
-      xpRequired: 132000,
+      xpRequired: 330000,
       iconDesc: 'Young tree',
     ),
     RankDefinition(
@@ -229,7 +229,7 @@ class ProgressionService {
       title: 'Master Stacker',
       tier: 'Ancient',
       emoji: '🌳',
-      xpRequired: 157000,
+      xpRequired: 393000,
       iconDesc: 'Growing tree',
     ),
     RankDefinition(
@@ -237,7 +237,7 @@ class ProgressionService {
       title: 'Enlightened One',
       tier: 'Ancient',
       emoji: '🌳',
-      xpRequired: 185000,
+      xpRequired: 463000,
       iconDesc: 'Strong tree',
     ),
     RankDefinition(
@@ -245,7 +245,7 @@ class ProgressionService {
       title: 'Garden Sage',
       tier: 'Ancient',
       emoji: '🌳',
-      xpRequired: 217000,
+      xpRequired: 543000,
       iconDesc: 'Mighty tree',
     ),
     RankDefinition(
@@ -253,7 +253,7 @@ class ProgressionService {
       title: 'Zen Master',
       tier: 'Ancient',
       emoji: '🌳',
-      xpRequired: 253000,
+      xpRequired: 633000,
       iconDesc: 'Ancient tree',
     ),
     RankDefinition(
@@ -261,7 +261,7 @@ class ProgressionService {
       title: 'Eternal Gardener',
       tier: 'Transcendent',
       emoji: '🏔️',
-      xpRequired: 295000,
+      xpRequired: 738000,
       iconDesc: 'Mountain peak',
     ),
     RankDefinition(
@@ -269,7 +269,7 @@ class ProgressionService {
       title: 'Cosmic Arranger',
       tier: 'Transcendent',
       emoji: '🏔️',
-      xpRequired: 343000,
+      xpRequired: 858000,
       iconDesc: 'Snowy summit',
     ),
     RankDefinition(
@@ -277,7 +277,7 @@ class ProgressionService {
       title: 'Harmony Eternal',
       tier: 'Transcendent',
       emoji: '🏔️',
-      xpRequired: 398000,
+      xpRequired: 995000,
       iconDesc: 'Celestial peak',
     ),
     RankDefinition(
@@ -285,7 +285,7 @@ class ProgressionService {
       title: 'Nirvana Seeker',
       tier: 'Transcendent',
       emoji: '🏔️',
-      xpRequired: 461000,
+      xpRequired: 1153000,
       iconDesc: 'Divine mountain',
     ),
     RankDefinition(
@@ -293,7 +293,7 @@ class ProgressionService {
       title: 'Infinite Keeper',
       tier: 'Transcendent',
       emoji: '🏔️',
-      xpRequired: 533000,
+      xpRequired: 1333000,
       iconDesc: 'Eternal summit',
     ),
   ];

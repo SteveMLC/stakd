@@ -212,7 +212,7 @@ class _ScoreBreakdownState extends State<ScoreBreakdown>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _buildReward('💎', widget.coinsEarned, const Color(0xFF64B5F6)),
+                _buildReward('🪙', widget.coinsEarned, const Color(0xFFFFD700)),
                 const SizedBox(width: 24),
                 _buildReward('⭐', widget.xpEarned, const Color(0xFF4CAF50)),
               ],

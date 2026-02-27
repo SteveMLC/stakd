@@ -38,13 +38,32 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
       case AchievementCategoryExt.streak:
         return '🔥';
       case AchievementCategoryExt.specialBlocks:
-        return '🧊';
+        return '❄️';
       case AchievementCategoryExt.garden:
-        return '🌸';
+        return '🌿';
       case AchievementCategoryExt.variety:
         return '🎨';
       case AchievementCategoryExt.hidden:
-        return '🎁';
+        return '🔮';
+    }
+  }
+
+  Color _getCategoryColor(AchievementCategoryExt category) {
+    switch (category) {
+      case AchievementCategoryExt.mastery:
+        return const Color(0xFFE74C3C); // red
+      case AchievementCategoryExt.speed:
+        return const Color(0xFF3498DB); // blue
+      case AchievementCategoryExt.streak:
+        return const Color(0xFFFF9800); // orange
+      case AchievementCategoryExt.specialBlocks:
+        return const Color(0xFF9B59B6); // purple
+      case AchievementCategoryExt.garden:
+        return const Color(0xFF4CAF50); // green
+      case AchievementCategoryExt.variety:
+        return const Color(0xFFFF9800); // orange
+      case AchievementCategoryExt.hidden:
+        return const Color(0xFF9E9E9E); // gray
     }
   }
 
@@ -172,7 +191,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
         children: [
           _buildStatItem('Unlocked', '${_achievementService.unlockedCount}/${_achievementService.totalCount}', Icons.stars),
           _buildStatItem('Total XP', '+$_totalXPEarned', Icons.flash_on),
-          _buildStatItem('Total Coins', '+$_totalCoinsEarned 💎', Icons.monetization_on),
+          _buildStatItem('Total Gems', '+$_totalCoinsEarned 🪙', Icons.diamond),
         ],
       ),
     );
@@ -316,15 +335,19 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Left: Category emoji or icon
+                // Left: Category emoji with color-coded background
                 Container(
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
                     color: isUnlocked 
-                        ? const Color(0xFFFFD700).withValues(alpha: 0.2)
+                        ? _getCategoryColor(def.category).withValues(alpha: 0.2)
                         : GameColors.surface.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(8),
+                    border: isUnlocked ? Border.all(
+                      color: _getCategoryColor(def.category).withValues(alpha: 0.4),
+                      width: 1,
+                    ) : null,
                   ),
                   child: Center(
                     child: Text(
@@ -383,7 +406,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
                             ),
                             const SizedBox(width: 12),
                             Text(
-                              '+${def.coinReward} 💎',
+                              '+${def.coinReward} 🪙',
                               style: TextStyle(
                                 color: const Color(0xFFFFD700),
                                 fontSize: 12,

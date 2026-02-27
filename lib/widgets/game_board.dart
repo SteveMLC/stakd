@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/game_state.dart';
 import '../models/layer_model.dart';
 import '../models/stack_model.dart';
@@ -55,6 +56,8 @@ class _GameBoardState extends State<GameBoard>
   int? _showChainLevel;
   Color? _flashColor;
   bool _showConfetti = false;
+  bool _showComboTooltip = false;
+  bool _hasSeenComboTooltip = false;
   late AnimationController _shakeController;
   late Animation<double> _shakeAnimation;
 
@@ -70,6 +73,11 @@ class _GameBoardState extends State<GameBoard>
     super.initState();
     // Use provided keys or create new ones
     _stackKeys = widget.stackKeys ?? {};
+
+    // Check if combo tooltip has been seen
+    SharedPreferences.getInstance().then((prefs) {
+      _hasSeenComboTooltip = prefs.getBool('has_seen_combo_tooltip') ?? false;
+    });
 
     // Initialize shake animation
     _shakeController = AnimationController(
@@ -326,6 +334,17 @@ class _GameBoardState extends State<GameBoard>
                             setState(() {
                               _showComboMultiplier = combo;
                             });
+                            // Show one-time tooltip on first combo
+                            if (!_hasSeenComboTooltip) {
+                              _hasSeenComboTooltip = true;
+                              setState(() => _showComboTooltip = true);
+                              SharedPreferences.getInstance().then((prefs) {
+                                prefs.setBool('has_seen_combo_tooltip', true);
+                              });
+                              Future.delayed(const Duration(seconds: 3), () {
+                                if (mounted) setState(() => _showComboTooltip = false);
+                              });
+                            }
                           }
                         },
                       ),
@@ -339,22 +358,42 @@ class _GameBoardState extends State<GameBoard>
                           });
                         },
                       ),
-                    // Combo popup overlay - positioned at top to avoid overlapping stacks
+                    // Combo popup overlay - compact badge in top-right
                     if (_showComboMultiplier != null &&
                         _showComboMultiplier! >= 3)
                       Positioned(
-                        top: 8,
-                        left: 0,
-                        right: 0,
+                        top: 4,
+                        right: 8,
                         child: IgnorePointer(
-                          child: Center(
-                            child: ComboPopup(
-                              comboMultiplier: _showComboMultiplier!,
-                              onComplete: () {
-                                setState(() {
-                                  _showComboMultiplier = null;
-                                });
-                              },
+                          child: ComboPopup(
+                            comboMultiplier: _showComboMultiplier!,
+                            onComplete: () {
+                              setState(() {
+                                _showComboMultiplier = null;
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                    // Combo tooltip (one-time)
+                    if (_showComboTooltip)
+                      Positioned(
+                        top: 28,
+                        right: 8,
+                        child: IgnorePointer(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.8),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Text(
+                              '🔥 Same-color streak!\nStack matching colors for bonus points',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                height: 1.3,
+                              ),
                             ),
                           ),
                         ),
@@ -1409,35 +1448,24 @@ class _MultiGrabIndicator extends StatelessWidget {
       builder: (context, child) {
         final pulse = animation.value;
         return Tooltip(
-          message: 'Multi-grab: $count blocks can be moved together',
+          message: '🔥 Same-color streak! Stack matching colors for bonus points',
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.3 + pulse * 0.1),
-              borderRadius: BorderRadius.circular(8),
+              color: Colors.black.withValues(alpha: 0.4 + pulse * 0.1),
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.3 + pulse * 0.15),
+                color: const Color(0xFFFFD700).withValues(alpha: 0.4 + pulse * 0.2),
                 width: 1.5,
               ),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.layers,
-                  size: 13,
-                  color: Colors.white.withValues(alpha: 0.7),
-                ),
-                const SizedBox(width: 2),
-                Text(
-                  '🔥$count',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white.withValues(alpha: 0.8),
-                  ),
-                ),
-              ],
+            child: Text(
+              '🔥$count',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: Colors.white.withValues(alpha: 0.9),
+              ),
             ),
           ),
         );

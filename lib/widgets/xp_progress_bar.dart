@@ -148,8 +148,9 @@ class _XPProgressBarState extends State<XPProgressBar>
         Text(
           'Next: ${widget.nextRankTitle}',
           style: const TextStyle(
-            color: Colors.white38,
-            fontSize: 10,
+            color: Colors.white60,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],

@@ -124,7 +124,7 @@ class _AchievementToastState extends State<AchievementToast>
                 children: [
                   _buildReward('⭐', widget.xpReward, const Color(0xFF4CAF50)),
                   const SizedBox(width: 16),
-                  _buildReward('💎', widget.coinReward, const Color(0xFF64B5F6)),
+                  _buildReward('🪙', widget.coinReward, const Color(0xFFFFD700)),
                 ],
               ),
             ],

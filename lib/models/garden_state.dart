@@ -54,36 +54,43 @@ class GardenState {
   static const thresholds = [0, 5, 15, 30, 50, 75, 100, 150, 200];
 
   /// Get progress to next stage (0.0 - 1.0)
+  /// Stage boundaries: stage 0 = 0 puzzles, stage 1 = 1-5, stage 2 = 6-15, etc.
+  /// thresholds[i] is the UPPER bound of stage i (puzzles needed to leave stage i).
   double get progressToNextStage {
     if (currentStage >= 9) return 1.0;
 
-    final current =
-        currentStage < thresholds.length ? thresholds[currentStage] : 200;
-    final next = currentStage + 1 < thresholds.length
-        ? thresholds[currentStage + 1]
-        : 999;
+    final prev = currentStage > 0 && currentStage - 1 < thresholds.length
+        ? thresholds[currentStage - 1]
+        : 0;
+    final end = currentStage < thresholds.length
+        ? thresholds[currentStage]
+        : 200;
 
-    return ((totalPuzzlesSolved - current) / (next - current))
-        .clamp(0.0, 1.0);
+    final range = end - prev;
+    if (range <= 0) return 1.0;
+
+    return ((totalPuzzlesSolved - prev) / range).clamp(0.0, 1.0);
   }
 
   /// Get puzzles solved in current stage
   int get puzzlesSolvedInStage {
     if (currentStage >= 9) return totalPuzzlesSolved;
-    final current =
-        currentStage < thresholds.length ? thresholds[currentStage] : 200;
-    return totalPuzzlesSolved - current;
+    final prev = currentStage > 0 && currentStage - 1 < thresholds.length
+        ? thresholds[currentStage - 1]
+        : 0;
+    return (totalPuzzlesSolved - prev).clamp(0, 999);
   }
 
   /// Get puzzles needed to reach next stage (from current stage start)
   int get puzzlesNeededForNextStage {
     if (currentStage >= 9) return 0;
-    final current =
-        currentStage < thresholds.length ? thresholds[currentStage] : 200;
-    final next = currentStage + 1 < thresholds.length
-        ? thresholds[currentStage + 1]
-        : 999;
-    return next - current;
+    final prev = currentStage > 0 && currentStage - 1 < thresholds.length
+        ? thresholds[currentStage - 1]
+        : 0;
+    final end = currentStage < thresholds.length
+        ? thresholds[currentStage]
+        : 200;
+    return end - prev;
   }
 
   /// Get stage icon emoji
