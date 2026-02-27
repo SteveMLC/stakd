@@ -413,6 +413,26 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     final elements = <Widget>[];
     final waterScale = _archetype.scaleMultiplierFor('water');
 
+    // Pond empty (before full pond unlocks)
+    if (isUnlocked('pond_empty') && !isUnlocked('pond_full')) {
+      elements.add(
+        Positioned(
+          bottom: 160,
+          right: 40,
+          child: _withVariation('pond_empty', GardenElement(
+            elementId: 'pond_empty',
+            revealType: GardenRevealType.rippleIn,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_pond_empty.png',
+              width: (180 * waterScale).round().toDouble(),
+              height: (110 * waterScale).round().toDouble(),
+              fit: BoxFit.contain,
+            ),
+          )),
+        ),
+      );
+    }
+
     // Stage 4: Pond
     if (isUnlocked('pond_full')) {
       elements.add(
@@ -598,6 +618,166 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
     
+    // Stage 2: Grass 2
+    if (isUnlocked('grass_2')) {
+      elements.add(
+        Positioned(
+          bottom: 200,
+          left: 50,
+          child: _withVariation('grass_2', GardenElement(
+            elementId: 'grass_2',
+            revealType: GardenRevealType.growUp,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_grass_2.png',
+              width: (90 * floraScale).round().toDouble(),
+              height: (120 * floraScale).round().toDouble(),
+              fit: BoxFit.contain,
+            ),
+          )),
+        ),
+      );
+    }
+
+    // Stage 2: Grass 2b
+    if (isUnlocked('grass_2_b')) {
+      elements.add(
+        Positioned(
+          bottom: 190,
+          left: 300,
+          child: _withVariation('grass_2_b', GardenElement(
+            elementId: 'grass_2_b',
+            revealType: GardenRevealType.growUp,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_grass_2_b.png',
+              width: (85 * floraScale).round().toDouble(),
+              height: (110 * floraScale).round().toDouble(),
+              fit: BoxFit.contain,
+            ),
+          )),
+        ),
+      );
+    }
+
+    // Stage 2: White flowers
+    if (isUnlocked('flowers_white')) {
+      elements.add(
+        Positioned(
+          bottom: 180,
+          left: 130,
+          child: _withVariation('flowers_white', GardenElement(
+            elementId: 'flowers_white',
+            revealType: GardenRevealType.bloomOut,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_flowers_white.png',
+              width: (70 * floraScale).round().toDouble(),
+              height: (80 * floraScale).round().toDouble(),
+              fit: BoxFit.contain,
+            ),
+          )),
+        ),
+      );
+    }
+
+    // Stage 2: Yellow flowers
+    if (isUnlocked('flowers_yellow')) {
+      elements.add(
+        Positioned(
+          bottom: 170,
+          left: 230,
+          child: _withVariation('flowers_yellow', GardenElement(
+            elementId: 'flowers_yellow',
+            revealType: GardenRevealType.bloomOut,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_flowers_yellow.png',
+              width: (75 * floraScale).round().toDouble(),
+              height: (85 * floraScale).round().toDouble(),
+              fit: BoxFit.contain,
+            ),
+          )),
+        ),
+      );
+    }
+
+    // Stage 2: Purple flowers
+    if (isUnlocked('flowers_purple')) {
+      elements.add(
+        Positioned(
+          bottom: 220,
+          left: 260,
+          child: _withVariation('flowers_purple', GardenElement(
+            elementId: 'flowers_purple',
+            revealType: GardenRevealType.bloomOut,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_flowers_purple.png',
+              width: (70 * floraScale).round().toDouble(),
+              height: (90 * floraScale).round().toDouble(),
+              fit: BoxFit.contain,
+            ),
+          )),
+        ),
+      );
+    }
+
+    // Stage 2: Grass 3 (tall)
+    if (isUnlocked('grass_3')) {
+      elements.add(
+        Positioned(
+          bottom: 250,
+          left: 10,
+          child: _withVariation('grass_3', GardenElement(
+            elementId: 'grass_3',
+            revealType: GardenRevealType.growUp,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_grass_3.png',
+              width: (100 * floraScale).round().toDouble(),
+              height: (150 * floraScale).round().toDouble(),
+              fit: BoxFit.contain,
+            ),
+          )),
+        ),
+      );
+    }
+
+    // Stage 3: Young tree
+    if (isUnlocked('tree_young')) {
+      elements.add(
+        Positioned(
+          bottom: 300,
+          left: 60,
+          child: _withVariation('tree_young', GardenElement(
+            elementId: 'tree_young',
+            revealType: GardenRevealType.growUp,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_tree_young.png',
+              width: (140 * floraScale).round().toDouble(),
+              height: (180 * floraScale).round().toDouble(),
+              fit: BoxFit.contain,
+            ),
+          )),
+        ),
+      );
+    }
+
+    // Stage 4: Autumn tree
+    if (isUnlocked('tree_autumn')) {
+      elements.add(
+        Positioned(
+          bottom: 350,
+          left: 250,
+          child: _withVariation('tree_autumn', GardenElement(
+            elementId: 'tree_autumn',
+            revealType: GardenRevealType.growUp,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_tree_autumn.png',
+              width: (160 * floraScale).round().toDouble(),
+              height: (200 * floraScale).round().toDouble(),
+              fit: BoxFit.contain,
+            ),
+          )),
+        ),
+      );
+    }
+
     // Stage 3: Bamboo (replacing old sapling)
     if (stage >= 3) {
       elements.add(
@@ -697,6 +877,46 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
   Widget _buildStructures() {
     final elements = <Widget>[];
     final structureScale = _archetype.scaleMultiplierFor('structure');
+
+    // Bench
+    if (isUnlocked('bench')) {
+      elements.add(
+        Positioned(
+          bottom: 120,
+          left: 200,
+          child: _withVariation('bench', GardenElement(
+            elementId: 'bench',
+            revealType: GardenRevealType.fadeScale,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_bench.png',
+              width: (120 * structureScale).round().toDouble(),
+              height: (70 * structureScale).round().toDouble(),
+              fit: BoxFit.contain,
+            ),
+          )),
+        ),
+      );
+    }
+
+    // Pagoda
+    if (isUnlocked('pagoda')) {
+      elements.add(
+        Positioned(
+          bottom: 200,
+          left: 150,
+          child: _withVariation('pagoda', GardenElement(
+            elementId: 'pagoda',
+            revealType: GardenRevealType.fadeScale,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_pagoda.png',
+              width: (90 * structureScale).round().toDouble(),
+              height: (140 * structureScale).round().toDouble(),
+              fit: BoxFit.contain,
+            ),
+          )),
+        ),
+      );
+    }
 
     // Stage 5: Lantern
     if (isUnlocked('lantern')) {
@@ -1085,6 +1305,86 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
+    // Stage 0: Grass base 2
+    if (isUnlocked('grass_base_2')) {
+      elements.add(
+        Positioned(
+          bottom: 30,
+          left: 200,
+          child: _withVariation('grass_base_2', GardenElement(
+            elementId: 'grass_base_2',
+            revealType: GardenRevealType.growUp,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_grass_base_2.png',
+              width: 110,
+              height: 80,
+              fit: BoxFit.contain,
+            ),
+          )),
+        ),
+      );
+    }
+
+    // Stage 0: Grass base 3
+    if (isUnlocked('grass_base_3')) {
+      elements.add(
+        Positioned(
+          bottom: 25,
+          left: 310,
+          child: _withVariation('grass_base_3', GardenElement(
+            elementId: 'grass_base_3',
+            revealType: GardenRevealType.growUp,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_grass_base_3.png',
+              width: 120,
+              height: 90,
+              fit: BoxFit.contain,
+            ),
+          )),
+        ),
+      );
+    }
+
+    // Stage 1: Grass patch 1
+    if (isUnlocked('grass_1')) {
+      elements.add(
+        Positioned(
+          bottom: 150,
+          left: 20,
+          child: _withVariation('grass_1', GardenElement(
+            elementId: 'grass_1',
+            revealType: GardenRevealType.growUp,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_grass_1.png',
+              width: 80,
+              height: 100,
+              fit: BoxFit.contain,
+            ),
+          )),
+        ),
+      );
+    }
+
+    // Stage 1: Grass patch 1b
+    if (isUnlocked('grass_1_b')) {
+      elements.add(
+        Positioned(
+          bottom: 130,
+          left: 280,
+          child: _withVariation('grass_1_b', GardenElement(
+            elementId: 'grass_1_b',
+            revealType: GardenRevealType.growUp,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_grass_1_b.png',
+              width: 75,
+              height: 95,
+              fit: BoxFit.contain,
+            ),
+          )),
+        ),
+      );
+    }
+
     // Stage 3: Medium rocks (replaces sapling)
     if (isUnlocked('sapling')) {
       elements.add(
@@ -1124,6 +1424,21 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
 
   // Mapping of element IDs to their image asset paths and approximate positions
   static const _silhouetteAssets = <String, String>{
+    'grass_base_2': 'assets/images/zen-garden/zen_grass_base_2.png',
+    'grass_base_3': 'assets/images/zen-garden/zen_grass_base_3.png',
+    'grass_1': 'assets/images/zen-garden/zen_grass_1.png',
+    'grass_1_b': 'assets/images/zen-garden/zen_grass_1_b.png',
+    'grass_2': 'assets/images/zen-garden/zen_grass_2.png',
+    'grass_2_b': 'assets/images/zen-garden/zen_grass_2_b.png',
+    'grass_3': 'assets/images/zen-garden/zen_grass_3.png',
+    'flowers_white': 'assets/images/zen-garden/zen_flowers_white.png',
+    'flowers_yellow': 'assets/images/zen-garden/zen_flowers_yellow.png',
+    'flowers_purple': 'assets/images/zen-garden/zen_flowers_purple.png',
+    'tree_young': 'assets/images/zen-garden/zen_tree_young.png',
+    'tree_autumn': 'assets/images/zen-garden/zen_tree_autumn.png',
+    'bench': 'assets/images/zen-garden/zen_bench.png',
+    'pagoda': 'assets/images/zen-garden/zen_pagoda.png',
+    'pond_empty': 'assets/images/zen-garden/zen_pond_empty.png',
     'bush_small': 'assets/images/zen-garden/zen_shrub.png',
     'zen_bamboo': 'assets/images/zen-garden/zen_bamboo.png',
     'pond_full': 'assets/images/zen-garden/zen_pond.png',
@@ -1137,6 +1452,21 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
 
   // Positions and sizes for silhouette previews (bottom, left, width, height)
   static const _silhouetteLayout = <String, List<double>>{
+    'grass_base_2': [30, 200, 110, 80],
+    'grass_base_3': [25, 310, 120, 90],
+    'grass_1': [150, 20, 80, 100],
+    'grass_1_b': [130, 280, 75, 95],
+    'grass_2': [200, 50, 90, 120],
+    'grass_2_b': [190, 300, 85, 110],
+    'grass_3': [250, 10, 100, 150],
+    'flowers_white': [180, 130, 70, 80],
+    'flowers_yellow': [170, 230, 75, 85],
+    'flowers_purple': [220, 260, 70, 90],
+    'tree_young': [300, 60, 140, 180],
+    'tree_autumn': [350, 250, 160, 200],
+    'bench': [120, 200, 120, 70],
+    'pagoda': [200, 150, 90, 140],
+    'pond_empty': [160, 200, 180, 110],
     'bush_small': [145, 180, 95, 70],
     'zen_bamboo': [160, 40, 65, 190],
     'pond_full': [160, 200, 210, 125],
