@@ -127,14 +127,19 @@ class _CompletionOverlayState extends State<CompletionOverlay>
   }
 
   void _generateConfetti() {
-    for (int i = 0; i < 50; i++) {
+    // 2x particles for 3-star completions
+    final count = widget.stars >= 3 ? 100 : 50;
+    final shapes = [0, 1, 2]; // rect, circle, star
+    for (int i = 0; i < count; i++) {
       _confetti.add(_ConfettiParticle(
         x: _random.nextDouble(),
         delay: _random.nextDouble() * 0.3,
         speed: 0.3 + _random.nextDouble() * 0.5,
         rotation: _random.nextDouble() * 2 * pi,
+        rotationSpeed: (_random.nextDouble() - 0.5) * 0.15,
         color: GameColors.palette[_random.nextInt(GameColors.palette.length)],
         size: 8 + _random.nextDouble() * 8,
+        shape: shapes[_random.nextInt(shapes.length)],
       ));
     }
   }
@@ -595,16 +600,20 @@ class _ConfettiParticle {
   final double delay;
   final double speed;
   final double rotation;
+  final double rotationSpeed;
   final Color color;
   final double size;
+  final int shape; // 0=rect, 1=circle, 2=star
 
   _ConfettiParticle({
     required this.x,
     required this.delay,
     required this.speed,
     required this.rotation,
+    this.rotationSpeed = 0.0,
     required this.color,
     required this.size,
+    this.shape = 0,
   });
 }
 
@@ -624,7 +633,7 @@ class _ConfettiPainter extends CustomPainter {
       final x = p.x * size.width;
       final y = effectiveProgress * size.height * p.speed;
       final opacity = 1.0 - effectiveProgress;
-      final rotation = p.rotation + effectiveProgress * 4;
+      final rotation = p.rotation + effectiveProgress * 4 + effectiveProgress * p.rotationSpeed * 20;
 
       canvas.save();
       canvas.translate(x, y);
@@ -634,12 +643,39 @@ class _ConfettiPainter extends CustomPainter {
         ..color = p.color.withValues(alpha: opacity)
         ..style = PaintingStyle.fill;
 
-      canvas.drawRect(
-        Rect.fromCenter(center: Offset.zero, width: p.size, height: p.size * 0.6),
-        paint,
-      );
+      switch (p.shape) {
+        case 1: // circle
+          canvas.drawCircle(Offset.zero, p.size * 0.4, paint);
+          break;
+        case 2: // star
+          _drawStar(canvas, paint, p.size * 0.5);
+          break;
+        default: // rectangle
+          canvas.drawRect(
+            Rect.fromCenter(center: Offset.zero, width: p.size, height: p.size * 0.6),
+            paint,
+          );
+      }
       canvas.restore();
     }
+  }
+
+  void _drawStar(Canvas canvas, Paint paint, double radius) {
+    final path = Path();
+    final innerRadius = radius * 0.4;
+    for (int i = 0; i < 10; i++) {
+      final r = i.isEven ? radius : innerRadius;
+      final angle = (i * pi / 5) - pi / 2;
+      final x = r * cos(angle);
+      final y = r * sin(angle);
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    path.close();
+    canvas.drawPath(path, paint);
   }
 
   @override

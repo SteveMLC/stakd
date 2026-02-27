@@ -532,6 +532,39 @@ class GameState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Force undo without checking remaining (paid undo)
+  void forceUndo() {
+    if (_moveHistory.isEmpty) return;
+
+    final lastMove = _moveHistory.removeLast();
+
+    if (lastMove.isMultiGrab) {
+      _stacks[lastMove.toStackIndex] = _stacks[lastMove.toStackIndex]
+          .withTopGroupRemoved(lastMove.multiLayers!.length);
+      _stacks[lastMove.fromStackIndex] = _stacks[lastMove.fromStackIndex]
+          .withLayersAdded(lastMove.multiLayers!);
+    } else {
+      _stacks[lastMove.toStackIndex] = _stacks[lastMove.toStackIndex]
+          .withTopLayerRemoved();
+      _stacks[lastMove.fromStackIndex] = _stacks[lastMove.fromStackIndex]
+          .withLayerAdded(lastMove.layer);
+    }
+
+    _moveCount--;
+    _selectedStackIndex = -1;
+    _isComplete = false;
+    _recentlyCleared = [];
+    _animatingLayer = null;
+    _comboCount = 0;
+    _currentChainLevel = 0;
+    _isMultiGrabMode = false;
+    _multiGrabLayers = null;
+    _unstackSlotIndex = null;
+    _unstakedLayers = [];
+
+    notifyListeners();
+  }
+
   /// Add undo from rewarded ad
   void addUndo() {
     _undosRemaining += 3;

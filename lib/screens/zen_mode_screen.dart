@@ -254,6 +254,43 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     }
   }
 
+  void _offerPaidUndo(GameState gameState) async {
+    final coins = await CurrencyService().getCoins();
+    if (!mounted) return;
+    if (coins < 25) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Not enough coins for undo (25 coins needed)')),
+      );
+      return;
+    }
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: GameColors.surface,
+        title: Text('Use Undo?', style: TextStyle(color: GameColors.text)),
+        content: Text('Spend 25 coins for an extra undo?\n\nBalance: $coins 🪙',
+            style: TextStyle(color: GameColors.textMuted)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(backgroundColor: GameColors.accent),
+            child: const Text('Undo (25 🪙)'),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true && mounted) {
+      final spent = await CurrencyService().spendCoins(25);
+      if (spent) {
+        gameState.forceUndo();
+      }
+    }
+  }
+
   void _dismissHint() {
     setState(() {
       _showingHint = false;
@@ -837,7 +874,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                 if (!_showGardenView) _buildMoveCounter(),
 
                 // Bottom bar: stats + action buttons (hidden during modals)
-                if (!_showCompletionOverlay && !_showSessionSummary && _lastRankUp == null)
+                if (!_showCompletionOverlay && !_showSessionSummary && _pendingRankUp == null)
                   _buildBottomBar(),
               ],
             ),
@@ -1315,12 +1352,12 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                     _ZenActionButton(
                       icon: Icons.lightbulb_outline,
                       label: _hintsRemaining > 0
-                          ? 'Hint (${_hintsRemaining})'
-                          : 'Hint (25🪙)',
-                      enabled: !_isLoading && _hintsRemaining > 0,
-                      onPressed: !_isLoading && _hintsRemaining > 0 ? _showHint : null,
+                          ? 'Hint ($_hintsRemaining)'
+                          : 'Hint (50🪙)',
+                      enabled: !_isLoading,
+                      onPressed: !_isLoading ? _showHint : null,
                       countText: _hintsRemaining > 0
-                          ? '×${_hintsRemaining}'
+                          ? '×$_hintsRemaining'
                           : null,
                       isExhausted: _hintsRemaining <= 0,
                     ),
