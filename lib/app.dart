@@ -1,11 +1,47 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'screens/home_screen.dart';
+import 'services/audio_service.dart';
 import 'services/theme_service.dart';
+import 'services/zen_audio_service.dart';
 import 'utils/constants.dart';
 
-class StakdApp extends StatelessWidget {
+class StakdApp extends StatefulWidget {
   const StakdApp({super.key});
+
+  @override
+  State<StakdApp> createState() => _StakdAppState();
+}
+
+class _StakdAppState extends State<StakdApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final audioService = AudioService();
+    final zenAudioService = ZenAudioService();
+
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      unawaited(audioService.pauseForLifecycle());
+      unawaited(zenAudioService.pauseForLifecycle());
+    } else if (state == AppLifecycleState.resumed) {
+      unawaited(audioService.resumeFromLifecycle());
+      unawaited(zenAudioService.resumeFromLifecycle());
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -13,10 +49,10 @@ class StakdApp extends StatelessWidget {
     return Consumer<ThemeService>(
       builder: (context, themeService, child) {
         final theme = themeService.currentTheme;
-        
+
         // Determine brightness based on background color luminance
         final isDark = theme.backgroundColor.computeLuminance() < 0.5;
-        
+
         return MaterialApp(
           title: 'SortBloom',
           debugShowCheckedModeBanner: false,
@@ -24,19 +60,20 @@ class StakdApp extends StatelessWidget {
             useMaterial3: true,
             brightness: isDark ? Brightness.dark : Brightness.light,
             scaffoldBackgroundColor: theme.backgroundColor,
-            colorScheme: isDark
-                ? ColorScheme.dark(
-                    primary: theme.accentColor,
-                    secondary: theme.accentColor,
-                    surface: theme.surfaceColor,
-                    onSurface: theme.textColor,
-                  )
-                : ColorScheme.light(
-                    primary: theme.accentColor,
-                    secondary: theme.accentColor,
-                    surface: theme.surfaceColor,
-                    onSurface: theme.textColor,
-                  ),
+            colorScheme:
+                isDark
+                    ? ColorScheme.dark(
+                      primary: theme.accentColor,
+                      secondary: theme.accentColor,
+                      surface: theme.surfaceColor,
+                      onSurface: theme.textColor,
+                    )
+                    : ColorScheme.light(
+                      primary: theme.accentColor,
+                      secondary: theme.accentColor,
+                      surface: theme.surfaceColor,
+                      onSurface: theme.textColor,
+                    ),
             textTheme: TextTheme(
               displayLarge: TextStyle(
                 fontSize: 48,

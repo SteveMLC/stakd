@@ -13,6 +13,8 @@ class AudioService {
   bool _soundEnabled = true;
   bool _musicEnabled = true;
   bool _initialized = false;
+  bool _isMusicPlaying = false;
+  bool _resumeMusicOnForeground = false;
   final Set<String> _failedSounds = {};
 
   bool get soundEnabled => _soundEnabled;
@@ -123,6 +125,7 @@ class AudioService {
 
     try {
       await _musicPlayer.play(AssetSource('sounds/music.mp3'));
+      _isMusicPlaying = true;
     } catch (e) {
       debugPrint('Error playing music: $e');
     }
@@ -132,6 +135,7 @@ class AudioService {
   Future<void> stopMusic() async {
     try {
       await _musicPlayer.stop();
+      _isMusicPlaying = false;
     } catch (e) {
       debugPrint('Error stopping music: $e');
     }
@@ -164,6 +168,31 @@ class AudioService {
       startMusic();
     } else {
       stopMusic();
+    }
+  }
+
+  /// Pause audio when app goes to background.
+  Future<void> pauseForLifecycle() async {
+    try {
+      _resumeMusicOnForeground = _isMusicPlaying;
+      await _musicPlayer.pause();
+      await _sfxPlayer.stop();
+      _isMusicPlaying = false;
+    } catch (e) {
+      debugPrint('Error pausing audio for lifecycle: $e');
+    }
+  }
+
+  /// Resume audio after returning from background if it was previously playing.
+  Future<void> resumeFromLifecycle() async {
+    try {
+      if (_resumeMusicOnForeground && _musicEnabled) {
+        await _musicPlayer.resume();
+        _isMusicPlaying = true;
+      }
+      _resumeMusicOnForeground = false;
+    } catch (e) {
+      debugPrint('Error resuming audio for lifecycle: $e');
     }
   }
 

@@ -26,6 +26,8 @@ class ZenAudioService {
   bool _initialized = false;
   bool _isNightMode = false;
   bool _hasWater = false;
+  bool _ambienceActive = false;
+  bool _resumeAmbienceOnForeground = false;
   double _masterVolume = 0.7;
 
   // Individual layer volumes
@@ -69,6 +71,7 @@ class ZenAudioService {
 
     _isNightMode = isNight;
     _hasWater = hasWater;
+    _ambienceActive = true;
 
     // Always play wind
     await _windPlayer.setVolume(_windVolume * _masterVolume);
@@ -96,6 +99,7 @@ class ZenAudioService {
 
   /// Stop all ambient audio
   Future<void> stopAmbience() async {
+    _ambienceActive = false;
     await _windPlayer.pause();
     await _birdsPlayer.pause();
     await _cricketsPlayer.pause();
@@ -222,6 +226,21 @@ class ZenAudioService {
   double get masterVolume => _masterVolume;
   bool get isNightMode => _isNightMode;
   bool get hasWater => _hasWater;
+
+  /// Pause zen audio when app is backgrounded.
+  Future<void> pauseForLifecycle() async {
+    _resumeAmbienceOnForeground = _ambienceActive;
+    await stopAmbience();
+    await _sfxPlayer.stop();
+  }
+
+  /// Resume zen ambience if it was active before backgrounding.
+  Future<void> resumeFromLifecycle() async {
+    if (_resumeAmbienceOnForeground) {
+      await startAmbience(isNight: _isNightMode, hasWater: _hasWater);
+    }
+    _resumeAmbienceOnForeground = false;
+  }
 
   /// Dispose all players
   Future<void> dispose() async {
