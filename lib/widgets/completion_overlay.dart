@@ -155,14 +155,6 @@ class _CompletionOverlayState extends State<CompletionOverlay>
     super.dispose();
   }
 
-  String _formatTime(Duration d) {
-    final minutes = d.inMinutes;
-    final seconds = d.inSeconds % 60;
-    return minutes > 0
-        ? '$minutes:${seconds.toString().padLeft(2, '0')}'
-        : '${seconds}s';
-  }
-
   Widget _buildStarRating() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -197,24 +189,6 @@ class _CompletionOverlayState extends State<CompletionOverlay>
     );
   }
 
-  Widget _buildStarCriteria() {
-    if (widget.par == null) {
-      return const SizedBox.shrink();
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Text(
-        '⭐ Complete puzzle\n⭐⭐ Target: ${widget.par!} moves or fewer\n⭐⭐⭐ ${(widget.par! * 0.7).ceil()} moves or fewer, no undo',
-        style: TextStyle(
-          color: GameColors.textMuted.withValues(alpha: 0.7),
-          fontSize: 12,
-          height: 1.4,
-        ),
-        textAlign: TextAlign.center,
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {

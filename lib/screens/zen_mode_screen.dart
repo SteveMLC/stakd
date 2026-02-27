@@ -1342,8 +1342,14 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                       label: gameState.undosRemaining > 0
                           ? 'Undo (${gameState.undosRemaining})'
                           : 'Undo (25🪙)',
-                      enabled: !_isLoading && gameState.canUndo,
-                      onPressed: !_isLoading && gameState.canUndo ? () => gameState.undo() : null,
+                      enabled: !_isLoading && (gameState.canUndo || (gameState.undosRemaining <= 0 && gameState.moveCount > 0)),
+                      onPressed: !_isLoading ? () {
+                        if (gameState.canUndo) {
+                          gameState.undo();
+                        } else if (gameState.moveCount > 0) {
+                          _offerPaidUndo(gameState);
+                        }
+                      } : null,
                       countText: gameState.undosRemaining > 0
                           ? '×${gameState.undosRemaining}'
                           : null,
