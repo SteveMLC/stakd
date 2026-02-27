@@ -1,6 +1,8 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 
+import 'storage_service.dart';
+
 /// Layered ambient audio service for Zen Garden
 ///
 /// Manages multiple audio layers that can play simultaneously:
@@ -28,6 +30,8 @@ class ZenAudioService {
   bool _hasWater = false;
   bool _ambienceActive = false;
   bool _resumeAmbienceOnForeground = false;
+  bool _globalSoundEnabled = true;
+  bool _globalMusicEnabled = true;
   double _masterVolume = 0.7;
 
   // Individual layer volumes
@@ -56,10 +60,17 @@ class ZenAudioService {
       await _waterPlayer.setSource(AssetSource('sounds/zen/water_stream.mp3'));
 
       _initialized = true;
+      await _syncGlobalAudioSettings();
       debugPrint('ZenAudioService initialized');
     } catch (e) {
       debugPrint('ZenAudioService init failed: $e');
     }
+  }
+
+  Future<void> _syncGlobalAudioSettings() async {
+    final storage = StorageService();
+    _globalSoundEnabled = storage.getSoundEnabled();
+    _globalMusicEnabled = storage.getMusicEnabled();
   }
 
   /// Start the ambient soundscape
@@ -68,10 +79,16 @@ class ZenAudioService {
     bool hasWater = false,
   }) async {
     if (!_initialized) await init();
+    await _syncGlobalAudioSettings();
 
     _isNightMode = isNight;
     _hasWater = hasWater;
     _ambienceActive = true;
+
+    if (!_globalMusicEnabled || _masterVolume <= 0) {
+      await stopAmbience();
+      return;
+    }
 
     // Always play wind
     await _windPlayer.setVolume(_windVolume * _masterVolume);
@@ -108,6 +125,8 @@ class ZenAudioService {
 
   /// Transition to night mode (crossfade birds → crickets)
   Future<void> setNightMode(bool isNight) async {
+    await _syncGlobalAudioSettings();
+    if (!_globalMusicEnabled) return;
     if (_isNightMode == isNight) return;
     _isNightMode = isNight;
 
@@ -154,6 +173,11 @@ class ZenAudioService {
 
   /// Enable/disable water sounds (for when pond unlocks)
   Future<void> setWaterEnabled(bool enabled) async {
+    await _syncGlobalAudioSettings();
+    if (!_globalMusicEnabled) {
+      _hasWater = enabled;
+      return;
+    }
     if (_hasWater == enabled) return;
     _hasWater = enabled;
 
@@ -179,6 +203,8 @@ class ZenAudioService {
 
   /// Play wind chime sound
   Future<void> playWindChime() async {
+    await _syncGlobalAudioSettings();
+    if (!_globalSoundEnabled || _masterVolume <= 0) return;
     await _sfxPlayer.stop();
     await _sfxPlayer.setVolume(0.6 * _masterVolume);
     await _sfxPlayer.play(AssetSource('sounds/zen/wind_chime.mp3'));
@@ -186,6 +212,8 @@ class ZenAudioService {
 
   /// Play bloom/growth sound (when element unlocks)
   Future<void> playBloom() async {
+    await _syncGlobalAudioSettings();
+    if (!_globalSoundEnabled || _masterVolume <= 0) return;
     await _sfxPlayer.stop();
     await _sfxPlayer.setVolume(0.5 * _masterVolume);
     await _sfxPlayer.play(AssetSource('sounds/zen/bloom.mp3'));
@@ -193,6 +221,8 @@ class ZenAudioService {
 
   /// Play water drop sound
   Future<void> playWaterDrop() async {
+    await _syncGlobalAudioSettings();
+    if (!_globalSoundEnabled || _masterVolume <= 0) return;
     await _sfxPlayer.stop();
     await _sfxPlayer.setVolume(0.4 * _masterVolume);
     await _sfxPlayer.play(AssetSource('sounds/zen/water_drop.mp3'));
@@ -200,6 +230,8 @@ class ZenAudioService {
 
   /// Play stage advance celebration
   Future<void> playStageAdvance() async {
+    await _syncGlobalAudioSettings();
+    if (!_globalSoundEnabled || _masterVolume <= 0) return;
     await _sfxPlayer.stop();
     await _sfxPlayer.setVolume(0.7 * _masterVolume);
     await _sfxPlayer.play(AssetSource('sounds/zen/stage_advance.mp3'));
@@ -210,6 +242,12 @@ class ZenAudioService {
   /// Set master volume (0.0 - 1.0)
   Future<void> setMasterVolume(double volume) async {
     _masterVolume = volume.clamp(0.0, 1.0);
+    await _syncGlobalAudioSettings();
+
+    if (!_globalMusicEnabled || _masterVolume <= 0) {
+      await stopAmbience();
+      return;
+    }
 
     // Update all playing layers
     await _windPlayer.setVolume(_windVolume * _masterVolume);
