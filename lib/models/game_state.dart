@@ -96,15 +96,15 @@ class GameState extends ChangeNotifier {
   /// Calculate stars earned for this level completion
   /// ★ (1 star) = Complete the level
   /// ★★ (2 stars) = Complete at or under par moves
-  /// ★★★ (3 stars) = Complete at par-2 moves OR no undo used
+  /// ★★★ (3 stars) = Complete at <= 70% of par moves AND no undo used
   int calculateStars() {
     if (!_isComplete) return 0;
     if (_par == null) return 1; // No par = 1 star for completion
 
     final bool usedNoUndo = (GameConfig.maxUndos - _undosRemaining) == 0;
-    final bool underPar2 = _moveCount <= (_par! - 2);
+    final int threeStarTarget = (_par! * 0.7).ceil();
 
-    if (underPar2 || usedNoUndo) return 3;
+    if (_moveCount <= threeStarTarget && usedNoUndo) return 3;
     if (_moveCount <= _par!) return 2;
     return 1;
   }
