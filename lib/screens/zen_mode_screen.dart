@@ -239,15 +239,19 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     final params = _getAdaptiveDifficulty();
     final seed = _puzzleSeed;
     setState(() => _isLoading = true);
+    // Reset live timer display before showing loading
+    _liveStopwatch.reset();
+    
     final encoded = encodeParamsForIsolate(params, seed: seed);
     
     // Store params for decode (fallback may use different params)
     LevelParams activeParams = params;
     
     // Add timeout to prevent infinite generation
+    final genTimer = Stopwatch()..start();
     compute<List<int>, List<List<int>>>(generateZenPuzzleInIsolate, encoded)
         .timeout(
-          const Duration(seconds: 8),
+          const Duration(seconds: 3),
           onTimeout: () {
             // Fallback: same colors/depth but no difficulty threshold, no special blocks
             final fallbackParams = LevelParams(
@@ -268,6 +272,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
         )
         .then((encodedStacks) {
           if (!mounted) return;
+          debugPrint('Puzzle gen took ${genTimer.elapsedMilliseconds}ms (${params.colors}c ${params.depth}d)');
           final stacks = decodeStacksFromIsolate(encodedStacks, activeParams.depth);
           // Apply special blocks (locked/frozen) based on difficulty params
           try {
@@ -356,7 +361,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     // Add timeout to pre-generation too
     compute<List<int>, List<List<int>>>(generateZenPuzzleInIsolate, encoded)
         .timeout(
-          const Duration(seconds: 8),
+          const Duration(seconds: 3),
           onTimeout: () {
             // Fallback: same colors/depth but no difficulty threshold
             final fallbackParams = LevelParams(
@@ -413,6 +418,10 @@ class _ZenModeScreenState extends State<ZenModeScreen>
           return const LevelParams(colors: 3, depth: 4, stacks: 5, emptySlots: 2, shuffleMoves: 40, lockedBlockProbability: 0.06);
         } else if (puzzleNumber <= 7) {
           return const LevelParams(colors: 4, depth: 4, stacks: 6, emptySlots: 2, shuffleMoves: 45, lockedBlockProbability: 0.08);
+        } else if (puzzleNumber <= 10) {
+          return const LevelParams(colors: 4, depth: 4, stacks: 6, emptySlots: 2, shuffleMoves: 50, lockedBlockProbability: 0.1);
+        } else if (puzzleNumber <= 15) {
+          return const LevelParams(colors: 4, depth: 5, stacks: 6, emptySlots: 2, shuffleMoves: 55, lockedBlockProbability: 0.1);
         } else {
           return ZenParams.medium;
         }
@@ -424,6 +433,8 @@ class _ZenModeScreenState extends State<ZenModeScreen>
           return const LevelParams(colors: 5, depth: 4, stacks: 7, emptySlots: 2, shuffleMoves: 60, lockedBlockProbability: 0.10, frozenBlockProbability: 0.06);
         } else if (puzzleNumber <= 5) {
           return const LevelParams(colors: 5, depth: 5, stacks: 7, emptySlots: 2, shuffleMoves: 70, lockedBlockProbability: 0.12, frozenBlockProbability: 0.08);
+        } else if (puzzleNumber <= 10) {
+          return const LevelParams(colors: 5, depth: 5, stacks: 7, emptySlots: 2, shuffleMoves: 75, lockedBlockProbability: 0.12, frozenBlockProbability: 0.08);
         } else {
           return ZenParams.hard;
         }
@@ -443,6 +454,10 @@ class _ZenModeScreenState extends State<ZenModeScreen>
           setState(() {});
         }
       });
+      // Start pre-generating the next puzzle early (during gameplay)
+      if (_preGeneratedStacks == null && !_isPreGenerating) {
+        _preGenerateNextPuzzle();
+      }
     }
     AudioService().playSlide();
   }

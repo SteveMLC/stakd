@@ -13,10 +13,13 @@ List<List<int>> generateZenPuzzleInIsolate(List<int> args) {
   final seed = args.length > 6 ? args[6] : 0;
   final random = seed == 0 ? Random() : Random(seed);
 
-  const maxAttempts = 30;
-  const maxSolvableStates = 50000; // Reduced for faster generation
+  const maxAttempts = 15;
+  const maxSolvableStates = 15000;
+  final totalTimer = Stopwatch()..start();
 
   for (int attempt = 0; attempt < maxAttempts; attempt++) {
+    // Early termination: if we've spent >3s total, jump to fallback
+    if (totalTimer.elapsedMilliseconds > 3000) break;
     final blocks = <int>[];
     for (int color = 0; color < colors; color++) {
       for (int i = 0; i < depth; i++) {
@@ -103,7 +106,7 @@ bool _isSolvable(List<List<int>> tubes, int depth, int maxStates) {
 bool _greedySolve(List<List<int>> tubes, int depth) {
   var state = tubes.map((t) => List<int>.from(t)).toList();
   var visited = <String>{};
-  return _greedyDFS(state, depth, visited, 0, 500);
+  return _greedyDFS(state, depth, visited, 0, 200);
 }
 
 bool _greedyDFS(List<List<int>> state, int depth, Set<String> visited,
