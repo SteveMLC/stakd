@@ -50,15 +50,24 @@ class GardenService {
         await _save();
       }
       
-      // Always ensure current stage unlocks are applied (handles new elements added in updates)
+      // ALWAYS recalculate stage from puzzle count (in case of stale/corrupt state)
+      final recalculatedStage = GardenState.calculateStage(_state.totalPuzzlesSolved);
+      if (recalculatedStage != _state.currentStage) {
+        debugPrint('GardenService: stage mismatch! puzzles=${_state.totalPuzzlesSolved}, stored stage=${_state.currentStage}, recalculated=$recalculatedStage');
+        _state = _state.copyWith(currentStage: recalculatedStage);
+      }
+      
+      // Always ensure ALL unlocks for current stage are present (handles updates + recovery)
       final currentUnlocks = _getUnlocksForStage(_state.currentStage);
       final missing = currentUnlocks.where((e) => !_state.unlockedElements.contains(e)).toList();
       if (missing.isNotEmpty) {
+        debugPrint('GardenService: adding ${missing.length} missing unlocks: $missing');
         _state = _state.copyWith(
           unlockedElements: [..._state.unlockedElements, ...missing],
         );
-        await _save();
       }
+      // Always save to ensure recovery persists
+      await _save();
       
       // Assign archetype on first launch or if missing
       if (_state.archetype.isEmpty && _state.userSeed != 0) {
@@ -158,7 +167,11 @@ class GardenService {
 
   /// Check if an element is unlocked
   static bool isUnlocked(String element) {
-    return _state.unlockedElements.contains(element);
+    final result = _state.unlockedElements.contains(element);
+    if (!result) {
+      debugPrint('GardenService.isUnlocked("$element") = false | stage=${_state.currentStage} puzzles=${_state.totalPuzzlesSolved} unlocked=${_state.unlockedElements.length} elements');
+    }
+    return result;
   }
 
   /// Get all elements that should be visible
