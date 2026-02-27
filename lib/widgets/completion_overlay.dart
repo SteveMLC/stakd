@@ -14,7 +14,7 @@ class CompletionOverlay extends StatefulWidget {
   final bool isNewRecord;
   final VoidCallback onNextPuzzle;
   final VoidCallback onHome;
-  final VoidCallback onReplay;
+  final VoidCallback? onReplay;
   final bool isNewMoveBest;
   final bool isNewTimeBest;
   final int currentStreak;
@@ -32,7 +32,7 @@ class CompletionOverlay extends StatefulWidget {
     this.isNewRecord = false,
     required this.onNextPuzzle,
     required this.onHome,
-    required this.onReplay,
+    this.onReplay,
     this.isNewMoveBest = false,
     this.isNewTimeBest = false,
     this.currentStreak = 0,
@@ -277,116 +277,24 @@ class _CompletionOverlayState extends State<CompletionOverlay>
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              'PUZZLE COMPLETE!',
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: GameColors.text,
-                                letterSpacing: 2,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            // Star rating
+                            // Top: Stars
                             _buildStarRating(),
-                            // Star criteria
-                            _buildStarCriteria(),
-                            // New Record badges
+                            // Record badges (compact inline)
                             if (widget.isNewMoveBest || widget.isNewTimeBest)
                               Padding(
-                                padding: const EdgeInsets.only(top: 8),
+                                padding: const EdgeInsets.only(top: 6),
                                 child: Wrap(
-                                  spacing: 8,
+                                  spacing: 12,
                                   alignment: WrapAlignment.center,
                                   children: [
                                     if (widget.isNewMoveBest)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: starGold.withValues(alpha: 0.2),
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(
-                                            color: starGold.withValues(alpha: 0.5),
-                                            width: 1,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          '🏆 Best Moves!',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                            color: starGold,
-                                          ),
-                                        ),
-                                      ),
+                                      Text('\u{1f3c6} Best Moves!', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: starGold)),
                                     if (widget.isNewTimeBest)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: starGold.withValues(alpha: 0.2),
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(
-                                            color: starGold.withValues(alpha: 0.5),
-                                            width: 1,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          '⚡ Best Time!',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                            color: starGold,
-                                          ),
-                                        ),
-                                      ),
+                                      Text('\u26a1 Best Time!', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: starGold)),
                                   ],
                                 ),
                               ),
-                            // Streak display
-                            if (widget.currentStreak > 0)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 8),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: GameColors.zen.withValues(alpha: 0.2),
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color: GameColors.zen.withValues(alpha: 0.4),
-                                      width: 1,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(
-                                        Icons.local_fire_department,
-                                        size: 16,
-                                        color: Color(0xFFFF6B44),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'Streak: ${widget.currentStreak}',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: GameColors.text,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            // Score and XP display
+                            // Middle: Score + rewards (ONE line, TWO currencies)
                             if (widget.score > 0) ...[
                               const SizedBox(height: 12),
                               Text(
@@ -399,148 +307,72 @@ class _CompletionOverlayState extends State<CompletionOverlay>
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                '+${widget.xpEarned} XP  +${widget.coinsEarned} 🪙',
+                                '+${widget.xpEarned} XP  \u2022  +${widget.coinsEarned} \u{1fa99}',
                                 style: TextStyle(
-                                  fontSize: 14,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
                                   color: GameColors.textMuted.withValues(alpha: 0.9),
                                 ),
                               ),
                             ],
+                            // Expandable details section
+                            const SizedBox(height: 8),
+                            _ExpandableDetails(
+                              moves: widget.moves,
+                              par: widget.par,
+                              time: widget.time,
+                              currentStreak: widget.currentStreak,
+                            ),
                             const SizedBox(height: 20),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                _StatChip(
-                                  icon: Icons.touch_app,
-                                  label: '${widget.moves}',
-                                  subtitle: widget.par != null
-                                      ? 'moves (target ${widget.par})'
-                                      : 'moves',
+                            // Bottom: Next Puzzle (primary pink)
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  AudioService().playTap();
+                                  widget.onNextPuzzle();
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: GameColors.accent,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 32,
+                                    vertical: 16,
+                                  ),
                                 ),
-                                const SizedBox(width: 24),
-                                _StatChip(
-                                  icon: Icons.timer,
-                                  label: _formatTime(widget.time),
-                                  subtitle: 'time',
-                                ),
-                              ],
-                            ),
-                            // Undo indicator
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                widget.undoUsed ? 'Undo used ✗' : 'No undo used ✓',
-                                style: TextStyle(
-                                  color: widget.undoUsed
-                                      ? GameColors.textMuted.withValues(alpha: 0.7)
-                                      : const Color(0xFF4CAF50),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
+                                child: const Text(
+                                  'Next Puzzle',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ),
-                            // Coin reward display
-                            if (widget.coinsEarned > 0) ...[
-                              const SizedBox(height: 16),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(Icons.monetization_on,
-                                      color: Color(0xFFFFD700), size: 24),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '+${widget.coinsEarned} coins',
-                                    style: const TextStyle(
-                                      color: Color(0xFFFFD700),
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                            const SizedBox(height: 8),
+                            // Home (secondary outline)
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton(
+                                onPressed: () {
+                                  AudioService().playTap();
+                                  widget.onHome();
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                    vertical: 14,
                                   ),
-                                ],
+                                  side: BorderSide(
+                                    color: GameColors.textMuted.withValues(alpha: 0.3),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Home',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                               ),
-                            ],
-                            const SizedBox(height: 32),
-                            Column(
-                              children: [
-                                // Next Puzzle — primary, full width
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: ElevatedButton(
-                                    onPressed: () {
-                                      AudioService().playTap();
-                                      widget.onNextPuzzle();
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: GameColors.accent,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 32,
-                                        vertical: 16,
-                                      ),
-                                    ),
-                                    child: const Text(
-                                      'Next Puzzle',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                // Row with Home and Replay side by side
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: OutlinedButton(
-                                        onPressed: () {
-                                          AudioService().playTap();
-                                          widget.onHome();
-                                        },
-                                        style: OutlinedButton.styleFrom(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 24,
-                                            vertical: 16,
-                                          ),
-                                          side: BorderSide(
-                                            color: GameColors.textMuted.withValues(alpha: 0.3),
-                                            width: 1.5,
-                                          ),
-                                        ),
-                                        child: const Text(
-                                          'Home',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: OutlinedButton(
-                                        onPressed: () {
-                                          AudioService().playTap();
-                                          widget.onReplay();
-                                        },
-                                        style: OutlinedButton.styleFrom(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 24,
-                                            vertical: 16,
-                                          ),
-                                          side: BorderSide(
-                                            color: GameColors.textMuted.withValues(alpha: 0.3),
-                                            width: 1.5,
-                                          ),
-                                        ),
-                                        child: const Text(
-                                          'Replay',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
                             ),
                           ],
                         ),
@@ -554,6 +386,82 @@ class _CompletionOverlayState extends State<CompletionOverlay>
           ],
         );
       },
+    );
+  }
+}
+
+class _ExpandableDetails extends StatefulWidget {
+  final int moves;
+  final int? par;
+  final Duration time;
+  final int currentStreak;
+
+  const _ExpandableDetails({
+    required this.moves,
+    this.par,
+    required this.time,
+    required this.currentStreak,
+  });
+
+  @override
+  State<_ExpandableDetails> createState() => _ExpandableDetailsState();
+}
+
+class _ExpandableDetailsState extends State<_ExpandableDetails> {
+  bool _expanded = false;
+
+  String _fmtTime(Duration d) {
+    final minutes = d.inMinutes;
+    final seconds = d.inSeconds % 60;
+    return minutes > 0
+        ? '$minutes:${seconds.toString().padLeft(2, '0')}'
+        : '${seconds}s';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => setState(() => _expanded = !_expanded),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: GameColors.surface.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _StatChip(icon: Icons.touch_app, label: '${widget.moves}', subtitle: widget.par != null ? 'moves (par ${widget.par})' : 'moves'),
+                const SizedBox(width: 24),
+                _StatChip(icon: Icons.timer, label: _fmtTime(widget.time), subtitle: 'time'),
+              ],
+            ),
+            if (_expanded && widget.currentStreak > 0) ...[
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.local_fire_department, size: 16, color: Color(0xFFFF6B44)),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Streak: ${widget.currentStreak}',
+                    style: TextStyle(fontSize: 12, color: GameColors.text),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 4),
+            Icon(
+              _expanded ? Icons.expand_less : Icons.expand_more,
+              size: 16,
+              color: GameColors.textMuted,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
