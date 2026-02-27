@@ -41,11 +41,13 @@ class _ZenGardenScreenState extends State<ZenGardenScreen>
       });
       await _revealController.forward();
       await Future.delayed(const Duration(seconds: 3));
-      await _revealController.reverse();
-      if (mounted) {
-        setState(() {
-          _showArchetypeReveal = false;
-        });
+      if (_showArchetypeReveal && mounted) {
+        await _revealController.reverse();
+        if (mounted) {
+          setState(() {
+            _showArchetypeReveal = false;
+          });
+        }
       }
       await prefs.setBool('garden_archetype_revealed', true);
     }
@@ -165,7 +167,12 @@ class _ZenGardenScreenState extends State<ZenGardenScreen>
           ),
           // Archetype reveal overlay
           if (_showArchetypeReveal)
-            AnimatedBuilder(
+            GestureDetector(
+              onTap: () async {
+                await _revealController.reverse();
+                if (mounted) setState(() => _showArchetypeReveal = false);
+              },
+              child: AnimatedBuilder(
               animation: _fadeAnimation,
               builder: (context, _) {
                 return Opacity(
@@ -230,6 +237,7 @@ class _ZenGardenScreenState extends State<ZenGardenScreen>
                   ),
                 );
               },
+            ),
             ),
         ],
       ),

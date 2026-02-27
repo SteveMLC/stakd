@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../utils/constants.dart';
 import '../services/haptic_service.dart';
 import '../services/audio_service.dart';
+import '../services/achievement_service.dart';
 
 class CompletionOverlay extends StatefulWidget {
   final int moves;
@@ -21,6 +22,7 @@ class CompletionOverlay extends StatefulWidget {
   final int score;
   final int xpEarned;
   final bool undoUsed;
+  final List<AchievementDef> achievements;
 
   const CompletionOverlay({
     super.key,
@@ -39,6 +41,7 @@ class CompletionOverlay extends StatefulWidget {
     this.score = 0,
     this.xpEarned = 0,
     this.undoUsed = false,
+    this.achievements = const [],
   });
 
   @override
@@ -107,7 +110,7 @@ class _CompletionOverlayState extends State<CompletionOverlay>
     _fadeController.forward();
     Future.delayed(const Duration(milliseconds: 150), () {
       _scaleController.forward();
-      _confettiController.repeat();
+      _confettiController.forward(); // Single burst — no repeat
       haptics.levelWinPattern();
       
       _animateStars();
@@ -189,53 +192,6 @@ class _CompletionOverlayState extends State<CompletionOverlay>
   }
 
 
-  Widget _buildStarCriteria() {
-    final par = widget.par!;
-    final threeStarTarget = (par * 0.7).ceil();
-
-    Widget criteriaRow(int starCount, String text, bool achieved) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 1.5),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Star icons
-            ...List.generate(starCount, (_) => Icon(
-              Icons.star,
-              size: 14,
-              color: achieved ? starGold : starEmpty,
-            )),
-            // Pad remaining stars as empty for alignment
-            ...List.generate(maxStars - starCount, (_) => const SizedBox(width: 14)),
-            const SizedBox(width: 8),
-            Text(
-              text,
-              style: TextStyle(
-                fontSize: 12,
-                color: achieved
-                    ? GameColors.text.withValues(alpha: 0.9)
-                    : GameColors.textMuted.withValues(alpha: 0.5),
-                fontWeight: achieved ? FontWeight.w500 : FontWeight.w400,
-              ),
-            ),
-            if (achieved) ...[
-              const SizedBox(width: 6),
-              Icon(Icons.check_circle, size: 14, color: const Color(0xFF4CAF50)),
-            ],
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      children: [
-        criteriaRow(1, 'Complete puzzle', widget.stars >= 1),
-        criteriaRow(2, '$par moves or fewer', widget.stars >= 2),
-        criteriaRow(3, '$threeStarTarget moves or fewer, no undo', widget.stars >= 3),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -299,11 +255,6 @@ class _CompletionOverlayState extends State<CompletionOverlay>
                           children: [
                             // Top: Stars
                             _buildStarRating(),
-                            // Star criteria — shows the bar to beat
-                            if (widget.par != null && widget.par! > 0) ...[
-                              const SizedBox(height: 8),
-                              _buildStarCriteria(),
-                            ],
                             // Record badges (compact inline)
                             if (widget.isNewMoveBest || widget.isNewTimeBest)
                               Padding(
@@ -319,7 +270,7 @@ class _CompletionOverlayState extends State<CompletionOverlay>
                                   ],
                                 ),
                               ),
-                            // Middle: Score + rewards (ONE line, TWO currencies)
+                            // Score + rewards
                             if (widget.score > 0) ...[
                               const SizedBox(height: 12),
                               Text(
@@ -340,13 +291,19 @@ class _CompletionOverlayState extends State<CompletionOverlay>
                                 ),
                               ),
                             ],
-                            // Expandable details section
+                            // Inline achievement summary
+                            if (widget.achievements.isNotEmpty) ...[
+                              const SizedBox(height: 10),
+                              _AchievementSummary(achievements: widget.achievements),
+                            ],
+                            // Expandable details (moves, time, par, criteria, streak)
                             const SizedBox(height: 8),
                             _ExpandableDetails(
                               moves: widget.moves,
                               par: widget.par,
                               time: widget.time,
                               currentStreak: widget.currentStreak,
+                              stars: widget.stars,
                             ),
                             const SizedBox(height: 20),
                             // Bottom: Next Puzzle (primary pink)
@@ -415,17 +372,117 @@ class _CompletionOverlayState extends State<CompletionOverlay>
   }
 }
 
+class _AchievementSummary extends StatefulWidget {
+  final List<AchievementDef> achievements;
+  const _AchievementSummary({required this.achievements});
+
+  @override
+  State<_AchievementSummary> createState() => _AchievementSummaryState();
+}
+
+class _AchievementSummaryState extends State<_AchievementSummary> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final achs = widget.achievements;
+    final totalXp = achs.fold<int>(0, (sum, a) => sum + a.xpReward);
+    final totalCoins = achs.fold<int>(0, (sum, a) => sum + a.coinReward);
+
+    if (achs.length == 1) {
+      final a = achs.first;
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFD700).withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('🏆', style: TextStyle(fontSize: 18)),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(a.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFFFD700))),
+                  if (a.xpReward > 0 || a.coinReward > 0)
+                    Text(
+                      [if (a.xpReward > 0) '+${a.xpReward} XP', if (a.coinReward > 0) '+${a.coinReward} 🪙'].join('  '),
+                      style: TextStyle(fontSize: 11, color: GameColors.textMuted),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Multiple achievements
+    return GestureDetector(
+      onTap: () => setState(() => _expanded = !_expanded),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFD700).withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('🏆', style: TextStyle(fontSize: 18)),
+                const SizedBox(width: 8),
+                Text(
+                  '${achs.length} Achievements Unlocked!',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFFFD700)),
+                ),
+                const SizedBox(width: 4),
+                Icon(_expanded ? Icons.expand_less : Icons.expand_more, size: 16, color: const Color(0xFFFFD700)),
+              ],
+            ),
+            Text(
+              [if (totalXp > 0) '+$totalXp XP', if (totalCoins > 0) '+$totalCoins 🪙'].join('  '),
+              style: TextStyle(fontSize: 11, color: GameColors.textMuted),
+            ),
+            if (_expanded) ...[
+              const SizedBox(height: 6),
+              ...achs.map((a) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('  •  ', style: TextStyle(color: Color(0xFFFFD700), fontSize: 11)),
+                    Flexible(child: Text(a.name, style: TextStyle(fontSize: 11, color: GameColors.text))),
+                  ],
+                ),
+              )),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ExpandableDetails extends StatefulWidget {
   final int moves;
   final int? par;
   final Duration time;
   final int currentStreak;
+  final int stars;
 
   const _ExpandableDetails({
     required this.moves,
     this.par,
     required this.time,
     required this.currentStreak,
+    this.stars = 0,
   });
 
   @override
@@ -434,6 +491,39 @@ class _ExpandableDetails extends StatefulWidget {
 
 class _ExpandableDetailsState extends State<_ExpandableDetails> {
   bool _expanded = false;
+
+  static const Color _starGold = Color(0xFFFFD700);
+  static const Color _starEmpty = Color(0xFF3A3A4A);
+  static const int _maxStars = 3;
+
+  Widget _buildStarCriteria() {
+    final par = widget.par!;
+    final threeStarTarget = (par * 0.7).ceil();
+
+    Widget criteriaRow(int starCount, String text, bool achieved) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 1.5),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ...List.generate(starCount, (_) => Icon(Icons.star, size: 14, color: achieved ? _starGold : _starEmpty)),
+            ...List.generate(_maxStars - starCount, (_) => const SizedBox(width: 14)),
+            const SizedBox(width: 8),
+            Text(text, style: TextStyle(fontSize: 12, color: achieved ? GameColors.text.withValues(alpha: 0.9) : GameColors.textMuted.withValues(alpha: 0.5), fontWeight: achieved ? FontWeight.w500 : FontWeight.w400)),
+            if (achieved) ...[const SizedBox(width: 6), Icon(Icons.check_circle, size: 14, color: const Color(0xFF4CAF50))],
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        criteriaRow(1, 'Complete puzzle', widget.stars >= 1),
+        criteriaRow(2, '$par moves or fewer', widget.stars >= 2),
+        criteriaRow(3, '$threeStarTarget moves or fewer, no undo', widget.stars >= 3),
+      ],
+    );
+  }
 
   String _fmtTime(Duration d) {
     final minutes = d.inMinutes;
@@ -464,19 +554,25 @@ class _ExpandableDetailsState extends State<_ExpandableDetails> {
                 _StatChip(icon: Icons.timer, label: _fmtTime(widget.time), subtitle: 'time'),
               ],
             ),
-            if (_expanded && widget.currentStreak > 0) ...[
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.local_fire_department, size: 16, color: Color(0xFFFF6B44)),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Streak: ${widget.currentStreak}',
-                    style: TextStyle(fontSize: 12, color: GameColors.text),
-                  ),
-                ],
-              ),
+            if (_expanded) ...[
+              if (widget.currentStreak > 0) ...[
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.local_fire_department, size: 16, color: Color(0xFFFF6B44)),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Streak: ${widget.currentStreak}',
+                      style: TextStyle(fontSize: 12, color: GameColors.text),
+                    ),
+                  ],
+                ),
+              ],
+              if (widget.par != null && widget.par! > 0) ...[
+                const SizedBox(height: 8),
+                _buildStarCriteria(),
+              ],
             ],
             const SizedBox(height: 4),
             Icon(

@@ -788,28 +788,18 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   }
 
   /// Called when "Next Puzzle" is tapped on completion overlay.
-  /// Sequences: Achievement toasts → Rank Up → Dismiss overlay → advance.
+  /// Achievements are shown inline on the completion overlay — no blocking toasts.
   void _advanceAfterCompletion() async {
     if (_isTransitioning) return;
     _isTransitioning = true;
 
-    // Step 1: Show achievement toasts on top of the completion overlay
-    // (keeps confetti/stars visible so the app feels alive during toasts)
-    while (_pendingAchievements.isNotEmpty) {
-      final achievement = _pendingAchievements.removeAt(0);
-      setState(() {
-        _currentAchievementToast = achievement;
-      });
-      await Future.delayed(const Duration(milliseconds: 2800));
-      if (!mounted) return;
-      setState(() {
-        _currentAchievementToast = null;
-      });
-      await Future.delayed(const Duration(milliseconds: 200));
-      if (!mounted) return;
-    }
+    // Clear any showing achievement toast immediately
+    setState(() {
+      _currentAchievementToast = null;
+      _pendingAchievements.clear();
+    });
 
-    // Step 2: Show rank up if pending (holds until tap)
+    // Show rank up if pending (holds until tap)
     if (_pendingRankUp != null) {
       setState(() {
         _showRankUp = true;
@@ -1048,6 +1038,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                 score: _lastScore?.totalScore ?? 0,
                 xpEarned: _lastScore?.xpEarned ?? 0,
                 undoUsed: _completionUndoUsed,
+                achievements: _pendingAchievements,
               ),
             ),
           // Rank-up overlay (sequenced after achievements)
@@ -1345,11 +1336,12 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                 : statsService.formatTime(statsService.getBestTime(difficulty)), 
             label: 'Time'
           ),
-          _StatChip(
-            icon: Icons.stars, 
-            value: '${statsService.getSolvedCount(difficulty)}', 
-            label: 'Solved'
-          ),
+          if (statsService.getSolvedCount(difficulty) > 0)
+            _StatChip(
+              icon: Icons.stars, 
+              value: '${statsService.getSolvedCount(difficulty)}', 
+              label: 'Solved'
+            ),
         ],
       ),
     );
