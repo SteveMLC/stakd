@@ -84,13 +84,13 @@ class DailyReward {
 
 /// The 7-day daily rewards calendar
 const List<DailyReward> dailyRewards = [
-  DailyReward(day: 1, type: RewardType.coins, amount: 50),
+  DailyReward(day: 1, type: RewardType.coins, amount: 25),
   DailyReward(day: 2, type: RewardType.powerUp, amount: 1),
-  DailyReward(day: 3, type: RewardType.coins, amount: 100),
+  DailyReward(day: 3, type: RewardType.coins, amount: 50),
   DailyReward(day: 4, type: RewardType.powerUp, amount: 2),
-  DailyReward(day: 5, type: RewardType.coins, amount: 200),
+  DailyReward(day: 5, type: RewardType.coins, amount: 100),
   DailyReward(day: 6, type: RewardType.hints, amount: 3),
-  DailyReward(day: 7, type: RewardType.coins, amount: 500),
+  DailyReward(day: 7, type: RewardType.coins, amount: 250),
 ];
 
 /// Get a reward for a specific day (1-7)

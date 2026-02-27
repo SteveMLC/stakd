@@ -55,7 +55,7 @@ class ScoreService {
 
     // 9. XP and coins (reduced for slower progression)
     final xpEarned = (totalScore / 5).round();
-    final coinsEarned = (totalScore / 8).round().clamp(1, double.infinity).toInt();
+    final coinsEarned = (totalScore / 15).round().clamp(1, double.infinity).toInt();
 
     return PuzzleScore(
       totalScore: totalScore,

@@ -118,7 +118,7 @@ const neonTheme = GameTheme(
   particleColor: Color(0xFF00FFFF),
   hasBlockGlow: true,
   hasParticles: true,
-  price: 500,
+  price: 2500,
 );
 
 /// Ocean Calm - Deep blue ocean colors
@@ -157,7 +157,7 @@ const oceanTheme = GameTheme(
   hasBlockGlow: false,
   hasParticles: true,
   blockBorderRadius: 10.0,
-  price: 750,
+  price: 3750,
 );
 
 /// Forest Spirit - Earthy greens and browns
@@ -196,7 +196,7 @@ const forestTheme = GameTheme(
   hasBlockGlow: false,
   hasParticles: true,
   blockBorderRadius: 12.0,
-  price: 750,
+  price: 3750,
 );
 
 /// Candy Land - Pastel candy colors
@@ -235,7 +235,7 @@ const candyTheme = GameTheme(
   hasBlockGlow: false,
   hasParticles: true,
   blockBorderRadius: 14.0,
-  price: 1000,
+  price: 5000,
 );
 
 /// Minimalist - Clean black and white
@@ -274,7 +274,7 @@ const minimalistTheme = GameTheme(
   hasBlockGlow: false,
   hasParticles: false,
   blockBorderRadius: 4.0,
-  price: 500,
+  price: 2500,
 );
 
 /// Sunset Glow theme - warm oranges and purples
@@ -313,7 +313,7 @@ const sunsetTheme = GameTheme(
   hasBlockGlow: true,
   hasParticles: true,
   blockBorderRadius: 10.0,
-  price: 800,
+  price: 4000,
 );
 
 /// Midnight Blue theme - deep navy with cool accents
@@ -352,7 +352,7 @@ const midnightTheme = GameTheme(
   hasBlockGlow: true,
   hasParticles: true,
   blockBorderRadius: 6.0,
-  price: 1000,
+  price: 5000,
 );
 
 /// Sakura theme - delicate pink Japanese cherry blossom
@@ -391,7 +391,7 @@ const sakuraTheme = GameTheme(
   hasBlockGlow: true,
   hasParticles: true,
   blockBorderRadius: 12.0,
-  price: 750,
+  price: 3750,
 );
 
 /// Retro Arcade theme - classic arcade neon on black
@@ -430,7 +430,7 @@ const retroTheme = GameTheme(
   hasBlockGlow: true,
   hasParticles: true,
   blockBorderRadius: 2.0,
-  price: 1200,
+  price: 6000,
 );
 
 /// All available themes
