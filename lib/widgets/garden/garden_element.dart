@@ -95,7 +95,6 @@ class _GardenElementState extends State<GardenElement>
 
   Future<void> _checkRevealState() async {
     _isUnlocked = GardenService.isUnlocked(widget.elementId);
-    debugPrint('GARDEN_ELEMENT: ${widget.elementId} isUnlocked=$_isUnlocked');
     
     if (!_isUnlocked) {
       // Not unlocked yet, stay hidden
@@ -116,7 +115,6 @@ class _GardenElementState extends State<GardenElement>
     
     final key = 'garden_revealed_${widget.elementId}';
     _hasBeenRevealed = prefs.getBool(key) ?? false;
-    debugPrint('GARDEN_ELEMENT: ${widget.elementId} hasBeenRevealed=$_hasBeenRevealed mounted=$mounted');
 
     if (_hasBeenRevealed) {
       // Already revealed, ensure fully visible
@@ -186,7 +184,6 @@ class _GardenElementState extends State<GardenElement>
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('GARDEN_ELEMENT_BUILD: ${widget.elementId} _isUnlocked=$_isUnlocked controller=${_controller.value}');
     if (!_isUnlocked) {
       return const SizedBox.shrink();
     }

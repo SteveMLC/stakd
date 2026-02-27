@@ -182,16 +182,15 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
           // Layer 1: Distant background
           if (isUnlocked('mountain')) _buildDistantBackground(),
 
-          // Layer 2: Ground and foundation elements
-          _buildGround(state.currentStage),
-          _buildGroundAssets(),
+          // FLATTEN: Ground assets directly in outer Stack instead of nested Stack
+          ..._buildGroundAssetsList(),
 
           // Layer 3: Water features
           if (isUnlocked('pond_empty') || isUnlocked('pond_full'))
             _buildWater(),
 
-          // Layer 4: Flora and trees
-          _buildFlora(state.currentStage),
+          // FLATTEN: Flora directly in outer Stack
+          ..._buildFloraList(state.currentStage),
 
           // Layer 5: Structures
           _buildStructures(),
@@ -207,26 +206,6 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
 
           // Layer 8: Silhouette previews for next-stage unlocks
           _buildSilhouettePreviews(state.currentStage),
-
-          // TEMPORARY DEBUG OVERLAY
-          Positioned(
-            bottom: 60,
-            left: 10,
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              color: Colors.black87,
-              child: Text(
-                'Stage: ${state.currentStage}\n'
-                'Puzzles: ${state.totalPuzzlesSolved}\n'
-                'Unlocked: ${state.unlockedElements.length}\n'
-                'ground: ${isUnlocked("ground")}\n'
-                'grass: ${isUnlocked("grass_base")}\n'
-                'stones: ${isUnlocked("small_stones")}\n'
-                'Elements: ${state.unlockedElements.take(8).join(", ")}',
-                style: const TextStyle(color: Colors.white, fontSize: 10),
-              ),
-            ),
-          ),
 
           // Stats overlay
           if (widget.showStats)
@@ -572,7 +551,10 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     );
   }
 
-  Widget _buildFlora(int stage) {
+  // Flattened version: returns List<Widget> for direct spread into outer Stack
+  List<Widget> _buildFloraList(int stage) => _buildFloraElements(stage);
+  
+  List<Widget> _buildFloraElements(int stage) {
     final elements = <Widget>[];
     final floraScale = _archetype.scaleMultiplierFor('flora');
 
@@ -696,7 +678,11 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
-    return Stack(children: elements);
+    return elements;
+  }
+
+  Widget _buildFlora(int stage) {
+    return Stack(children: _buildFloraElements(stage));
   }
 
   // Old CustomPainter grass method removed - using image assets now
@@ -1001,35 +987,18 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     return Stack(children: particles);
   }
 
+  List<Widget> _buildGroundAssetsList() => _buildGroundAssetsElements();
+
   Widget _buildGroundAssets() {
+    return Stack(children: _buildGroundAssetsElements());
+  }
+
+  List<Widget> _buildGroundAssetsElements() {
     final elements = <Widget>[];
     final rocksScale = _archetype.scaleMultiplierFor('rocks');
-    debugPrint('GARDEN_DEBUG: Building ground assets, stage=${gardenState.currentStage}');
-    debugPrint('GARDEN_DEBUG: ground unlocked=${isUnlocked("ground")}');
-    debugPrint('GARDEN_DEBUG: grass_base unlocked=${isUnlocked("grass_base")}');
-    debugPrint('GARDEN_DEBUG: small_stones unlocked=${isUnlocked("small_stones")}');
-    debugPrint('GARDEN_DEBUG: unlockedElements=${GardenService.state.unlockedElements}');
 
     // Stage 0: Sand foundation
     if (isUnlocked('ground')) {
-      // DIAGNOSTIC BYPASS: Direct Image.asset without GardenElement wrapper
-      elements.add(
-        Positioned(
-          bottom: 25,
-          left: 35,
-          child: Image.asset(
-            'assets/images/zen-garden/zen_sand_plate.png',
-            width: 380,
-            height: 280,
-            fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) {
-              debugPrint('DIRECT_IMG_ERROR: zen_sand_plate.png: $error');
-              return Container(width: 380, height: 280, color: Colors.red.withValues(alpha: 0.5));
-            },
-          ),
-        ),
-      );
-      // Original with GardenElement
       elements.add(
         Positioned(
           bottom: 20,
@@ -1136,7 +1105,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
-    return Stack(children: elements);
+    return elements;
   }
 
   Widget _buildMistOverlay() {

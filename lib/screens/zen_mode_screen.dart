@@ -1416,7 +1416,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
       fit: StackFit.expand,
       children: [
         // Full interactive garden scene
-        const ZenGardenScene(showStats: true, interactive: true),
+        ZenGardenScene(key: ValueKey(_showGardenView), showStats: true, interactive: true),
         // Stage info overlay at top
         Positioned(
           top: 16,
