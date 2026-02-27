@@ -15,7 +15,7 @@ import 'daily_challenge_screen.dart';
 import 'level_select_screen.dart';
 import 'settings_screen.dart';
 import 'zen_mode_screen.dart';
-import 'zen_garden_screen.dart';
+// import 'zen_garden_screen.dart'; // Garden navigation removed
 import 'leaderboard_screen.dart';
 import '../utils/route_transitions.dart';
 import 'theme_store_screen.dart';
@@ -522,9 +522,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _openGarden(BuildContext context) {
-    Navigator.of(context).push(fadeSlideRoute(const ZenGardenScreen()));
-  }
+  // Garden navigation removed — garden viewable in zen mode only
+  // void _openGarden(BuildContext context) {
+  //   Navigator.of(context).push(fadeSlideRoute(const ZenGardenScreen()));
+  // }
 
   void _openThemeStore(BuildContext context) {
     Navigator.of(
@@ -608,37 +609,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     accentColor: const Color(0xFFE74C3C), // Deep red/crimson
                     onTap: () => _startZen('ultra'),
                   ),
-                  const SizedBox(height: 8),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      _openGarden(context);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: GameColors.zen.withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.park_outlined, color: GameColors.zen.withValues(alpha: 0.8), size: 18),
-                          const SizedBox(width: 8),
-                          Text(
-                            'View My Garden',
-                            style: TextStyle(
-                              color: GameColors.zen.withValues(alpha: 0.8),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  // Garden button removed — garden viewable in zen mode only
                   SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
                 ],
               ),

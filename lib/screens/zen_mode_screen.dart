@@ -793,7 +793,10 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     if (_isTransitioning) return;
     _isTransitioning = true;
 
-    // Clear any showing achievement toast immediately
+    // Save achievements to show DURING next puzzle (non-blocking)
+    final achievementsToShow = List<AchievementDef>.from(_pendingAchievements);
+
+    // Clear and advance immediately
     setState(() {
       _currentAchievementToast = null;
       _pendingAchievements.clear();
@@ -865,6 +868,9 @@ class _ZenModeScreenState extends State<ZenModeScreen>
         _puzzleStart = DateTime.now();
         _fadeController.animateTo(1.0).then((_) {
           _isTransitioning = false;
+          if (achievementsToShow.isNotEmpty) {
+            _showNonBlockingAchievements(achievementsToShow);
+          }
         });
       });
     } else {
@@ -874,8 +880,22 @@ class _ZenModeScreenState extends State<ZenModeScreen>
         _loadNewPuzzle();
         _fadeController.animateTo(1.0).then((_) {
           _isTransitioning = false;
+          if (achievementsToShow.isNotEmpty) {
+            _showNonBlockingAchievements(achievementsToShow);
+          }
         });
       });
+    }
+  }
+
+  void _showNonBlockingAchievements(List<AchievementDef> achievements) async {
+    for (final achievement in achievements) {
+      if (!mounted) return;
+      setState(() { _currentAchievementToast = achievement; });
+      await Future.delayed(const Duration(milliseconds: 2500));
+      if (!mounted) return;
+      setState(() { _currentAchievementToast = null; });
+      await Future.delayed(const Duration(milliseconds: 300));
     }
   }
 
@@ -1408,7 +1428,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
       fit: StackFit.expand,
       children: [
         // Full interactive garden scene
-        ZenGardenScene(key: ValueKey(_showGardenView), showStats: true, interactive: true),
+        ZenGardenScene(showStats: true, interactive: true),
         // Stage info overlay at top
         Positioned(
           top: 16,

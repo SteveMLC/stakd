@@ -59,7 +59,12 @@ class _GardenElementState extends State<GardenElement>
     );
 
     _setupAnimations();
-    _checkRevealState();
+    // Set unlocked state SYNCHRONOUSLY so first build is correct
+    _isUnlocked = GardenService.isUnlocked(widget.elementId);
+    if (_isUnlocked) {
+      _controller.value = 1.0; // Show immediately, no animation
+    }
+    _checkRevealState(); // Async part handles first-time reveal animation
   }
 
   void _setupAnimations() {

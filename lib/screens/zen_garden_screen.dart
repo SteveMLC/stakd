@@ -119,7 +119,7 @@ class _ZenGardenScreenState extends State<ZenGardenScreen>
       body: Stack(
         fit: StackFit.expand,
         children: [
-          ZenGardenScene(key: UniqueKey(), showStats: true, interactive: true),
+          ZenGardenScene(showStats: true, interactive: true),
           // Top bar
           Positioned(
             top: MediaQuery.of(context).padding.top + 8,

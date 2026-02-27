@@ -185,15 +185,15 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
           // FLATTEN: Ground assets directly in outer Stack instead of nested Stack
           ..._buildGroundAssetsList(),
 
-          // Layer 3: Water features
+          // Layer 3: Water features (flattened)
           if (isUnlocked('pond_empty') || isUnlocked('pond_full'))
-            _buildWater(),
+            ..._buildWaterList(),
 
           // FLATTEN: Flora directly in outer Stack
           ..._buildFloraList(state.currentStage),
 
-          // Layer 5: Structures
-          _buildStructures(),
+          // Layer 5: Structures (flattened)
+          ..._buildStructuresList(),
 
           // Layer 6: Particles
           AnimatedBuilder(
@@ -409,7 +409,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     );
   }
 
-  Widget _buildWater() {
+  List<Widget> _buildWaterList() {
     final elements = <Widget>[];
     final waterScale = _archetype.scaleMultiplierFor('water');
 
@@ -534,7 +534,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
-    return Stack(children: elements);
+    return elements;
   }
 
   // Old CustomPainter lily pad method removed - using image assets now
@@ -874,7 +874,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
 
   // Old CustomPainter tree method removed - using image assets now
 
-  Widget _buildStructures() {
+  List<Widget> _buildStructuresList() {
     final elements = <Widget>[];
     final structureScale = _archetype.scaleMultiplierFor('structure');
 
@@ -1005,7 +1005,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
-    return Stack(children: elements);
+    return elements;
   }
 
   // Old CustomPainter bench and lantern methods removed - using image assets now
