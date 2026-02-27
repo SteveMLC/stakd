@@ -7,6 +7,7 @@ import '../models/game_state.dart';
 import '../models/stack_model.dart';
 import '../services/daily_challenge_service.dart';
 import '../services/leaderboard_service.dart';
+import '../services/level_generator.dart';
 import '../utils/constants.dart';
 import '../widgets/game_board.dart';
 import '../widgets/name_entry_dialog.dart';
@@ -66,7 +67,26 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
       'seed': challenge.seed,
       'difficulty': challenge.difficulty,
     };
-    final stacks = await compute(_generateStacksInIsolate, params);
+    List<GameStack> stacks;
+    try {
+      stacks = await compute(_generateStacksInIsolate, params)
+          .timeout(const Duration(seconds: 5));
+    } catch (e) {
+      // Timeout or error — generate simpler fallback puzzle
+      debugPrint('Daily challenge gen failed/timeout: $e');
+      final fallbackParams = {
+        'date': challenge.date.toIso8601String(),
+        'seed': challenge.seed,
+        'difficulty': 1, // easier
+      };
+      try {
+        stacks = await compute(_generateStacksInIsolate, fallbackParams)
+            .timeout(const Duration(seconds: 3));
+      } catch (_) {
+        // Ultimate fallback — use level generator directly
+        stacks = LevelGenerator(seed: challenge.seed).generateLevel(15);
+      }
+    }
     _gameState.initGame(stacks, challenge.getDayNumber());
 
     if (!mounted) return;

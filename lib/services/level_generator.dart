@@ -300,11 +300,11 @@ class LevelGenerator {
     final challengeDate = (date ?? DateTime.now().toUtc());
     final seed = _dateSeed(challengeDate) + _seedOffset;
 
-    // Slightly harder than normal levels: more colors, fewer empty slots
-    final baseParams = LevelParams.forLevel(30);
-    final colors = (baseParams.colors + 1).clamp(3, GameConfig.maxColors);
-    final emptySlots = max(1, baseParams.emptySlots - 1);
-    final depth = min(GameConfig.maxStackDepth, baseParams.depth);
+    // Daily challenge: moderate difficulty, must generate reliably
+    final baseParams = LevelParams.forLevel(20);
+    final colors = baseParams.colors.clamp(3, 5); // cap at 5 colors
+    final emptySlots = max(2, baseParams.emptySlots); // keep 2 empty slots
+    final depth = min(4, baseParams.depth); // cap at depth 4
 
     final params = LevelParams(
       colors: colors,
