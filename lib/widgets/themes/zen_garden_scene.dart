@@ -1,12 +1,11 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/garden_state.dart';
 import '../../models/garden_archetype.dart';
-// Registry no longer needed in main scene file
 import '../../services/zen_audio_service.dart';
 import '../../services/garden_service.dart';
 import '../../utils/garden_variation.dart';
-// Progression base available for reuse: import '../../progression/reward_scene_base.dart';
 import '../garden/garden_element.dart';
 import '../garden/growth_milestone.dart';
 import 'base_theme_scene.dart';
@@ -49,6 +48,9 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
   bool _hasBirds = false;
   bool _hasDragonflies = false;
 
+  // Draggable element positions
+  final Map<String, Offset> _customPositions = {};
+
   // Archetype accessor
   GardenArchetype get _archetype => gardenState.gardenArchetype;
 
@@ -59,6 +61,9 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       duration: const Duration(seconds: 10),
       vsync: this,
     )..repeat();
+
+    // Add listener for audio updates instead of calling in build()
+    _ambientController.addListener(_onAmbientTick);
 
     final rng = math.Random(42);
     _fireflySeeds = List.generate(8, (_) {
@@ -76,7 +81,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       GardenService.onStageAdvanced = _onStageAdvanced;
     }
 
-    // Listen for gentle rebuild signals from GardenService (avoids KeyedSubtree teardown)
+    // Listen for gentle rebuild signals from GardenService
     GardenService.rebuildNotifier.addListener(_onGardenRebuild);
 
     // Initialize with current stage
@@ -85,6 +90,21 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     // Start ambient audio
     if (widget.enableAudio) {
       _initAudio();
+    }
+
+    // Load saved positions
+    _loadPositions();
+  }
+
+  int _lastAudioCheckFrame = -1;
+
+  void _onAmbientTick() {
+    // Check audio at most once per second (every ~60 frames at 60fps)
+    final frame = (_ambientController.value * 600).floor(); // 10s * 60fps
+    final second = frame ~/ 60;
+    if (second != _lastAudioCheckFrame) {
+      _lastAudioCheckFrame = second;
+      _checkAudioUpdates();
     }
   }
   
@@ -120,19 +140,16 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     
     final state = gardenState;
     
-    // Check for stage advance
     if (state.currentStage > _lastStage && _lastStage >= 0) {
       _audioService.playStageAdvance();
       _lastStage = state.currentStage;
     }
     
-    // Check night mode transition (stage 6+)
     final shouldBeNight = state.currentStage >= 6;
     if (shouldBeNight != _audioService.isNightMode) {
       _audioService.setNightMode(shouldBeNight);
     }
     
-    // Check water unlock
     final hasWater = isUnlocked('pond_full');
     if (hasWater && !_hadWater) {
       _audioService.setWaterEnabled(true);
@@ -148,12 +165,124 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
   @override
   void dispose() {
     GardenService.rebuildNotifier.removeListener(_onGardenRebuild);
+    _ambientController.removeListener(_onAmbientTick);
     _ambientController.dispose();
     if (widget.enableAudio) {
       _audioService.stopAmbience();
     }
     GardenService.onStageAdvanced = null;
     super.dispose();
+  }
+
+  // ── Draggable position management ──
+
+  Future<void> _loadPositions() async {
+    final prefs = await SharedPreferences.getInstance();
+    final keys = prefs.getKeys().where((k) => k.startsWith('garden_pos_'));
+    for (final key in keys) {
+      final id = key.replaceFirst('garden_pos_', '');
+      final parts = prefs.getString(key)?.split(',');
+      if (parts != null && parts.length == 2) {
+        final dx = double.tryParse(parts[0]);
+        final dy = double.tryParse(parts[1]);
+        if (dx != null && dy != null) {
+          _customPositions[id] = Offset(dx, dy);
+        }
+      }
+    }
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _savePosition(String elementId, Offset pos) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('garden_pos_$elementId', '${pos.dx},${pos.dy}');
+  }
+
+  Future<void> _resetAllPositions() async {
+    final prefs = await SharedPreferences.getInstance();
+    final keys = prefs.getKeys().where((k) => k.startsWith('garden_pos_')).toList();
+    for (final key in keys) {
+      await prefs.remove(key);
+    }
+    setState(() { _customPositions.clear(); });
+  }
+
+  /// Wraps a garden element as a draggable Positioned widget.
+  /// [elementId] is used to persist position.
+  /// [defaultLeft]/[defaultBottom] are the default layout positions.
+  Widget _draggablePositioned({
+    required String elementId,
+    required double defaultLeft,
+    required double defaultBottom,
+    required Widget child,
+    bool useRight = false,
+    double? defaultRight,
+  }) {
+    final customPos = _customPositions[elementId];
+    
+    if (customPos != null) {
+      // Custom position stored as (left, top)
+      return Positioned(
+        left: customPos.dx,
+        top: customPos.dy,
+        child: GestureDetector(
+          onPanUpdate: (details) {
+            setState(() {
+              final old = _customPositions[elementId]!;
+              _customPositions[elementId] = Offset(
+                old.dx + details.delta.dx,
+                old.dy + details.delta.dy,
+              );
+            });
+          },
+          onPanEnd: (_) {
+            final pos = _customPositions[elementId];
+            if (pos != null) _savePosition(elementId, pos);
+          },
+          child: child,
+        ),
+      );
+    }
+
+    // Default position: convert bottom-based to a key-based Positioned
+    // We use a LayoutBuilder in the parent to know actual size, but for simplicity
+    // we wrap in a builder that converts on first drag.
+    if (useRight && defaultRight != null) {
+      return Positioned(
+        bottom: defaultBottom,
+        right: defaultRight,
+        child: GestureDetector(
+          onPanStart: (details) {
+            // Convert to absolute position on first drag
+            final renderBox = context.findRenderObject() as RenderBox?;
+            if (renderBox != null) {
+              final globalPos = details.globalPosition;
+              final localPos = renderBox.globalToLocal(globalPos);
+              _customPositions[elementId] = Offset(localPos.dx - 20, localPos.dy - 20);
+              setState(() {});
+            }
+          },
+          child: child,
+        ),
+      );
+    }
+
+    return Positioned(
+      bottom: defaultBottom,
+      left: defaultLeft,
+      child: GestureDetector(
+        onPanStart: (details) {
+          final renderBox = context.findRenderObject() as RenderBox?;
+          if (renderBox != null) {
+            final globalPos = details.globalPosition;
+            final localPos = renderBox.globalToLocal(globalPos);
+            _customPositions[elementId] = Offset(localPos.dx - 20, localPos.dy - 20);
+            setState(() {});
+          }
+        },
+        child: child,
+      ),
+    );
   }
 
   Widget _withVariation(String elementId, Widget child) {
@@ -177,80 +306,65 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
   Widget build(BuildContext context) {
     final state = gardenState;
     
-    // Cache particle unlock flags once per build (not per animation frame)
+    // Cache particle unlock flags once per build
     _hasButterfly = isUnlocked('butterfly');
     _hasPetals = isUnlocked('petals');
     _hasFireflies = isUnlocked('fireflies');
     _hasBirds = isUnlocked('birds');
     _hasDragonflies = isUnlocked('dragonflies');
-    
-    // Check for audio updates on each build
-    _checkAudioUpdates();
+
+    final groundAssets = _buildGroundAssetsList();
+    final waterList = (isUnlocked('pond_empty') || isUnlocked('pond_full')) ? _buildWaterList() : <Widget>[];
+    final floraList = _buildFloraList(state.currentStage);
+    final structuresList = _buildStructuresList();
 
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Layer -1: Guaranteed fallback gradient (always visible even if assets fail)
-        Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFF2C3E50),
-                Color(0xFF1A2530),
-              ],
-            ),
-          ),
-        ),
-        // Layer 0: Sky gradient
+        // Layer 0: Sky/background
         _buildSky(state.currentStage),
 
-          // Layer 1: Distant background
-          if (isUnlocked('mountain')) _buildDistantBackground(),
+        // Layer 1: Distant background
+        if (isUnlocked('mountain')) _buildDistantBackground(),
 
-          // FLATTEN: Ground assets directly in outer Stack instead of nested Stack
-          ..._buildGroundAssetsList(),
+        // Ground assets
+        ...groundAssets,
 
-          // Layer 3: Water features (flattened)
-          if (isUnlocked('pond_empty') || isUnlocked('pond_full'))
-            ..._buildWaterList(),
+        // Water features
+        ...waterList,
 
-          // FLATTEN: Flora directly in outer Stack
-          ..._buildFloraList(state.currentStage),
+        // Flora
+        ...floraList,
 
-          // Layer 5: Structures (flattened)
-          ..._buildStructuresList(),
+        // Structures
+        ...structuresList,
 
-          // Layer 6: Particles
-          AnimatedBuilder(
-            animation: _ambientController,
-            builder: (context, child) => _buildParticles(),
+        // Particles - only particles rebuild on animation tick
+        AnimatedBuilder(
+          animation: _ambientController,
+          builder: (context, child) => _buildParticles(),
+        ),
+
+        // Mist overlay (stage 8+)
+        if (state.currentStage >= 8) _buildMistOverlay(),
+
+        // Stats overlay with reset button
+        if (widget.showStats)
+          Positioned(
+            bottom: 20,
+            left: 20,
+            child: _buildStatsCard(state),
           ),
-
-          // Layer 7: Mist overlay (stage 8)
-          if (state.currentStage >= 8) _buildMistOverlay(),
-
-          // Layer 8: Silhouette previews for next-stage unlocks
-          _buildSilhouettePreviews(state.currentStage),
-
-          // Stats overlay
-          if (widget.showStats)
-            Positioned(
-              bottom: 20,
-              left: 20,
-              child: _buildStatsCard(state),
-            ),
-          
-          // Milestone celebration overlay
-          if (_showingMilestone && _milestoneStage != null && _milestoneStageName != null)
-            GrowthMilestone(
-              stage: _milestoneStage!,
-              stageName: _milestoneStageName!,
-              onComplete: _onMilestoneComplete,
-            ),
-        ],
-      );
+        
+        // Milestone celebration
+        if (_showingMilestone && _milestoneStage != null && _milestoneStageName != null)
+          GrowthMilestone(
+            stage: _milestoneStage!,
+            stageName: _milestoneStageName!,
+            onComplete: _onMilestoneComplete,
+          ),
+      ],
+    );
   }
 
   Widget _buildSky(int stage) {
@@ -259,7 +373,6 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Default: slate texture background
         Image.asset(
           'assets/images/backgrounds/slate_bg.jpg',
           fit: BoxFit.cover,
@@ -267,16 +380,13 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
           height: double.infinity,
         ),
         
-        // Night mode: darken slate with semi-transparent overlay
         if (isNight)
           Container(
             color: const Color(0xFF0D1321).withValues(alpha: 0.65),
           ),
         
-        // Stars (night only, stage 6+) — only show in night mode
         if (isNight) _buildStars(),
         
-        // Moon (night, stage 8+) or Sun (day)
         if (isUnlocked('moon')) 
           _buildMoon()
         else if (!isNight && stage >= 3)
@@ -290,7 +400,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     return Stack(
       children: List.generate(30, (i) {
         final x = rng.nextDouble();
-        final y = rng.nextDouble() * 0.6; // Stars in upper 60%
+        final y = rng.nextDouble() * 0.6;
         final size = 1.0 + rng.nextDouble() * 2;
         final twinkle = rng.nextDouble();
         
@@ -320,19 +430,19 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
 
   Widget _buildMoon() {
     return Positioned(
-      top: 60,
-      right: 50,
+      top: 40,
+      right: 30,
       child: Container(
-        width: 60,
-        height: 60,
+        width: 35,
+        height: 35,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: const Color(0xFFFFFAE6),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFFFFAE6).withValues(alpha: 0.4),
-              blurRadius: 30,
-              spreadRadius: 10,
+              color: const Color(0xFFFFFAE6).withValues(alpha: 0.3),
+              blurRadius: 20,
+              spreadRadius: 5,
             ),
           ],
         ),
@@ -342,23 +452,23 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
 
   Widget _buildSun() {
     return Positioned(
-      top: 50,
-      right: 60,
+      top: 35,
+      right: 40,
       child: AnimatedBuilder(
         animation: _ambientController,
         builder: (context, child) {
-          final glow = 15 + math.sin(_ambientController.value * 2 * math.pi) * 5;
+          final glow = 10 + math.sin(_ambientController.value * 2 * math.pi) * 3;
           return Container(
-            width: 50,
-            height: 50,
+            width: 30,
+            height: 30,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: const Color(0xFFFFF9C4),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFFFEB3B).withValues(alpha: 0.5),
+                  color: const Color(0xFFFFEB3B).withValues(alpha: 0.4),
                   blurRadius: glow,
-                  spreadRadius: 5,
+                  spreadRadius: 3,
                 ),
               ],
             ),
@@ -424,35 +534,25 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     );
   }
 
-  Widget _buildGround(int stage) {
-    return Positioned(
-      bottom: 0,
-      left: 0,
-      right: 0,
-      height: 420,
-      child: CustomPaint(
-        painter: GroundPainter(stage: stage),
-      ),
-    );
-  }
+  // ── Water features ──
 
   List<Widget> _buildWaterList() {
     final elements = <Widget>[];
     final waterScale = _archetype.scaleMultiplierFor('water');
 
-    // Pond empty (before full pond unlocks)
+    // Pond empty
     if (isUnlocked('pond_empty') && !isUnlocked('pond_full')) {
       elements.add(
-        Positioned(
-          bottom: 160,
-          right: 40,
+        _draggablePositioned(
+          elementId: 'pond_empty',
+          defaultLeft: 0, defaultBottom: 200, useRight: true, defaultRight: 20,
           child: _withVariation('pond_empty', GardenElement(
             elementId: 'pond_empty',
             revealType: GardenRevealType.rippleIn,
             child: Image.asset(
               'assets/images/zen-garden/zen_pond_empty.png',
-              width: (180 * waterScale).round().toDouble(),
-              height: (110 * waterScale).round().toDouble(),
+              width: (150 * waterScale).round().toDouble(),
+              height: (90 * waterScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
           )),
@@ -460,19 +560,19 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
-    // Stage 4: Pond
+    // Pond full — right side of garden
     if (isUnlocked('pond_full')) {
       elements.add(
-        Positioned(
-          bottom: 160,
-          right: 40,
+        _draggablePositioned(
+          elementId: 'pond_full',
+          defaultLeft: 0, defaultBottom: 200, useRight: true, defaultRight: 20,
           child: _withVariation('pond_full', GardenElement(
             elementId: 'pond_full',
             revealType: GardenRevealType.rippleIn,
             child: Image.asset(
               'assets/images/zen-garden/zen_pond.png',
-              width: (210 * waterScale).round().toDouble(),
-              height: (125 * waterScale).round().toDouble(),
+              width: (170 * waterScale).round().toDouble(),
+              height: (100 * waterScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
           )),
@@ -480,19 +580,19 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
-    // Stage 4: Lily pads on pond
+    // Lily pads on pond
     if (isUnlocked('lily_pads')) {
       elements.add(
-        Positioned(
-          bottom: 200,
-          right: 70,
+        _draggablePositioned(
+          elementId: 'lily_pads',
+          defaultLeft: 0, defaultBottom: 230, useRight: true, defaultRight: 50,
           child: _withVariation('lily_pads', GardenElement(
             elementId: 'lily_pads',
             revealType: GardenRevealType.bloomOut,
             child: Image.asset(
               'assets/images/zen-garden/zen_lily_pads.png',
-              width: (120 * waterScale).round().toDouble(),
-              height: (75 * waterScale).round().toDouble(),
+              width: (90 * waterScale).round().toDouble(),
+              height: (55 * waterScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
           )),
@@ -500,19 +600,19 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
-    // Stage 7: Waterfall/stream
+    // Waterfall/stream — left side
     if (isUnlocked('stream')) {
       elements.add(
-        Positioned(
-          bottom: 120,
-          left: 0,
+        _draggablePositioned(
+          elementId: 'stream',
+          defaultLeft: 0, defaultBottom: 280,
           child: _withVariation('stream', GardenElement(
             elementId: 'stream',
             revealType: GardenRevealType.rippleIn,
             child: Image.asset(
               'assets/images/zen-garden/zen_waterfall.png',
-              width: (160 * waterScale).round().toDouble(),
-              height: (220 * waterScale).round().toDouble(),
+              width: (120 * waterScale).round().toDouble(),
+              height: (170 * waterScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
           )),
@@ -520,19 +620,19 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
-    // Keep koi fish as CustomPainter (animated)
+    // Koi fish (animated, not draggable — lives on the pond)
     if (isUnlocked('koi_fish') && isUnlocked('pond_full')) {
       elements.add(
         Positioned(
-          bottom: 160,
-          right: 40,
+          bottom: 200,
+          right: 20,
           child: GardenElement(
             elementId: 'koi_fish',
             revealType: GardenRevealType.rippleIn,
             showParticles: false,
             child: SizedBox(
-              width: 210,
-              height: 125,
+              width: 170,
+              height: 100,
               child: AnimatedBuilder(
                 animation: _ambientController,
                 builder: (context, child) {
@@ -541,13 +641,13 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
                       _koiFish(
                         progress: _ambientController.value,
                         startX: 20,
-                        startY: 45,
+                        startY: 35,
                         color: const Color(0xFFFF6B00),
                       ),
                       _koiFish(
                         progress: (_ambientController.value + 0.5) % 1.0,
-                        startX: 80,
-                        startY: 30,
+                        startX: 60,
+                        startY: 25,
                         color: const Color(0xFFFFFFFF),
                         reverse: true,
                       ),
@@ -564,8 +664,6 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     return elements;
   }
 
-  // Old CustomPainter lily pad method removed - using image assets now
-
   Widget _koiFish({
     required double progress,
     required double startX,
@@ -573,7 +671,6 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     required Color color,
     bool reverse = false,
   }) {
-    // Simple fish swimming in a figure-8 pattern
     final t = progress * 2 * math.pi;
     final x = startX + math.sin(t) * 30 * (reverse ? -1 : 1);
     final y = startY + math.sin(t * 2) * 10;
@@ -598,25 +695,66 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     );
   }
 
-  // Flattened version: returns List<Widget> for direct spread into outer Stack
+  // ── Flora ──
+
   List<Widget> _buildFloraList(int stage) => _buildFloraElements(stage);
   
   List<Widget> _buildFloraElements(int stage) {
     final elements = <Widget>[];
     final floraScale = _archetype.scaleMultiplierFor('flora');
 
-    // Stage 0: Foundation grass base
+    // Grass base — left edge
     if (isUnlocked('grass_base')) {
       elements.add(
-        Positioned(
-          bottom: 140,
-          left: 15,
+        _draggablePositioned(
+          elementId: 'grass_base',
+          defaultLeft: 5, defaultBottom: 120,
           child: _withVariation('grass_base', GardenElement(
             elementId: 'grass_base',
             revealType: GardenRevealType.growUp,
             child: Image.asset(
               'assets/images/zen-garden/zen_grass_base.png',
-              width: (130 * floraScale).round().toDouble(),
+              width: (100 * floraScale).round().toDouble(),
+              height: (70 * floraScale).round().toDouble(),
+              fit: BoxFit.contain,
+            ),
+          )),
+        ),
+      );
+    }
+
+    // Shrub — right of sand plate
+    if (isUnlocked('bush_small')) {
+      elements.add(
+        _draggablePositioned(
+          elementId: 'bush_small',
+          defaultLeft: 300, defaultBottom: 180,
+          child: _withVariation('bush_small', GardenElement(
+            elementId: 'bush_small',
+            revealType: GardenRevealType.bloomOut,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_shrub.png',
+              width: (75 * floraScale).round().toDouble(),
+              height: (55 * floraScale).round().toDouble(),
+              fit: BoxFit.contain,
+            ),
+          )),
+        ),
+      );
+    }
+    
+    // Grass 2 — left side
+    if (isUnlocked('grass_2')) {
+      elements.add(
+        _draggablePositioned(
+          elementId: 'grass_2',
+          defaultLeft: 5, defaultBottom: 250,
+          child: _withVariation('grass_2', GardenElement(
+            elementId: 'grass_2',
+            revealType: GardenRevealType.growUp,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_grass_2.png',
+              width: (70 * floraScale).round().toDouble(),
               height: (95 * floraScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
@@ -625,98 +763,18 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
-    // Stage 2: Small shrub
-    if (isUnlocked('bush_small')) {
-      elements.add(
-        Positioned(
-          bottom: 145,
-          left: 180,
-          child: _withVariation('bush_small', GardenElement(
-            elementId: 'bush_small',
-            revealType: GardenRevealType.bloomOut,
-            child: Image.asset(
-              'assets/images/zen-garden/zen_shrub.png',
-              width: (95 * floraScale).round().toDouble(),
-              height: (70 * floraScale).round().toDouble(),
-              fit: BoxFit.contain,
-            ),
-          )),
-        ),
-      );
-    }
-    
-    // Stage 2: Grass 2
-    if (isUnlocked('grass_2')) {
-      elements.add(
-        Positioned(
-          bottom: 200,
-          left: 50,
-          child: _withVariation('grass_2', GardenElement(
-            elementId: 'grass_2',
-            revealType: GardenRevealType.growUp,
-            child: Image.asset(
-              'assets/images/zen-garden/zen_grass_2.png',
-              width: (90 * floraScale).round().toDouble(),
-              height: (120 * floraScale).round().toDouble(),
-              fit: BoxFit.contain,
-            ),
-          )),
-        ),
-      );
-    }
-
-    // Stage 2: Grass 2b
+    // Grass 2b — right edge
     if (isUnlocked('grass_2_b')) {
       elements.add(
-        Positioned(
-          bottom: 190,
-          left: 300,
+        _draggablePositioned(
+          elementId: 'grass_2_b',
+          defaultLeft: 340, defaultBottom: 240,
           child: _withVariation('grass_2_b', GardenElement(
             elementId: 'grass_2_b',
             revealType: GardenRevealType.growUp,
             child: Image.asset(
               'assets/images/zen-garden/zen_grass_2_b.png',
-              width: (85 * floraScale).round().toDouble(),
-              height: (110 * floraScale).round().toDouble(),
-              fit: BoxFit.contain,
-            ),
-          )),
-        ),
-      );
-    }
-
-    // Stage 2: White flowers
-    if (isUnlocked('flowers_white')) {
-      elements.add(
-        Positioned(
-          bottom: 180,
-          left: 130,
-          child: _withVariation('flowers_white', GardenElement(
-            elementId: 'flowers_white',
-            revealType: GardenRevealType.bloomOut,
-            child: Image.asset(
-              'assets/images/zen-garden/zen_flowers_white.png',
-              width: (70 * floraScale).round().toDouble(),
-              height: (80 * floraScale).round().toDouble(),
-              fit: BoxFit.contain,
-            ),
-          )),
-        ),
-      );
-    }
-
-    // Stage 2: Yellow flowers
-    if (isUnlocked('flowers_yellow')) {
-      elements.add(
-        Positioned(
-          bottom: 170,
-          left: 230,
-          child: _withVariation('flowers_yellow', GardenElement(
-            elementId: 'flowers_yellow',
-            revealType: GardenRevealType.bloomOut,
-            child: Image.asset(
-              'assets/images/zen-garden/zen_flowers_yellow.png',
-              width: (75 * floraScale).round().toDouble(),
+              width: (65 * floraScale).round().toDouble(),
               height: (85 * floraScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
@@ -725,19 +783,19 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
-    // Stage 2: Purple flowers
-    if (isUnlocked('flowers_purple')) {
+    // White flowers — clustered near center-left
+    if (isUnlocked('flowers_white')) {
       elements.add(
-        Positioned(
-          bottom: 220,
-          left: 260,
-          child: _withVariation('flowers_purple', GardenElement(
-            elementId: 'flowers_purple',
+        _draggablePositioned(
+          elementId: 'flowers_white',
+          defaultLeft: 100, defaultBottom: 210,
+          child: _withVariation('flowers_white', GardenElement(
+            elementId: 'flowers_white',
             revealType: GardenRevealType.bloomOut,
             child: Image.asset(
-              'assets/images/zen-garden/zen_flowers_purple.png',
-              width: (70 * floraScale).round().toDouble(),
-              height: (90 * floraScale).round().toDouble(),
+              'assets/images/zen-garden/zen_flowers_white.png',
+              width: (55 * floraScale).round().toDouble(),
+              height: (65 * floraScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
           )),
@@ -745,18 +803,98 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
-    // Stage 2: Grass 3 (tall)
+    // Yellow flowers — near center
+    if (isUnlocked('flowers_yellow')) {
+      elements.add(
+        _draggablePositioned(
+          elementId: 'flowers_yellow',
+          defaultLeft: 160, defaultBottom: 200,
+          child: _withVariation('flowers_yellow', GardenElement(
+            elementId: 'flowers_yellow',
+            revealType: GardenRevealType.bloomOut,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_flowers_yellow.png',
+              width: (60 * floraScale).round().toDouble(),
+              height: (65 * floraScale).round().toDouble(),
+              fit: BoxFit.contain,
+            ),
+          )),
+        ),
+      );
+    }
+
+    // Purple flowers — near center-right
+    if (isUnlocked('flowers_purple')) {
+      elements.add(
+        _draggablePositioned(
+          elementId: 'flowers_purple',
+          defaultLeft: 230, defaultBottom: 215,
+          child: _withVariation('flowers_purple', GardenElement(
+            elementId: 'flowers_purple',
+            revealType: GardenRevealType.bloomOut,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_flowers_purple.png',
+              width: (55 * floraScale).round().toDouble(),
+              height: (70 * floraScale).round().toDouble(),
+              fit: BoxFit.contain,
+            ),
+          )),
+        ),
+      );
+    }
+
+    // Grass 3 (tall) — far left edge
     if (isUnlocked('grass_3')) {
       elements.add(
-        Positioned(
-          bottom: 250,
-          left: 10,
+        _draggablePositioned(
+          elementId: 'grass_3',
+          defaultLeft: 0, defaultBottom: 310,
           child: _withVariation('grass_3', GardenElement(
             elementId: 'grass_3',
             revealType: GardenRevealType.growUp,
             child: Image.asset(
               'assets/images/zen-garden/zen_grass_3.png',
-              width: (100 * floraScale).round().toDouble(),
+              width: (75 * floraScale).round().toDouble(),
+              height: (110 * floraScale).round().toDouble(),
+              fit: BoxFit.contain,
+            ),
+          )),
+        ),
+      );
+    }
+
+    // Young tree — back left
+    if (isUnlocked('tree_young')) {
+      elements.add(
+        _draggablePositioned(
+          elementId: 'tree_young',
+          defaultLeft: 30, defaultBottom: 380,
+          child: _withVariation('tree_young', GardenElement(
+            elementId: 'tree_young',
+            revealType: GardenRevealType.growUp,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_tree_young.png',
+              width: (110 * floraScale).round().toDouble(),
+              height: (140 * floraScale).round().toDouble(),
+              fit: BoxFit.contain,
+            ),
+          )),
+        ),
+      );
+    }
+
+    // Autumn tree — back right
+    if (isUnlocked('tree_autumn')) {
+      elements.add(
+        _draggablePositioned(
+          elementId: 'tree_autumn',
+          defaultLeft: 270, defaultBottom: 400,
+          child: _withVariation('tree_autumn', GardenElement(
+            elementId: 'tree_autumn',
+            revealType: GardenRevealType.growUp,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_tree_autumn.png',
+              width: (120 * floraScale).round().toDouble(),
               height: (150 * floraScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
@@ -765,59 +903,19 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
-    // Stage 3: Young tree
-    if (isUnlocked('tree_young')) {
-      elements.add(
-        Positioned(
-          bottom: 300,
-          left: 60,
-          child: _withVariation('tree_young', GardenElement(
-            elementId: 'tree_young',
-            revealType: GardenRevealType.growUp,
-            child: Image.asset(
-              'assets/images/zen-garden/zen_tree_young.png',
-              width: (140 * floraScale).round().toDouble(),
-              height: (180 * floraScale).round().toDouble(),
-              fit: BoxFit.contain,
-            ),
-          )),
-        ),
-      );
-    }
-
-    // Stage 4: Autumn tree
-    if (isUnlocked('tree_autumn')) {
-      elements.add(
-        Positioned(
-          bottom: 350,
-          left: 250,
-          child: _withVariation('tree_autumn', GardenElement(
-            elementId: 'tree_autumn',
-            revealType: GardenRevealType.growUp,
-            child: Image.asset(
-              'assets/images/zen-garden/zen_tree_autumn.png',
-              width: (160 * floraScale).round().toDouble(),
-              height: (200 * floraScale).round().toDouble(),
-              fit: BoxFit.contain,
-            ),
-          )),
-        ),
-      );
-    }
-
-    // Stage 3: Bamboo (replacing old sapling)
+    // Bamboo — back left
     if (stage >= 3) {
       elements.add(
-        Positioned(
-          bottom: 160,
-          left: 40,
+        _draggablePositioned(
+          elementId: 'zen_bamboo',
+          defaultLeft: 10, defaultBottom: 350,
           child: _withVariation('zen_bamboo', GardenElement(
             elementId: 'zen_bamboo',
             revealType: GardenRevealType.growUp,
             child: Image.asset(
               'assets/images/zen-garden/zen_bamboo.png',
-              width: (65 * floraScale).round().toDouble(),
-              height: (190 * floraScale).round().toDouble(),
+              width: (50 * floraScale).round().toDouble(),
+              height: (150 * floraScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
           )),
@@ -825,19 +923,19 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
     
-    // Stage 5: Cherry blossoms
+    // Cherry blossoms — back right
     if (isUnlocked('tree_cherry')) {
       elements.add(
-        Positioned(
-          bottom: 180,
-          right: 60,
+        _draggablePositioned(
+          elementId: 'tree_cherry',
+          defaultLeft: 0, defaultBottom: 360, useRight: true, defaultRight: 10,
           child: _withVariation('tree_cherry', GardenElement(
             elementId: 'tree_cherry',
             revealType: GardenRevealType.growUp,
             child: Image.asset(
               'assets/images/zen-garden/zen_blossoms_a.png',
-              width: (160 * floraScale).round().toDouble(),
-              height: (200 * floraScale).round().toDouble(),
+              width: (120 * floraScale).round().toDouble(),
+              height: (150 * floraScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
           )),
@@ -845,19 +943,19 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
-    // Stage 5: Additional blossoms
+    // Additional blossoms — center back
     if (stage >= 5) {
       elements.add(
-        Positioned(
-          bottom: 155,
-          left: 260,
+        _draggablePositioned(
+          elementId: 'zen_blossoms_b',
+          defaultLeft: 170, defaultBottom: 340,
           child: _withVariation('zen_blossoms_b', GardenElement(
             elementId: 'zen_blossoms_b',
             revealType: GardenRevealType.bloomOut,
             child: Image.asset(
               'assets/images/zen-garden/zen_blossoms_b.png',
-              width: (130 * floraScale).round().toDouble(),
-              height: (160 * floraScale).round().toDouble(),
+              width: (100 * floraScale).round().toDouble(),
+              height: (120 * floraScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
           )),
@@ -865,19 +963,19 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
-    // Stage 6: Bonsai (hero piece)
+    // Bonsai — center hero piece
     if (stage >= 6) {
       elements.add(
-        Positioned(
-          bottom: 180,
-          left: 120,
+        _draggablePositioned(
+          elementId: 'zen_bonsai',
+          defaultLeft: 130, defaultBottom: 240,
           child: _withVariation('zen_bonsai', GardenElement(
             elementId: 'zen_bonsai',
             revealType: GardenRevealType.growUp,
             child: Image.asset(
               'assets/images/zen-garden/zen_bonsai.png',
-              width: (180 * floraScale).round().toDouble(),
-              height: (240 * floraScale).round().toDouble(),
+              width: (140 * floraScale).round().toDouble(),
+              height: (180 * floraScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
           )),
@@ -888,36 +986,25 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     return elements;
   }
 
-  Widget _buildFlora(int stage) {
-    return Stack(children: _buildFloraElements(stage));
-  }
-
-  // Old CustomPainter grass method removed - using image assets now
-
-  // Old CustomPainter base grass method removed - using image assets now
-  // Old CustomPainter bush method removed - using image assets now
-
-  // Old CustomPainter flower method removed - using image assets now
-
-  // Old CustomPainter tree method removed - using image assets now
+  // ── Structures ──
 
   List<Widget> _buildStructuresList() {
     final elements = <Widget>[];
     final structureScale = _archetype.scaleMultiplierFor('structure');
 
-    // Bench
+    // Bench — on the sand, right side
     if (isUnlocked('bench')) {
       elements.add(
-        Positioned(
-          bottom: 120,
-          left: 200,
+        _draggablePositioned(
+          elementId: 'bench',
+          defaultLeft: 240, defaultBottom: 140,
           child: _withVariation('bench', GardenElement(
             elementId: 'bench',
             revealType: GardenRevealType.fadeScale,
             child: Image.asset(
               'assets/images/zen-garden/zen_bench.png',
-              width: (120 * structureScale).round().toDouble(),
-              height: (70 * structureScale).round().toDouble(),
+              width: (90 * structureScale).round().toDouble(),
+              height: (55 * structureScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
           )),
@@ -925,19 +1012,19 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
-    // Pagoda
+    // Pagoda — center-left, behind flora
     if (isUnlocked('pagoda')) {
       elements.add(
-        Positioned(
-          bottom: 200,
-          left: 150,
+        _draggablePositioned(
+          elementId: 'pagoda',
+          defaultLeft: 60, defaultBottom: 280,
           child: _withVariation('pagoda', GardenElement(
             elementId: 'pagoda',
             revealType: GardenRevealType.fadeScale,
             child: Image.asset(
               'assets/images/zen-garden/zen_pagoda.png',
-              width: (90 * structureScale).round().toDouble(),
-              height: (140 * structureScale).round().toDouble(),
+              width: (70 * structureScale).round().toDouble(),
+              height: (110 * structureScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
           )),
@@ -945,19 +1032,19 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
-    // Stage 5: Lantern
+    // Lantern — near pond, right side
     if (isUnlocked('lantern')) {
       elements.add(
-        Positioned(
-          bottom: 170,
-          right: 30,
+        _draggablePositioned(
+          elementId: 'lantern',
+          defaultLeft: 0, defaultBottom: 230, useRight: true, defaultRight: 10,
           child: _withVariation('lantern', GardenElement(
             elementId: 'lantern',
             revealType: GardenRevealType.growUp,
             child: Image.asset(
               'assets/images/zen-garden/zen_lantern.png',
-              width: (60 * structureScale).round().toDouble(),
-              height: (120 * structureScale).round().toDouble(),
+              width: (45 * structureScale).round().toDouble(),
+              height: (90 * structureScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
           )),
@@ -965,20 +1052,20 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
-    // Stage 6: Shrine/Torii gate
+    // Shrine/Torii gate — center back
     if (isUnlocked('torii_gate')) {
       elements.add(
-        Positioned(
-          bottom: 175,
-          left: 200,
+        _draggablePositioned(
+          elementId: 'torii_gate',
+          defaultLeft: 155, defaultBottom: 300,
           child: _withVariation('torii_gate', GardenElement(
             elementId: 'torii_gate',
             revealType: GardenRevealType.growUp,
             revealDuration: const Duration(milliseconds: 2000),
             child: Image.asset(
               'assets/images/zen-garden/zen_shrine.png',
-              width: (95 * structureScale).round().toDouble(),
-              height: (125 * structureScale).round().toDouble(),
+              width: (75 * structureScale).round().toDouble(),
+              height: (100 * structureScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
           )),
@@ -986,19 +1073,19 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
-    // Stage 7: Bridge
+    // Bridge — over stream/pond, center
     if (isUnlocked('bridge')) {
       elements.add(
-        Positioned(
-          bottom: 155,
-          left: 70,
+        _draggablePositioned(
+          elementId: 'bridge',
+          defaultLeft: 120, defaultBottom: 170,
           child: _withVariation('bridge', GardenElement(
             elementId: 'bridge',
             revealType: GardenRevealType.fadeScale,
             child: Image.asset(
               'assets/images/zen-garden/zen_bridge.png',
-              width: (130 * structureScale).round().toDouble(),
-              height: (80 * structureScale).round().toDouble(),
+              width: (100 * structureScale).round().toDouble(),
+              height: (60 * structureScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
           )),
@@ -1006,12 +1093,12 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
-    // Keep wind chime as CustomPainter (not in asset registry)
+    // Wind chime (CustomPainter, animated)
     if (isUnlocked('wind_chime')) {
       elements.add(
-        Positioned(
-          bottom: 280,
-          right: 90,
+        _draggablePositioned(
+          elementId: 'wind_chime',
+          defaultLeft: 0, defaultBottom: 350, useRight: true, defaultRight: 60,
           child: GardenElement(
             elementId: 'wind_chime',
             revealType: GardenRevealType.growUp,
@@ -1034,8 +1121,6 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
 
     return elements;
   }
-
-  // Old CustomPainter bench and lantern methods removed - using image assets now
 
   Widget _buildParticles() {
     final particles = <Widget>[];
@@ -1067,7 +1152,6 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     }
 
     if (_hasPetals) {
-      // More petals with varied sizes and rotation
       for (var i = 0; i < _petalSeeds.length; i++) {
         final seed = _petalSeeds[i];
         final offset = _ambientController.value * 200 + i * 60;
@@ -1104,18 +1188,15 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     }
 
     if (_hasFireflies) {
-      // Enhanced fireflies with better glow and movement
       for (var i = 0; i < _fireflySeeds.length; i++) {
         final seed = _fireflySeeds[i];
         final baseX = 40 + seed.dx * 280;
         final baseY = 120 + seed.dy * 100;
         
-        // Create more organic movement pattern
         final time = _ambientController.value * 2 * math.pi;
         final x = baseX + math.sin(time + i * 0.5) * 25 + math.cos(time * 0.3 + i) * 15;
         final y = baseY + math.cos(time + i * 0.7) * 30 + math.sin(time * 0.5 + i) * 20;
         
-        // Pulsing glow effect
         final pulse = (math.sin(time * 2 + i * 1.3) + 1) / 2;
         final opacity = 0.4 + pulse * 0.6;
         final glowRadius = 6 + pulse * 4;
@@ -1148,19 +1229,16 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       }
     }
 
-    // Birds flock flying across the sky (stage 8+)
     if (_hasBirds) {
-      // V-formation offsets from the lead bird
       const vFormation = [
-        Offset(0, 0),       // Lead bird
-        Offset(-26, 18),    // Left wing 1
-        Offset(-52, 36),    // Left wing 2
-        Offset(26, 18),     // Right wing 1
-        Offset(52, 36),     // Right wing 2
+        Offset(0, 0),
+        Offset(-26, 18),
+        Offset(-52, 36),
+        Offset(26, 18),
+        Offset(52, 36),
       ];
 
       final t = _ambientController.value;
-      // Fly across the screen; looping every 10 s ambient cycle
       final leadX = -80.0 + t * 500;
       final leadY = 60.0 + math.sin(t * 2 * math.pi) * 15;
 
@@ -1191,13 +1269,11 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
-    // Dragonflies near water (stage 7+)
     if (_hasDragonflies) {
       for (var i = 0; i < 2; i++) {
         final baseX = 200.0 + i * 60;
         final baseY = 160.0;
         
-        // More realistic darting movement
         final time = _ambientController.value * 2 * math.pi;
         final dart = math.sin(time * 4 + i * 3).abs();
         final hoverX = baseX + math.sin(time + i * 2) * 25 * (1 + dart * 0.5);
@@ -1234,33 +1310,30 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     return Stack(children: particles);
   }
 
-  List<Widget> _buildGroundAssetsList() => _buildGroundAssetsElements();
+  // ── Ground assets ──
 
-  Widget _buildGroundAssets() {
-    return Stack(children: _buildGroundAssetsElements());
-  }
+  List<Widget> _buildGroundAssetsList() => _buildGroundAssetsElements();
 
   List<Widget> _buildGroundAssetsElements() {
     final elements = <Widget>[];
     final rocksScale = _archetype.scaleMultiplierFor('rocks');
 
-    // Stage 0: Sand foundation
+    // Sand plate — centered foundation
     if (isUnlocked('ground')) {
       elements.add(
-        Positioned(
-          bottom: 20,
-          left: 30,
+        _draggablePositioned(
+          elementId: 'ground',
+          defaultLeft: 30, defaultBottom: 80,
           child: _withVariation('ground', GardenElement(
             elementId: 'ground',
             revealType: GardenRevealType.fadeScale,
             child: Image.asset(
               'assets/images/zen-garden/zen_sand_plate.png',
-              width: 380,
-              height: 280,
+              width: 340,
+              height: 230,
               fit: BoxFit.contain,
               errorBuilder: (context, error, stackTrace) {
-                debugPrint('GARDEN_IMG_ERROR: zen_sand_plate.png: $error');
-                return Container(width: 380, height: 280, color: Colors.red.withValues(alpha: 0.5));
+                return Container(width: 340, height: 230, color: Colors.red.withValues(alpha: 0.5));
               },
             ),
           )),
@@ -1268,23 +1341,22 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
-    // Stage 1: Small rocks/stones
+    // Small rocks — on the sand, center-left
     if (isUnlocked('small_stones')) {
       elements.add(
-        Positioned(
-          bottom: 140,
-          left: 100,
+        _draggablePositioned(
+          elementId: 'small_stones',
+          defaultLeft: 80, defaultBottom: 160,
           child: _withVariation('small_stones', GardenElement(
             elementId: 'small_stones',
             revealType: GardenRevealType.growUp,
             child: Image.asset(
               'assets/images/zen-garden/zen_rocks_small.png',
-              width: (95 * rocksScale).round().toDouble(),
-              height: (65 * rocksScale).round().toDouble(),
+              width: (75 * rocksScale).round().toDouble(),
+              height: (50 * rocksScale).round().toDouble(),
               fit: BoxFit.contain,
               errorBuilder: (context, error, stackTrace) {
-                debugPrint('GARDEN_IMG_ERROR: zen_rocks_small.png: $error');
-                return Container(width: 95, height: 65, color: Colors.red.withValues(alpha: 0.5));
+                return Container(width: 75, height: 50, color: Colors.red.withValues(alpha: 0.5));
               },
             ),
           )),
@@ -1292,19 +1364,19 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
-    // Stage 1: Stepping stones path
+    // Stepping stones — on the sand path
     if (isUnlocked('pebble_path')) {
       elements.add(
-        Positioned(
-          bottom: 100,
-          left: 160,
+        _draggablePositioned(
+          elementId: 'pebble_path',
+          defaultLeft: 130, defaultBottom: 110,
           child: _withVariation('pebble_path', GardenElement(
             elementId: 'pebble_path',
             revealType: GardenRevealType.fadeScale,
             child: Image.asset(
               'assets/images/zen-garden/zen_stepping_stones.png',
-              width: (190 * rocksScale).round().toDouble(),
-              height: (65 * rocksScale).round().toDouble(),
+              width: (150 * rocksScale).round().toDouble(),
+              height: (50 * rocksScale).round().toDouble(),
               fit: BoxFit.contain,
             ),
           )),
@@ -1312,38 +1384,18 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
-    // Stage 2: Sand swirls
+    // Sand swirls — on the sand
     if (gardenState.currentStage >= 2) {
       elements.add(
-        Positioned(
-          bottom: 60,
-          right: 80,
+        _draggablePositioned(
+          elementId: 'zen_sand_swirl',
+          defaultLeft: 180, defaultBottom: 100,
           child: _withVariation('zen_sand_swirl', GardenElement(
             elementId: 'zen_sand_swirl',
             revealType: GardenRevealType.bloomOut,
             child: Image.asset(
               'assets/images/zen-garden/zen_sand_swirl.png',
-              width: 160,
-              height: 110,
-              fit: BoxFit.contain,
-            ),
-          )),
-        ),
-      );
-    }
-
-    // Stage 0: Grass base 2
-    if (isUnlocked('grass_base_2')) {
-      elements.add(
-        Positioned(
-          bottom: 30,
-          left: 200,
-          child: _withVariation('grass_base_2', GardenElement(
-            elementId: 'grass_base_2',
-            revealType: GardenRevealType.growUp,
-            child: Image.asset(
-              'assets/images/zen-garden/zen_grass_base_2.png',
-              width: 110,
+              width: 120,
               height: 80,
               fit: BoxFit.contain,
             ),
@@ -1352,19 +1404,39 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
-    // Stage 0: Grass base 3
+    // Grass base 2 — right edge
+    if (isUnlocked('grass_base_2')) {
+      elements.add(
+        _draggablePositioned(
+          elementId: 'grass_base_2',
+          defaultLeft: 320, defaultBottom: 100,
+          child: _withVariation('grass_base_2', GardenElement(
+            elementId: 'grass_base_2',
+            revealType: GardenRevealType.growUp,
+            child: Image.asset(
+              'assets/images/zen-garden/zen_grass_base_2.png',
+              width: 85,
+              height: 60,
+              fit: BoxFit.contain,
+            ),
+          )),
+        ),
+      );
+    }
+
+    // Grass base 3 — bottom right
     if (isUnlocked('grass_base_3')) {
       elements.add(
-        Positioned(
-          bottom: 25,
-          left: 310,
+        _draggablePositioned(
+          elementId: 'grass_base_3',
+          defaultLeft: 0, defaultBottom: 60, useRight: true, defaultRight: 5,
           child: _withVariation('grass_base_3', GardenElement(
             elementId: 'grass_base_3',
             revealType: GardenRevealType.growUp,
             child: Image.asset(
               'assets/images/zen-garden/zen_grass_base_3.png',
-              width: 120,
-              height: 90,
+              width: 90,
+              height: 65,
               fit: BoxFit.contain,
             ),
           )),
@@ -1372,19 +1444,19 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
-    // Stage 1: Grass patch 1
+    // Grass 1 — left edge
     if (isUnlocked('grass_1')) {
       elements.add(
-        Positioned(
-          bottom: 150,
-          left: 20,
+        _draggablePositioned(
+          elementId: 'grass_1',
+          defaultLeft: 0, defaultBottom: 180,
           child: _withVariation('grass_1', GardenElement(
             elementId: 'grass_1',
             revealType: GardenRevealType.growUp,
             child: Image.asset(
               'assets/images/zen-garden/zen_grass_1.png',
-              width: 80,
-              height: 100,
+              width: 60,
+              height: 75,
               fit: BoxFit.contain,
             ),
           )),
@@ -1392,19 +1464,19 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
-    // Stage 1: Grass patch 1b
+    // Grass 1b — right edge
     if (isUnlocked('grass_1_b')) {
       elements.add(
-        Positioned(
-          bottom: 130,
-          left: 280,
+        _draggablePositioned(
+          elementId: 'grass_1_b',
+          defaultLeft: 0, defaultBottom: 160, useRight: true, defaultRight: 0,
           child: _withVariation('grass_1_b', GardenElement(
             elementId: 'grass_1_b',
             revealType: GardenRevealType.growUp,
             child: Image.asset(
               'assets/images/zen-garden/zen_grass_1_b.png',
-              width: 75,
-              height: 95,
+              width: 55,
+              height: 70,
               fit: BoxFit.contain,
             ),
           )),
@@ -1412,19 +1484,19 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
-    // Stage 3: Medium rocks (replaces sapling)
+    // Medium rocks — on the sand, right of center
     if (isUnlocked('sapling')) {
       elements.add(
-        Positioned(
-          bottom: 145,
-          left: 280,
+        _draggablePositioned(
+          elementId: 'sapling',
+          defaultLeft: 220, defaultBottom: 150,
           child: _withVariation('sapling', GardenElement(
             elementId: 'sapling',
             revealType: GardenRevealType.growUp,
             child: Image.asset(
               'assets/images/zen-garden/zen_rocks_medium.png',
-              width: 140,
-              height: 95,
+              width: 110,
+              height: 75,
               fit: BoxFit.contain,
             ),
           )),
@@ -1446,157 +1518,6 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
           fit: BoxFit.cover,
         ),
       ),
-    );
-  }
-
-  // Mapping of element IDs to their image asset paths and approximate positions
-  static const _silhouetteAssets = <String, String>{
-    'grass_base_2': 'assets/images/zen-garden/zen_grass_base_2.png',
-    'grass_base_3': 'assets/images/zen-garden/zen_grass_base_3.png',
-    'grass_1': 'assets/images/zen-garden/zen_grass_1.png',
-    'grass_1_b': 'assets/images/zen-garden/zen_grass_1_b.png',
-    'grass_2': 'assets/images/zen-garden/zen_grass_2.png',
-    'grass_2_b': 'assets/images/zen-garden/zen_grass_2_b.png',
-    'grass_3': 'assets/images/zen-garden/zen_grass_3.png',
-    'flowers_white': 'assets/images/zen-garden/zen_flowers_white.png',
-    'flowers_yellow': 'assets/images/zen-garden/zen_flowers_yellow.png',
-    'flowers_purple': 'assets/images/zen-garden/zen_flowers_purple.png',
-    'tree_young': 'assets/images/zen-garden/zen_tree_young.png',
-    'tree_autumn': 'assets/images/zen-garden/zen_tree_autumn.png',
-    'bench': 'assets/images/zen-garden/zen_bench.png',
-    'pagoda': 'assets/images/zen-garden/zen_pagoda.png',
-    'pond_empty': 'assets/images/zen-garden/zen_pond_empty.png',
-    'bush_small': 'assets/images/zen-garden/zen_shrub.png',
-    'zen_bamboo': 'assets/images/zen-garden/zen_bamboo.png',
-    'pond_full': 'assets/images/zen-garden/zen_pond.png',
-    'tree_cherry': 'assets/images/zen-garden/zen_blossoms_a.png',
-    'lantern': 'assets/images/zen-garden/zen_lantern.png',
-    'torii_gate': 'assets/images/zen-garden/zen_shrine.png',
-    'zen_bonsai': 'assets/images/zen-garden/zen_bonsai.png',
-    'bridge': 'assets/images/zen-garden/zen_bridge.png',
-    'stream': 'assets/images/zen-garden/zen_waterfall.png',
-  };
-
-  // Positions and sizes for silhouette previews (bottom, left, width, height)
-  static const _silhouetteLayout = <String, List<double>>{
-    'grass_base_2': [30, 200, 110, 80],
-    'grass_base_3': [25, 310, 120, 90],
-    'grass_1': [150, 20, 80, 100],
-    'grass_1_b': [130, 280, 75, 95],
-    'grass_2': [200, 50, 90, 120],
-    'grass_2_b': [190, 300, 85, 110],
-    'grass_3': [250, 10, 100, 150],
-    'flowers_white': [180, 130, 70, 80],
-    'flowers_yellow': [170, 230, 75, 85],
-    'flowers_purple': [220, 260, 70, 90],
-    'tree_young': [300, 60, 140, 180],
-    'tree_autumn': [350, 250, 160, 200],
-    'bench': [120, 200, 120, 70],
-    'pagoda': [200, 150, 90, 140],
-    'pond_empty': [160, 200, 180, 110],
-    'bush_small': [145, 180, 95, 70],
-    'zen_bamboo': [160, 40, 65, 190],
-    'pond_full': [160, 200, 210, 125],
-    'tree_cherry': [180, 260, 160, 200],
-    'lantern': [170, 300, 60, 120],
-    'torii_gate': [175, 200, 95, 125],
-    'zen_bonsai': [180, 120, 180, 240],
-    'bridge': [155, 70, 130, 80],
-    'stream': [120, 0, 160, 220],
-  };
-
-  /// Get elements that unlock at the NEXT stage
-  List<String> _getNextStageElements(int currentStage) {
-    final nextStage = currentStage + 1;
-    if (nextStage > 9) return [];
-    // Elements at next stage that aren't already unlocked
-    final nextStageMap = <int, List<String>>{
-      1: ['pebble_path', 'small_stones'],
-      2: ['bush_small'],
-      3: ['zen_bamboo', 'pond_full'],
-      4: ['pond_full', 'tree_cherry'],
-      5: ['tree_cherry', 'lantern'],
-      6: ['torii_gate', 'zen_bonsai'],
-      7: ['bridge', 'stream'],
-      8: ['mountain'],
-      9: ['seasons'],
-    };
-    return (nextStageMap[nextStage] ?? [])
-        .where((e) => !isUnlocked(e) && _silhouetteAssets.containsKey(e))
-        .toList();
-  }
-
-  int _puzzlesUntilNextStage(int currentStage) {
-    // Stage thresholds from GardenState.calculateStage
-    const thresholds = [0, 3, 8, 15, 25, 40, 60, 85, 120, 170];
-    if (currentStage + 1 >= thresholds.length) return 0;
-    final needed = thresholds[currentStage + 1];
-    final solved = gardenState.totalPuzzlesSolved;
-    return (needed - solved).clamp(0, 999);
-  }
-
-  Widget _buildSilhouettePreviews(int currentStage) {
-    final nextElements = _getNextStageElements(currentStage);
-    if (nextElements.isEmpty) return const SizedBox.shrink();
-
-    final puzzlesLeft = _puzzlesUntilNextStage(currentStage);
-
-    return Stack(
-      children: nextElements.map((elementId) {
-        final asset = _silhouetteAssets[elementId]!;
-        final layout = _silhouetteLayout[elementId]!;
-        
-        return Positioned(
-          bottom: layout[0],
-          left: layout[1],
-          child: GestureDetector(
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Solve $puzzlesLeft more puzzles to unlock!'),
-                  duration: const Duration(seconds: 2),
-                  behavior: SnackBarBehavior.floating,
-                  backgroundColor: const Color(0xFF2D2D2D),
-                ),
-              );
-            },
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // Silhouette: grayscale + low opacity
-                ColorFiltered(
-                  colorFilter: const ColorFilter.mode(
-                    Colors.black,
-                    BlendMode.saturation,
-                  ),
-                  child: Opacity(
-                    opacity: 0.15,
-                    child: Image.asset(
-                      asset,
-                      width: layout[2],
-                      height: layout[3],
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                ),
-                // Lock icon overlay
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.4),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.lock,
-                    size: 16,
-                    color: Colors.white70,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
     );
   }
 
@@ -1624,11 +1545,35 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
             '${state.totalPuzzlesSolved} puzzles solved',
             style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
           ),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: _resetAllPositions,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.refresh, size: 14, color: Colors.white.withValues(alpha: 0.7)),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Reset Layout',
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 }
+
+// ── Custom Painters ──
 
 class MountainPainter extends CustomPainter {
   @override
@@ -1652,222 +1597,6 @@ class MountainPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-class GroundPainter extends CustomPainter {
-  final int stage;
-
-  GroundPainter({required this.stage});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // Stage 0: Dark earth with subtle texture (not black!)
-    // Stage 1: Brown earth
-    // Stage 2+: Green grass
-    final List<Color> colors;
-    if (stage >= 2) {
-      colors = const [Color(0xFF6FA35E), Color(0xFF4F7F45)];
-    } else if (stage >= 1) {
-      colors = const [Color(0xFF9B8368), Color(0xFF7B624A)];
-    } else {
-      // Stage 0: Dark but visible earth
-      colors = const [Color(0xFF3D4A3A), Color(0xFF2A3528)];
-    }
-
-    final earthPaint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: colors,
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), earthPaint);
-
-    // Subtle earth texture at stage 0 (no gray ovals)
-    if (stage == 0) {
-      final texturePaint = Paint()
-        ..color = const Color(0xFF4A5A47).withValues(alpha: 0.15)
-        ..style = PaintingStyle.fill;
-      // Organic ground texture with small irregular patches
-      for (var i = 0; i < 8; i++) {
-        final x = (i * 50.0) + 20;
-        final y = size.height - 80 + (i % 3) * 30;
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(
-            Rect.fromCenter(center: Offset(x, y), width: 30 + (i % 3) * 10, height: 8),
-            const Radius.circular(4),
-          ),
-          texturePaint,
-        );
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant GroundPainter oldDelegate) =>
-      oldDelegate.stage != stage;
-}
-
-class GrassPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF228B22)
-      ..style = PaintingStyle.fill;
-
-    final path = Path();
-    for (var i = 0; i < 5; i++) {
-      final x = size.width * (i / 5 + 0.1);
-      path.moveTo(x, size.height);
-      path.quadraticBezierTo(
-        x - 5,
-        size.height * 0.5,
-        x + 3,
-        0,
-      );
-      path.quadraticBezierTo(
-        x + 8,
-        size.height * 0.5,
-        x + 5,
-        size.height,
-      );
-    }
-    path.close();
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-/// Sparse grass for stage 0 - darker, fewer blades
-class BaseGrassPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF4A6B4A) // Darker, more muted green
-      ..style = PaintingStyle.fill;
-
-    final path = Path();
-    // Just 3 sparse blades
-    for (var i = 0; i < 3; i++) {
-      final x = size.width * (i / 3 + 0.15);
-      path.moveTo(x, size.height);
-      path.quadraticBezierTo(
-        x - 3,
-        size.height * 0.5,
-        x + 2,
-        0,
-      );
-      path.quadraticBezierTo(
-        x + 5,
-        size.height * 0.5,
-        x + 3,
-        size.height,
-      );
-    }
-    path.close();
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-/// Beautiful organic tree with layered foliage
-class TreePainter extends CustomPainter {
-  final bool isCherry;
-  final bool isAutumn;
-  final double scale;
-
-  TreePainter({this.isCherry = false, this.isAutumn = false, this.scale = 1.0});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final trunkPaint = Paint()
-      ..color = const Color(0xFF5D4037)
-      ..style = PaintingStyle.fill;
-
-    final trunkHighlight = Paint()
-      ..color = const Color(0xFF795548)
-      ..style = PaintingStyle.fill;
-
-    // Draw trunk
-    final trunkPath = Path()
-      ..moveTo(size.width * 0.42, size.height)
-      ..lineTo(size.width * 0.38, size.height * 0.55)
-      ..quadraticBezierTo(
-        size.width * 0.35, size.height * 0.45,
-        size.width * 0.4, size.height * 0.4,
-      )
-      ..lineTo(size.width * 0.6, size.height * 0.4)
-      ..quadraticBezierTo(
-        size.width * 0.65, size.height * 0.45,
-        size.width * 0.62, size.height * 0.55,
-      )
-      ..lineTo(size.width * 0.58, size.height)
-      ..close();
-
-    canvas.drawPath(trunkPath, trunkPaint);
-
-    // Trunk highlight
-    canvas.drawRect(
-      Rect.fromLTWH(size.width * 0.45, size.height * 0.5, size.width * 0.06, size.height * 0.45),
-      trunkHighlight,
-    );
-
-    // Foliage colors
-    final baseColor = isCherry
-        ? const Color(0xFFFFB7C5)
-        : isAutumn
-            ? const Color(0xFFD4522A) // Autumn orange
-            : const Color(0xFF2E7D32);
-    final midColor = isCherry
-        ? const Color(0xFFFF8FAA)
-        : isAutumn
-            ? const Color(0xFFE87D2A) // Autumn amber
-            : const Color(0xFF43A047);
-    final highlightColor = isCherry
-        ? const Color(0xFFFFCDD2)
-        : isAutumn
-            ? const Color(0xFFFFB347) // Autumn gold
-            : const Color(0xFF66BB6A);
-
-    final basePaint = Paint()..color = baseColor..style = PaintingStyle.fill;
-    final midPaint = Paint()..color = midColor..style = PaintingStyle.fill;
-    final highlightPaint = Paint()..color = highlightColor..style = PaintingStyle.fill;
-
-    // Draw layered foliage clusters
-    // Back layer (larger, darker)
-    _drawFoliageCluster(canvas, size.width * 0.5, size.height * 0.25, 50 * scale, basePaint);
-    _drawFoliageCluster(canvas, size.width * 0.3, size.height * 0.3, 35 * scale, basePaint);
-    _drawFoliageCluster(canvas, size.width * 0.7, size.height * 0.28, 38 * scale, basePaint);
-
-    // Mid layer
-    _drawFoliageCluster(canvas, size.width * 0.45, size.height * 0.2, 40 * scale, midPaint);
-    _drawFoliageCluster(canvas, size.width * 0.6, size.height * 0.22, 35 * scale, midPaint);
-    _drawFoliageCluster(canvas, size.width * 0.35, size.height * 0.26, 30 * scale, midPaint);
-
-    // Front layer (smaller, lighter - highlights)
-    _drawFoliageCluster(canvas, size.width * 0.5, size.height * 0.15, 28 * scale, highlightPaint);
-    _drawFoliageCluster(canvas, size.width * 0.4, size.height * 0.22, 22 * scale, highlightPaint);
-    _drawFoliageCluster(canvas, size.width * 0.62, size.height * 0.2, 20 * scale, highlightPaint);
-  }
-
-  void _drawFoliageCluster(Canvas canvas, double cx, double cy, double radius, Paint paint) {
-    // Draw organic blob shape using overlapping circles
-    canvas.drawCircle(Offset(cx, cy), radius, paint);
-    canvas.drawCircle(Offset(cx - radius * 0.5, cy + radius * 0.3), radius * 0.7, paint);
-    canvas.drawCircle(Offset(cx + radius * 0.5, cy + radius * 0.2), radius * 0.65, paint);
-    canvas.drawCircle(Offset(cx, cy - radius * 0.4), radius * 0.6, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant TreePainter oldDelegate) =>
-      oldDelegate.isCherry != isCherry ||
-      oldDelegate.isAutumn != isAutumn ||
-      oldDelegate.scale != scale;
-}
-
-/// Simple koi fish shape
 class KoiFishPainter extends CustomPainter {
   final Color color;
 
@@ -1879,26 +1608,14 @@ class KoiFishPainter extends CustomPainter {
       ..color = color
       ..style = PaintingStyle.fill;
 
-    // Fish body (oval)
     final bodyPath = Path()
       ..moveTo(size.width * 0.8, size.height * 0.5)
-      ..quadraticBezierTo(
-        size.width * 0.5,
-        0,
-        size.width * 0.15,
-        size.height * 0.5,
-      )
-      ..quadraticBezierTo(
-        size.width * 0.5,
-        size.height,
-        size.width * 0.8,
-        size.height * 0.5,
-      )
+      ..quadraticBezierTo(size.width * 0.5, 0, size.width * 0.15, size.height * 0.5)
+      ..quadraticBezierTo(size.width * 0.5, size.height, size.width * 0.8, size.height * 0.5)
       ..close();
 
     canvas.drawPath(bodyPath, paint);
 
-    // Tail
     final tailPath = Path()
       ..moveTo(size.width * 0.8, size.height * 0.5)
       ..lineTo(size.width, size.height * 0.2)
@@ -1907,7 +1624,6 @@ class KoiFishPainter extends CustomPainter {
 
     canvas.drawPath(tailPath, paint);
 
-    // Eye
     canvas.drawCircle(
       Offset(size.width * 0.25, size.height * 0.4),
       1.5,
@@ -1920,241 +1636,6 @@ class KoiFishPainter extends CustomPainter {
       oldDelegate.color != color;
 }
 
-/// Traditional Japanese torii gate
-class ToriiPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final redPaint = Paint()
-      ..color = const Color(0xFFD32F2F)
-      ..style = PaintingStyle.fill;
-
-    final darkRedPaint = Paint()
-      ..color = const Color(0xFFB71C1C)
-      ..style = PaintingStyle.fill;
-
-    // Main pillars
-    canvas.drawRect(
-      Rect.fromLTWH(size.width * 0.1, size.height * 0.25, size.width * 0.12, size.height * 0.75),
-      redPaint,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(size.width * 0.78, size.height * 0.25, size.width * 0.12, size.height * 0.75),
-      redPaint,
-    );
-
-    // Top beam (kasagi) - curved
-    final kasagiPath = Path()
-      ..moveTo(0, size.height * 0.12)
-      ..quadraticBezierTo(size.width * 0.5, 0, size.width, size.height * 0.12)
-      ..lineTo(size.width, size.height * 0.2)
-      ..quadraticBezierTo(size.width * 0.5, size.height * 0.08, 0, size.height * 0.2)
-      ..close();
-    canvas.drawPath(kasagiPath, darkRedPaint);
-
-    // Lower beam (nuki)
-    canvas.drawRect(
-      Rect.fromLTWH(size.width * 0.05, size.height * 0.28, size.width * 0.9, size.height * 0.08),
-      redPaint,
-    );
-
-    // Small decorative piece on top
-    canvas.drawRect(
-      Rect.fromLTWH(size.width * 0.42, size.height * 0.04, size.width * 0.16, size.height * 0.08),
-      darkRedPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-/// Small Japanese pagoda silhouette
-class PagodaPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final woodPaint = Paint()
-      ..color = const Color(0xFF5D4037)
-      ..style = PaintingStyle.fill;
-
-    final roofPaint = Paint()
-      ..color = const Color(0xFF3E2723)
-      ..style = PaintingStyle.fill;
-
-    // Base tier
-    canvas.drawRect(
-      Rect.fromLTWH(size.width * 0.15, size.height * 0.7, size.width * 0.7, size.height * 0.25),
-      woodPaint,
-    );
-    
-    // Base roof
-    final roof1 = Path()
-      ..moveTo(0, size.height * 0.7)
-      ..lineTo(size.width * 0.5, size.height * 0.58)
-      ..lineTo(size.width, size.height * 0.7)
-      ..close();
-    canvas.drawPath(roof1, roofPaint);
-
-    // Middle tier
-    canvas.drawRect(
-      Rect.fromLTWH(size.width * 0.2, size.height * 0.45, size.width * 0.6, size.height * 0.18),
-      woodPaint,
-    );
-    
-    // Middle roof
-    final roof2 = Path()
-      ..moveTo(size.width * 0.05, size.height * 0.45)
-      ..lineTo(size.width * 0.5, size.height * 0.32)
-      ..lineTo(size.width * 0.95, size.height * 0.45)
-      ..close();
-    canvas.drawPath(roof2, roofPaint);
-
-    // Top tier
-    canvas.drawRect(
-      Rect.fromLTWH(size.width * 0.28, size.height * 0.22, size.width * 0.44, size.height * 0.13),
-      woodPaint,
-    );
-    
-    // Top roof
-    final roof3 = Path()
-      ..moveTo(size.width * 0.15, size.height * 0.22)
-      ..lineTo(size.width * 0.5, size.height * 0.08)
-      ..lineTo(size.width * 0.85, size.height * 0.22)
-      ..close();
-    canvas.drawPath(roof3, roofPaint);
-
-    // Spire
-    canvas.drawRect(
-      Rect.fromLTWH(size.width * 0.47, 0, size.width * 0.06, size.height * 0.1),
-      roofPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-/// Wooden bridge painter
-class BridgePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final woodPaint = Paint()
-      ..color = const Color(0xFF8B4513)
-      ..style = PaintingStyle.fill;
-
-    final plankPaint = Paint()
-      ..color = const Color(0xFFA0522D)
-      ..style = PaintingStyle.fill;
-
-    // Bridge arc/deck
-    final deckPath = Path()
-      ..moveTo(0, size.height * 0.7)
-      ..quadraticBezierTo(
-        size.width * 0.5, size.height * 0.3,
-        size.width, size.height * 0.7,
-      )
-      ..lineTo(size.width, size.height * 0.85)
-      ..quadraticBezierTo(
-        size.width * 0.5, size.height * 0.45,
-        0, size.height * 0.85,
-      )
-      ..close();
-    canvas.drawPath(deckPath, woodPaint);
-
-    // Planks
-    for (int i = 1; i < 6; i++) {
-      final x = size.width * (i / 6);
-      // Calculate y position on the arc
-      final t = i / 6;
-      final y = size.height * (0.7 - 0.4 * math.sin(t * math.pi));
-      
-      canvas.drawRect(
-        Rect.fromCenter(
-          center: Offset(x, y + 5),
-          width: 3,
-          height: 12,
-        ),
-        plankPaint,
-      );
-    }
-
-    // Railings
-    canvas.drawRect(
-      Rect.fromLTWH(size.width * 0.1, size.height * 0.4, size.width * 0.03, size.height * 0.35),
-      woodPaint,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(size.width * 0.87, size.height * 0.4, size.width * 0.03, size.height * 0.35),
-      woodPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-/// Animated stream painter
-class StreamPainter extends CustomPainter {
-  final double animationValue;
-
-  StreamPainter({required this.animationValue});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // Create gradient for water
-    final waterPaint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          const Color(0xFF4FC3F7).withValues(alpha: 0.7),
-          const Color(0xFF039BE5).withValues(alpha: 0.6),
-        ],
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 18
-      ..strokeCap = StrokeCap.round;
-
-    // Stream path - curves from left side toward pond area
-    final streamPath = Path()
-      ..moveTo(0, size.height * 0.3)
-      ..quadraticBezierTo(
-        size.width * 0.3, size.height * 0.5,
-        size.width * 0.5, size.height * 0.4,
-      )
-      ..quadraticBezierTo(
-        size.width * 0.7, size.height * 0.3,
-        size.width * 0.9, size.height * 0.5,
-      );
-
-    canvas.drawPath(streamPath, waterPaint);
-
-    // Shimmer effect
-    final shimmerPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.3 * (0.5 + 0.5 * math.sin(animationValue * 2 * math.pi)))
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4
-      ..strokeCap = StrokeCap.round;
-
-    // Draw shimmer highlights that move along stream
-    final offset = animationValue * size.width;
-    for (int i = 0; i < 3; i++) {
-      final startX = ((offset + i * size.width / 3) % size.width);
-      if (startX < size.width * 0.1 || startX > size.width * 0.85) continue;
-      
-      canvas.drawCircle(
-        Offset(startX, size.height * 0.4 + math.sin(startX / 50) * 10),
-        3,
-        shimmerPaint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant StreamPainter oldDelegate) =>
-      oldDelegate.animationValue != animationValue;
-}
-
-/// Wind chime with hanging tubes that sway in the ambient breeze
 class WindChimePainter extends CustomPainter {
   final double animationValue;
 
@@ -2180,28 +1661,21 @@ class WindChimePainter extends CustomPainter {
       ..strokeWidth = 0.9
       ..strokeCap = StrokeCap.round;
 
-    // Top hanging string
     canvas.drawLine(
       Offset(size.width / 2, 0),
       Offset(size.width / 2, size.height * 0.13),
       stringPaint,
     );
 
-    // Horizontal bar
     final barY = size.height * 0.15;
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromCenter(
-          center: Offset(size.width / 2, barY),
-          width: size.width * 0.9,
-          height: 4,
-        ),
+        Rect.fromCenter(center: Offset(size.width / 2, barY), width: size.width * 0.9, height: 4),
         const Radius.circular(2),
       ),
       barPaint,
     );
 
-    // Tubes: (xRatio, lengthRatio, tubeWidth, swayPhase)
     const tubeData = [
       (0.15, 0.40, 3.5, 0.0),
       (0.35, 0.58, 4.5, 1.3),
@@ -2213,23 +1687,18 @@ class WindChimePainter extends CustomPainter {
     final barBottom = barY + 2;
 
     for (final (xRatio, lengthRatio, tubeWidth, phase) in tubeData) {
-      final swayAngle =
-          math.sin(animationValue * 2 * math.pi + phase) * 0.12;
+      final swayAngle = math.sin(animationValue * 2 * math.pi + phase) * 0.12;
       final x = size.width * xRatio;
       final tubeHeight = size.height * lengthRatio;
-
-      // Sway offset increases toward tube bottom (pendulum effect)
       final swayOffsetTop = math.sin(swayAngle) * tubeHeight * 0.15;
       final swayOffsetMid = math.sin(swayAngle) * tubeHeight * 0.35;
 
-      // String from bar to tube top
       canvas.drawLine(
         Offset(x, barBottom),
         Offset(x + swayOffsetTop, barBottom + size.height * 0.06),
         stringPaint,
       );
 
-      // Tube body
       final tubeCenterY = barBottom + size.height * 0.06 + tubeHeight / 2;
       final tubeRect = Rect.fromCenter(
         center: Offset(x + swayOffsetMid, tubeCenterY),
@@ -2241,7 +1710,6 @@ class WindChimePainter extends CustomPainter {
         tubePaint,
       );
 
-      // Shine highlight
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           Rect.fromCenter(
@@ -2261,9 +1729,7 @@ class WindChimePainter extends CustomPainter {
       oldDelegate.animationValue != animationValue;
 }
 
-/// Single bird painted as an M-shape silhouette (two wing arcs)
 class BirdPainter extends CustomPainter {
-  /// 0–1 progress through one full wing-flap cycle
   final double flapProgress;
 
   BirdPainter({required this.flapProgress});
@@ -2277,14 +1743,11 @@ class BirdPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
 
-    // Wing elevation: positive = wings up, negative = wings down
     final flapAngle = math.sin(flapProgress * 2 * math.pi);
     final wingLift = size.height * 0.45 * flapAngle;
-
     final cx = size.width / 2;
     final cy = size.height * 0.65;
 
-    // Left wing arc + right wing arc meeting at the body centre dip
     final path = Path()
       ..moveTo(0, cy)
       ..quadraticBezierTo(cx * 0.5, cy - wingLift, cx, cy * 0.6)
@@ -2298,7 +1761,6 @@ class BirdPainter extends CustomPainter {
       oldDelegate.flapProgress != flapProgress;
 }
 
-/// Dragonfly particle
 class DragonflyPainter extends CustomPainter {
   final Color color;
 
@@ -2306,45 +1768,18 @@ class DragonflyPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final bodyPaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
+    final bodyPaint = Paint()..color = color..style = PaintingStyle.fill;
+    final wingPaint = Paint()..color = Colors.white.withValues(alpha: 0.6)..style = PaintingStyle.fill;
 
-    final wingPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.6)
-      ..style = PaintingStyle.fill;
-
-    // Body
     canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(size.width * 0.5, size.height * 0.5),
-        width: size.width * 0.6,
-        height: size.height * 0.2,
-      ),
+      Rect.fromCenter(center: Offset(size.width * 0.5, size.height * 0.5), width: size.width * 0.6, height: size.height * 0.2),
       bodyPaint,
     );
 
-    // Wings (4 wings)
-    // Top left
-    canvas.drawOval(
-      Rect.fromLTWH(size.width * 0.1, size.height * 0.1, size.width * 0.35, size.height * 0.3),
-      wingPaint,
-    );
-    // Top right
-    canvas.drawOval(
-      Rect.fromLTWH(size.width * 0.55, size.height * 0.1, size.width * 0.35, size.height * 0.3),
-      wingPaint,
-    );
-    // Bottom left
-    canvas.drawOval(
-      Rect.fromLTWH(size.width * 0.1, size.height * 0.55, size.width * 0.35, size.height * 0.3),
-      wingPaint,
-    );
-    // Bottom right
-    canvas.drawOval(
-      Rect.fromLTWH(size.width * 0.55, size.height * 0.55, size.width * 0.35, size.height * 0.3),
-      wingPaint,
-    );
+    canvas.drawOval(Rect.fromLTWH(size.width * 0.1, size.height * 0.1, size.width * 0.35, size.height * 0.3), wingPaint);
+    canvas.drawOval(Rect.fromLTWH(size.width * 0.55, size.height * 0.1, size.width * 0.35, size.height * 0.3), wingPaint);
+    canvas.drawOval(Rect.fromLTWH(size.width * 0.1, size.height * 0.55, size.width * 0.35, size.height * 0.3), wingPaint);
+    canvas.drawOval(Rect.fromLTWH(size.width * 0.55, size.height * 0.55, size.width * 0.35, size.height * 0.3), wingPaint);
   }
 
   @override

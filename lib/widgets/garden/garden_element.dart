@@ -190,9 +190,11 @@ class _GardenElementState extends State<GardenElement>
   @override
   Widget build(BuildContext context) {
     if (!_isUnlocked) {
+      debugPrint('🔒 GardenElement LOCKED: ${widget.elementId}');
       return const SizedBox.shrink();
     }
 
+    debugPrint('🌱 GardenElement VISIBLE: ${widget.elementId} ctrl=${_controller.value.toStringAsFixed(2)} fade=${_fadeAnimation.value.toStringAsFixed(2)} revealed=$_hasBeenRevealed');
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {

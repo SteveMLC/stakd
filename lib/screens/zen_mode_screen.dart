@@ -159,6 +159,15 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadNewPuzzle());
   }
 
+  // Cached reference to avoid context.read() in dispose
+  GameState? _cachedGameState;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _cachedGameState = context.read<GameState>();
+  }
+
   @override
   void dispose() {
     GameColors.setUltraPalette(false);
@@ -171,8 +180,8 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     _particleController.dispose();
     
     // Reset streak if player exits without completing current puzzle
-    final gameState = context.read<GameState>();
-    if (!gameState.isComplete && gameState.moveCount > 0) {
+    final gameState = _cachedGameState;
+    if (gameState != null && !gameState.isComplete && gameState.moveCount > 0) {
       StatsService().resetStreak();
     }
     
@@ -1423,37 +1432,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   }
 
   Widget _buildGardenFullView() {
-    final state = GardenService.state;
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // Full interactive garden scene
-        ZenGardenScene(showStats: true, interactive: true),
-        // Stage info overlay at top
-        Positioned(
-          top: 16,
-          left: 0,
-          right: 0,
-          child: Center(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              decoration: BoxDecoration(
-                color: ThemeColors.surfaceColor.withValues(alpha: 0.7),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                '${state.stageIcon} ${state.stageName}  •  ${state.totalPuzzlesSolved} puzzles solved',
-                style: TextStyle(
-                  color: ThemeColors.textColor,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
+    return ZenGardenScene(showStats: true, interactive: true);
   }
 
   Widget _buildBottomBar() {
