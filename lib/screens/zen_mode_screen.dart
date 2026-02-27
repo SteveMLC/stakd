@@ -31,21 +31,10 @@ import '../services/progression_service.dart';
 import '../services/currency_service.dart';
 import '../widgets/rank_up_overlay.dart';
 import '../widgets/achievement_toast.dart';
+import '../engine/puzzle_session.dart';
 
-/// Zen Mode difficulty levels
-enum ZenDifficulty {
-  easy(3, 2, 3, 'Easy'),
-  medium(4, 2, 4, 'Medium'),
-  hard(5, 1, 4, 'Hard'),
-  ultra(6, 1, 5, 'Ultra');
-
-  final int colors;
-  final int emptySlots;
-  final int depth;
-  final String label;
-
-  const ZenDifficulty(this.colors, this.emptySlots, this.depth, this.label);
-}
+// Re-export ZenDifficulty from puzzle_session for backward compatibility
+export '../engine/puzzle_session.dart' show ZenDifficulty;
 
 /// Zen Mode - Infinite relaxing puzzle experience
 class ZenModeScreen extends StatefulWidget {
@@ -74,6 +63,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   bool _completionUndoUsed = false;
 
   late ZenDifficulty _difficulty;
+  late PuzzleSession _session; // Reusable puzzle session engine
   int _puzzlesSolved = 0;
   DateTime? _puzzleStart;
   DateTime? _sessionStart;
@@ -131,6 +121,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
       (d) => d.label.toLowerCase() == widget.difficulty.toLowerCase(),
       orElse: () => ZenDifficulty.medium,
     );
+    _session = PuzzleSession(difficulty: _difficulty);
     GameColors.setUltraPalette(_difficulty == ZenDifficulty.ultra);
     _sessionStart = DateTime.now();
     _puzzleSeed = DateTime.now().millisecondsSinceEpoch;
@@ -171,6 +162,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   @override
   void dispose() {
     GameColors.setUltraPalette(false);
+    _session.dispose();
     _sessionTimer?.cancel();
     _liveTimerUpdater?.cancel();
     _loadingTimeout?.cancel();

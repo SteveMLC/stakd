@@ -6,6 +6,7 @@ import '../../models/garden_archetype.dart';
 import '../../services/zen_audio_service.dart';
 import '../../services/garden_service.dart';
 import '../../utils/garden_variation.dart';
+// Progression base available for reuse: import '../../progression/reward_scene_base.dart';
 import '../garden/garden_element.dart';
 import '../garden/growth_milestone.dart';
 import 'base_theme_scene.dart';

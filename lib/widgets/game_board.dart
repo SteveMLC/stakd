@@ -9,6 +9,10 @@ import '../services/storage_service.dart';
 import '../services/audio_service.dart';
 import '../utils/constants.dart';
 import '../utils/theme_colors.dart';
+// Engine modules available for reuse in future games:
+// import '../engine/board_controller.dart';
+// import '../engine/board_renderer.dart';
+// import '../engine/input_handler.dart';
 import 'particles/particle_burst.dart';
 import 'particles/confetti_overlay.dart';
 import 'combo_popup.dart';
