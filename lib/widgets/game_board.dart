@@ -151,8 +151,19 @@ class _GameBoardState extends State<GameBoard>
                   constraints.maxWidth,
                 );
                 final rows = (stackCount / maxStacksPerRow).ceil();
+                
+                // Calculate if board will overflow and scale down if needed
+                final maxDepth = stacks.isEmpty ? 4 : stacks.map((s) => s.maxDepth).reduce((a, b) => a > b ? a : b);
+                final stackH = GameSizes.getStackHeight(maxDepth);
+                final totalBoardHeight = rows * (stackH + 16); // 16 = vertical padding
+                final availableHeight = constraints.maxHeight;
+                final scaleFactor = totalBoardHeight > availableHeight
+                    ? (availableHeight / totalBoardHeight).clamp(0.5, 1.0)
+                    : 1.0;
 
-                return Stack(
+                return Transform.scale(
+                  scale: scaleFactor,
+                  child: Stack(
                   children: [
                     // Particle bursts overlay
                     if (_currentBursts.isNotEmpty)
@@ -428,6 +439,7 @@ class _GameBoardState extends State<GameBoard>
                         boardContext: context,
                       ),
                   ],
+                ),
                 );
               },
             ),
