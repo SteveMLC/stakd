@@ -370,28 +370,30 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
   Widget _buildSky(int stage) {
     final isNight = stage >= 6;
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Image.asset(
-          'assets/images/backgrounds/slate_bg.jpg',
-          fit: BoxFit.cover,
-          width: double.infinity,
-          height: double.infinity,
-        ),
-        
-        if (isNight)
-          Container(
-            color: const Color(0xFF0D1321).withValues(alpha: 0.65),
+    return Positioned.fill(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(
+            'assets/images/backgrounds/slate_bg.jpg',
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
           ),
-        
-        if (isNight) _buildStars(),
-        
-        if (isUnlocked('moon')) 
-          _buildMoon()
-        else if (!isNight && stage >= 3)
-          _buildSun(),
-      ],
+          
+          if (isNight)
+            Container(
+              color: const Color(0xFF0D1321).withValues(alpha: 0.65),
+            ),
+          
+          if (isNight) _buildStars(),
+          
+          if (isUnlocked('moon')) 
+            _buildMoon()
+          else if (!isNight && stage >= 3)
+            _buildSun(),
+        ],
+      ),
     );
   }
 
