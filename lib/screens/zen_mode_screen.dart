@@ -91,6 +91,9 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   List<GameStack>? _preGeneratedStacks;
   bool _isPreGenerating = false;
 
+  // Loading safety timeout
+  Timer? _loadingTimeout;
+
   // Stats tracking
   bool _isNewMoveBest = false;
   bool _isNewTimeBest = false;
@@ -169,6 +172,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     GameColors.setUltraPalette(false);
     _sessionTimer?.cancel();
     _liveTimerUpdater?.cancel();
+    _loadingTimeout?.cancel();
     _liveStopwatch.stop();
     _fadeController.dispose();
     _particleController.dispose();
@@ -320,7 +324,73 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     _liveTimerUpdater?.cancel();
   }
 
+  /// Generate a puzzle synchronously using shuffle-from-solved (always instant).
+  void _initPuzzleFromSyncFallback(LevelParams params) {
+    _loadingTimeout?.cancel();
+    final seed = _puzzleSeed;
+    final random = seed == 0 ? Random() : Random(seed);
+    // Build solved state and shuffle it — guaranteed instant
+    final colors = params.colors;
+    final depth = params.depth;
+    final emptySlots = params.emptySlots;
+    final tubes = <List<int>>[];
+    for (int c = 0; c < colors; c++) {
+      tubes.add(List<int>.filled(depth, c));
+    }
+    for (int i = 0; i < emptySlots; i++) {
+      tubes.add([]);
+    }
+    // Shuffle by performing random valid moves
+    for (int m = 0; m < 200; m++) {
+      final validMoves = <(int, int)>[];
+      for (int from = 0; from < tubes.length; from++) {
+        if (tubes[from].isEmpty) continue;
+        final block = tubes[from].last;
+        for (int to = 0; to < tubes.length; to++) {
+          if (from == to) continue;
+          if (tubes[to].length >= depth) continue;
+          if (tubes[to].isNotEmpty && tubes[to].last != block) continue;
+          validMoves.add((from, to));
+        }
+      }
+      if (validMoves.isEmpty) break;
+      final (from, to) = validMoves[random.nextInt(validMoves.length)];
+      tubes[to].add(tubes[from].removeLast());
+    }
+    // Convert to GameStacks
+    final stacks = tubes.map((t) => GameStack(
+      layers: t.map((colorIndex) => Layer(colorIndex: colorIndex)).toList(),
+      maxDepth: depth,
+    )).toList();
+    _initialStacks = stacks.map((s) => GameStack(
+      layers: s.layers.map((l) => Layer(colorIndex: l.colorIndex, type: l.type, colors: l.colors, lockedUntil: l.lockedUntil, isFrozen: l.isFrozen)).toList(),
+      maxDepth: s.maxDepth,
+    )).toList();
+    context.read<GameState>().initZenGame(stacks);
+    _currentPar = (colors * depth * 1.2).ceil();
+    setState(() {
+      _isLoading = false;
+      _stackKeys.clear();
+      _puzzleSeed++;
+      _hintsRemaining = 3;
+      _showingHint = false;
+      _showCompletionOverlay = false;
+    });
+    _checkOnboarding();
+  }
+
   void _loadNewPuzzle() {
+    // Guard: never trigger if player is actively playing an incomplete puzzle
+    try {
+      final gameState = context.read<GameState>();
+      if (gameState.moveCount > 0 && !gameState.isComplete && !_isTransitioning) {
+        debugPrint('BLOCKED: _loadNewPuzzle() called during active gameplay (${gameState.moveCount} moves)');
+        return;
+      }
+    } catch (_) {
+      // GameState not yet available (first load) — proceed
+    }
+
     _puzzleStart = DateTime.now();
     // Force-dismiss all overlays on puzzle transition
     _currentAchievementToast = null;
@@ -330,16 +400,30 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     // Reset live timer for new puzzle
     _liveStopwatch.reset();
     _liveTimerUpdater?.cancel();
+    _loadingTimeout?.cancel();
     final params = _getAdaptiveDifficulty();
     final seed = _puzzleSeed;
     setState(() => _isLoading = true);
     // Reset live timer display before showing loading
     _liveStopwatch.reset();
     
-    final encoded = encodeParamsForIsolate(params, seed: seed);
+    // Safety timeout: if loading takes >5s, force sync fallback
+    _loadingTimeout = Timer(const Duration(seconds: 5), () {
+      if (_isLoading && mounted) {
+        debugPrint('EMERGENCY: Loading timeout hit, using sync fallback');
+        final fallbackParams = LevelParams(
+          colors: params.colors,
+          depth: 3,
+          stacks: params.colors + 2,
+          emptySlots: 2,
+          shuffleMoves: 30,
+          minDifficultyScore: 0,
+        );
+        _initPuzzleFromSyncFallback(fallbackParams);
+      }
+    });
     
-    // Store params for decode (fallback may use different params)
-    LevelParams activeParams = params;
+    final encoded = encodeParamsForIsolate(params, seed: seed);
     
     // Add timeout to prevent infinite generation
     final genTimer = Stopwatch()..start();
@@ -347,27 +431,29 @@ class _ZenModeScreenState extends State<ZenModeScreen>
         .timeout(
           const Duration(seconds: 3),
           onTimeout: () {
-            // Fallback: same colors/depth but no difficulty threshold, no special blocks
+            debugPrint('Puzzle gen timeout after 3s, using sync fallback');
+            // Don't compute() again — generate synchronously with simpler params
             final fallbackParams = LevelParams(
               colors: params.colors,
-              depth: params.depth,
-              stacks: params.colors + params.emptySlots,
-              emptySlots: params.emptySlots,
-              shuffleMoves: 50,
+              depth: 3,
+              stacks: params.colors + 2,
+              emptySlots: 2,
+              shuffleMoves: 30,
               minDifficultyScore: 0,
             );
-            activeParams = fallbackParams;
-            final fallbackEncoded = encodeParamsForIsolate(fallbackParams, seed: seed);
-            return compute<List<int>, List<List<int>>>(
-              generateZenPuzzleInIsolate, 
-              fallbackEncoded,
-            );
+            _initPuzzleFromSyncFallback(fallbackParams);
+            // Return a sentinel that we'll ignore
+            return <List<int>>[];
           },
         )
         .then((encodedStacks) {
           if (!mounted) return;
+          // If sync fallback already handled it, skip
+          if (!_isLoading) return;
+          if (encodedStacks.isEmpty) return;
+          _loadingTimeout?.cancel();
           debugPrint('Puzzle gen took ${genTimer.elapsedMilliseconds}ms (${params.colors}c ${params.depth}d)');
-          final stacks = decodeStacksFromIsolate(encodedStacks, activeParams.depth);
+          final stacks = decodeStacksFromIsolate(encodedStacks, params.depth);
           // Apply special blocks (locked/frozen) based on difficulty params
           try {
             LevelGenerator().applySpecialBlocks(stacks, params);
@@ -398,10 +484,12 @@ class _ZenModeScreenState extends State<ZenModeScreen>
         })
         .catchError((e, st) {
           if (mounted) {
-            setState(() => _isLoading = false);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Failed to generate puzzle. Please try again.')),
-            );
+            _loadingTimeout?.cancel();
+            // On any error, use sync fallback instead of showing error
+            debugPrint('Puzzle gen error: $e, using sync fallback');
+            if (_isLoading) {
+              _initPuzzleFromSyncFallback(params);
+            }
           }
         });
   }
@@ -449,39 +537,63 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     final params = _getAdaptiveDifficultyFor(nextPuzzleNumber, savedDifficulty);
     final encoded = encodeParamsForIsolate(params, seed: savedSeed);
     
-    // Store params for decode (fallback may use different params)
-    LevelParams activeParams = params;
+    bool usedSyncFallback = false;
     
-    // Add timeout to pre-generation too
+    // Add timeout to pre-generation — on timeout, generate sync fallback
     compute<List<int>, List<List<int>>>(generateZenPuzzleInIsolate, encoded)
         .timeout(
           const Duration(seconds: 3),
           onTimeout: () {
-            // Fallback: same colors/depth but no difficulty threshold
-            final fallbackParams = LevelParams(
-              colors: params.colors,
-              depth: params.depth,
-              stacks: params.colors + params.emptySlots,
-              emptySlots: params.emptySlots,
-              shuffleMoves: 50,
-              minDifficultyScore: 0,
-            );
-            activeParams = fallbackParams;
-            final fallbackEncoded = encodeParamsForIsolate(fallbackParams, seed: savedSeed);
-            return compute<List<int>, List<List<int>>>(
-              generateZenPuzzleInIsolate,
-              fallbackEncoded,
-            );
+            debugPrint('Pre-gen timeout, generating sync fallback');
+            usedSyncFallback = true;
+            // Generate synchronously instead of another compute()
+            final depth = params.depth;
+            final colors = params.colors;
+            final emptySlots = params.emptySlots;
+            final random = savedSeed == 0 ? Random() : Random(savedSeed);
+            final tubes = <List<int>>[];
+            for (int c = 0; c < colors; c++) {
+              tubes.add(List<int>.filled(depth, c));
+            }
+            for (int i = 0; i < emptySlots; i++) {
+              tubes.add([]);
+            }
+            for (int m = 0; m < 200; m++) {
+              final validMoves = <(int, int)>[];
+              for (int from = 0; from < tubes.length; from++) {
+                if (tubes[from].isEmpty) continue;
+                final block = tubes[from].last;
+                for (int to = 0; to < tubes.length; to++) {
+                  if (from == to) continue;
+                  if (tubes[to].length >= depth) continue;
+                  if (tubes[to].isNotEmpty && tubes[to].last != block) continue;
+                  validMoves.add((from, to));
+                }
+              }
+              if (validMoves.isEmpty) break;
+              final (from, to) = validMoves[random.nextInt(validMoves.length)];
+              tubes[to].add(tubes[from].removeLast());
+            }
+            return tubes;
           },
         )
-        .then((encodedStacks) {
+        .then((resultStacks) {
           if (!mounted) return;
-          final stacks = decodeStacksFromIsolate(encodedStacks, activeParams.depth);
-          // Apply special blocks (locked/frozen) based on difficulty params
-          try {
-            LevelGenerator().applySpecialBlocks(stacks, params);
-          } catch (e) {
-            debugPrint('applySpecialBlocks (pre-gen) failed: $e');
+          List<GameStack> stacks;
+          if (usedSyncFallback) {
+            // Sync fallback: raw tubes of color indices
+            stacks = resultStacks.map((t) => GameStack(
+              layers: t.map((colorIndex) => Layer(colorIndex: colorIndex)).toList(),
+              maxDepth: params.depth,
+            )).toList();
+          } else {
+            // Isolate result: encoded format
+            stacks = decodeStacksFromIsolate(resultStacks, params.depth);
+            try {
+              LevelGenerator().applySpecialBlocks(stacks, params);
+            } catch (e) {
+              debugPrint('applySpecialBlocks (pre-gen) failed: $e');
+            }
           }
           _preGeneratedStacks = stacks;
           _isPreGenerating = false;
@@ -516,7 +628,14 @@ class _ZenModeScreenState extends State<ZenModeScreen>
           return const LevelParams(colors: 4, depth: 4, stacks: 6, emptySlots: 2, shuffleMoves: 50, lockedBlockProbability: 0.1);
         } else if (puzzleNumber <= 15) {
           return const LevelParams(colors: 4, depth: 5, stacks: 6, emptySlots: 2, shuffleMoves: 55, lockedBlockProbability: 0.1);
+        } else if (puzzleNumber <= 25) {
+          // Gradual ramp: manageable params that generate quickly
+          return const LevelParams(colors: 4, depth: 5, stacks: 6, emptySlots: 2, shuffleMoves: 60, lockedBlockProbability: 0.1, minDifficultyScore: 8);
+        } else if (puzzleNumber <= 40) {
+          // More colors but shallower — avoids BFS explosion
+          return const LevelParams(colors: 5, depth: 4, stacks: 7, emptySlots: 2, shuffleMoves: 65, lockedBlockProbability: 0.1, minDifficultyScore: 8);
         } else {
+          // Full difficulty only for committed players (puzzle 41+)
           return ZenParams.medium;
         }
 
@@ -736,11 +855,12 @@ class _ZenModeScreenState extends State<ZenModeScreen>
       // Validate pre-gen matches current difficulty expectations
       final expectedParams = _getAdaptiveDifficulty();
       if (preGenDepth != expectedParams.depth || preGenColors != expectedParams.colors) {
-        // Difficulty tier changed since pre-gen — discard stale puzzle, generate fresh
+        // Difficulty tier changed since pre-gen — discard stale puzzle, use sync fallback
+        debugPrint('Pre-gen stale (${preGenColors}c${preGenDepth}d vs ${expectedParams.colors}c${expectedParams.depth}d), sync fallback');
         _preGeneratedStacks = null;
         _fadeController.animateTo(0.0).then((_) {
           if (!mounted) return;
-          _loadNewPuzzle();
+          _initPuzzleFromSyncFallback(expectedParams);
           _fadeController.animateTo(1.0).then((_) {
             _isTransitioning = false;
           });
@@ -782,8 +902,15 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   void _setDifficulty(ZenDifficulty difficulty) {
     if (_difficulty == difficulty) return;
     if (_isLoading) return; // Prevent switching while generating
+    // Difficulty slider is already IgnorePointer when moveCount > 0,
+    // but guard here too for safety
+    try {
+      final gameState = context.read<GameState>();
+      if (gameState.moveCount > 0 && !gameState.isComplete) return;
+    } catch (_) {}
     setState(() {
       _difficulty = difficulty;
+      _preGeneratedStacks = null; // Discard pre-gen for old difficulty
     });
     GameColors.setUltraPalette(_difficulty == ZenDifficulty.ultra);
     // Load new puzzle with new difficulty
