@@ -1,6 +1,9 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 
+/// Shape types for confetti pieces
+enum ConfettiShape { rectangle, circle, star }
+
 /// A single confetti piece
 class Confetto {
   Offset position;
@@ -8,6 +11,7 @@ class Confetto {
   final Color color;
   final double rotationSpeed;
   final Size size;
+  final ConfettiShape shape;
   double rotation = 0;
   double opacity = 1.0;
 
@@ -17,14 +21,12 @@ class Confetto {
     required this.color,
     required this.rotationSpeed,
     required this.size,
+    required this.shape,
   });
 
   void update() {
-    // Update position with drift
     position = position + velocity;
     rotation += rotationSpeed;
-
-    // Slow horizontal drift
     position = Offset(position.dx + sin(rotation * 0.1) * 0.3, position.dy);
   }
 
@@ -36,12 +38,14 @@ class ConfettiOverlay extends StatefulWidget {
   final Duration duration;
   final List<Color> colors;
   final int confettiCount;
+  final int stars;
 
   const ConfettiOverlay({
     super.key,
     this.duration = const Duration(seconds: 3),
     required this.colors,
     this.confettiCount = 40,
+    this.stars = 1,
   });
 
   @override
@@ -58,9 +62,7 @@ class _ConfettiOverlayState extends State<ConfettiOverlay>
   @override
   void initState() {
     super.initState();
-
     _controller = AnimationController(vsync: this, duration: widget.duration);
-
     _controller.addListener(_updateConfetti);
     _controller.forward();
   }
@@ -77,33 +79,31 @@ class _ConfettiOverlayState extends State<ConfettiOverlay>
   }
 
   void _initializeConfetti() {
-    for (int i = 0; i < widget.confettiCount; i++) {
-      // Random starting X position
+    // 2x particles for 3-star completions
+    final count = widget.stars >= 3
+        ? widget.confettiCount * 2
+        : widget.confettiCount;
+    
+    final shapes = ConfettiShape.values;
+
+    for (int i = 0; i < count; i++) {
       final x = _random.nextDouble() * _screenWidth;
-
-      // Start above screen, stagger the spawn
       final y = -20.0 - (_random.nextDouble() * 100);
-
-      // Fall speed with slight variation
       final fallSpeed = 1.5 + _random.nextDouble() * 1.0;
-
-      // Random horizontal drift
       final driftSpeed = (_random.nextDouble() - 0.5) * 0.5;
-
-      // Random rotation speed
-      final rotationSpeed = (_random.nextDouble() - 0.5) * 0.15;
-
-      // Random size for rectangles
+      final rotationSpeed = (_random.nextDouble() - 0.5) * 0.2;
       final width = 6.0 + _random.nextDouble() * 4.0;
       final height = 10.0 + _random.nextDouble() * 6.0;
+      final shape = shapes[_random.nextInt(shapes.length)];
 
       _confetti.add(
         Confetto(
-          position: Offset(x, y - (i * 8)), // Stagger vertically
+          position: Offset(x, y - (i * 6)),
           velocity: Offset(driftSpeed, fallSpeed),
           color: widget.colors[_random.nextInt(widget.colors.length)],
           rotationSpeed: rotationSpeed,
           size: Size(width, height),
+          shape: shape,
         ),
       );
     }
@@ -112,8 +112,6 @@ class _ConfettiOverlayState extends State<ConfettiOverlay>
   void _updateConfetti() {
     for (final confetto in _confetti) {
       confetto.update();
-
-      // Wrap around horizontally
       if (confetto.position.dx < -20) {
         confetto.position = Offset(_screenWidth + 10, confetto.position.dy);
       } else if (confetto.position.dx > _screenWidth + 20) {
@@ -156,7 +154,6 @@ class _ConfettiPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     for (final confetto in confetti) {
-      // Skip if off screen
       if (confetto.position.dy < -50 || confetto.isOffScreen(size.height)) {
         continue;
       }
@@ -166,27 +163,54 @@ class _ConfettiPainter extends CustomPainter {
         ..style = PaintingStyle.fill;
 
       canvas.save();
-
-      // Translate to confetto position
       canvas.translate(confetto.position.dx, confetto.position.dy);
-
-      // Rotate around center
       canvas.rotate(confetto.rotation);
 
-      // Draw rectangle
-      final rect = Rect.fromCenter(
-        center: Offset.zero,
-        width: confetto.size.width,
-        height: confetto.size.height,
-      );
-
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(rect, const Radius.circular(1)),
-        paint,
-      );
+      switch (confetto.shape) {
+        case ConfettiShape.rectangle:
+          final rect = Rect.fromCenter(
+            center: Offset.zero,
+            width: confetto.size.width,
+            height: confetto.size.height,
+          );
+          canvas.drawRRect(
+            RRect.fromRectAndRadius(rect, const Radius.circular(1)),
+            paint,
+          );
+          break;
+        case ConfettiShape.circle:
+          canvas.drawCircle(
+            Offset.zero,
+            confetto.size.width * 0.5,
+            paint,
+          );
+          break;
+        case ConfettiShape.star:
+          _drawStar(canvas, paint, confetto.size.width * 0.6);
+          break;
+      }
 
       canvas.restore();
     }
+  }
+
+  void _drawStar(Canvas canvas, Paint paint, double radius) {
+    final path = Path();
+    const points = 5;
+    final innerRadius = radius * 0.4;
+    for (int i = 0; i < points * 2; i++) {
+      final r = i.isEven ? radius : innerRadius;
+      final angle = (i * pi / points) - pi / 2;
+      final x = r * cos(angle);
+      final y = r * sin(angle);
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    path.close();
+    canvas.drawPath(path, paint);
   }
 
   @override

@@ -1303,33 +1303,21 @@ class GroundPainter extends CustomPainter {
 
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), earthPaint);
 
-    // Add subtle texture at stage 0 so it's not flat
+    // Subtle earth texture at stage 0 (no gray ovals)
     if (stage == 0) {
-      final texturePaint = Paint()..color = const Color(0xFF4A5A47).withValues(alpha: 0.3);
-      for (var i = 0; i < 12; i++) {
-        final x = (i * 35.0) + 10;
-        canvas.drawOval(
-          Rect.fromCenter(
-            center: Offset(x, size.height - 60 + (i % 3) * 20),
-            width: 25 + (i % 4) * 8,
-            height: 12 + (i % 3) * 5,
+      final texturePaint = Paint()
+        ..color = const Color(0xFF4A5A47).withValues(alpha: 0.15)
+        ..style = PaintingStyle.fill;
+      // Organic ground texture with small irregular patches
+      for (var i = 0; i < 8; i++) {
+        final x = (i * 50.0) + 20;
+        final y = size.height - 80 + (i % 3) * 30;
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromCenter(center: Offset(x, y), width: 30 + (i % 3) * 10, height: 8),
+            const Radius.circular(4),
           ),
           texturePaint,
-        );
-      }
-    }
-
-    // Pebbles/stones at stage 1+
-    if (stage >= 1) {
-      final stonePaint = Paint()..color = const Color(0xFF9CA3AF);
-      for (var i = 0; i < 5; i++) {
-        canvas.drawOval(
-          Rect.fromCenter(
-            center: Offset(60 + i * 70.0, size.height - 40),
-            width: 40,
-            height: 25,
-          ),
-          stonePaint,
         );
       }
     }

@@ -184,9 +184,8 @@ class _ZenModeScreenState extends State<ZenModeScreen>
 
   void _showHint() {
     if (_hintsRemaining <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No hints remaining for this puzzle.')),
-      );
+      // Offer paid hint
+      _offerPaidHint();
       return;
     }
 
@@ -207,6 +206,52 @@ class _ZenModeScreenState extends State<ZenModeScreen>
       _hintsRemaining--;
     });
     AudioService().playTap();
+  }
+
+  void _offerPaidHint() async {
+    final coins = await CurrencyService().getCoins();
+    if (!mounted) return;
+    if (coins < 50) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Not enough coins for a hint (50 coins needed)')),
+      );
+      return;
+    }
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: GameColors.surface,
+        title: Text('Use Hint?', style: TextStyle(color: GameColors.text)),
+        content: Text('Spend 50 coins for an extra hint?\n\nBalance: $coins 🪙',
+            style: TextStyle(color: GameColors.textMuted)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(backgroundColor: GameColors.accent),
+            child: const Text('Use Hint (50 🪙)'),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true && mounted) {
+      final spent = await CurrencyService().spendCoins(50);
+      if (spent) {
+        final gameState = context.read<GameState>();
+        final hint = gameState.getHint();
+        if (hint != null) {
+          setState(() {
+            _showingHint = true;
+            _hintSourceIndex = hint.$1;
+            _hintDestIndex = hint.$2;
+          });
+          AudioService().playTap();
+        }
+      }
+    }
   }
 
   void _dismissHint() {
