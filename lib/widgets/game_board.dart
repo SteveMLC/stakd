@@ -122,10 +122,10 @@ class _GameBoardState extends State<GameBoard>
   Widget build(BuildContext context) {
     final stacks = widget.gameState.stacks;
     if (stacks.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
           'Loading...',
-          style: TextStyle(color: GameColors.textMuted),
+          style: TextStyle(color: ThemeColors.textMutedColor),
         ),
       );
     }
@@ -422,7 +422,7 @@ class _GameBoardState extends State<GameBoard>
                     if (_showConfetti)
                       Positioned.fill(
                         child: ConfettiOverlay(
-                          colors: GameColors.palette,
+                          colors: ThemeColors.palette,
                           confettiCount: 60,
                           duration: const Duration(seconds: 2),
                         ),
@@ -661,7 +661,7 @@ class _GameBoardState extends State<GameBoard>
       final topLayer = stack.layers.isNotEmpty ? stack.layers.last : null;
       final color = topLayer != null
           ? ThemeColors.getColor(topLayer.colorIndex)
-          : GameColors.accent;
+          : ThemeColors.accentColor;
 
       bursts.add(
         ParticleBurstData(
@@ -692,7 +692,7 @@ class _GameBoardState extends State<GameBoard>
         if (chainLevel >= 5) {
           return const Color(0xFF9400D3); // Purple for insane chains
         }
-        return GameColors.accent;
+        return ThemeColors.accentColor;
     }
   }
 
@@ -1067,8 +1067,8 @@ class _StackWidgetState extends State<_StackWidget>
 
     // Get the stack's dominant color for glow effect
     final glowColor = widget.stack.layers.isNotEmpty
-        ? GameColors.getColor(widget.stack.layers.last.colorIndex)
-        : GameColors.accent;
+        ? ThemeColors.getColor(widget.stack.layers.last.colorIndex)
+        : ThemeColors.accentColor;
 
     return Semantics(
       button: true,
@@ -1135,8 +1135,8 @@ class _StackWidgetState extends State<_StackWidget>
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [
-                              GameColors.empty.withValues(alpha: 0.85),
-                              GameColors.empty,
+                              ThemeColors.emptySlotColor.withValues(alpha: 0.85),
+                              ThemeColors.emptySlotColor,
                             ],
                           ),
                           borderRadius: BorderRadius.circular(
@@ -1156,14 +1156,14 @@ class _StackWidgetState extends State<_StackWidget>
                                     alpha: 0.8 + multiGrabPulse * 0.2,
                                   )
                                 : widget.isSelected
-                                ? GameColors.accent
+                                ? ThemeColors.accentColor
                                 : widget.isRecentlyCleared
-                                ? GameColors.palette[2]
+                                ? ThemeColors.palette[2]
                                 : nearingCompletion
                                 ? glowColor.withValues(
                                     alpha: 0.6 + pulseValue * 0.4,
                                   )
-                                : GameColors.empty,
+                                : ThemeColors.emptySlotColor,
                             width: widget.isDragValidTarget
                                 ? 3
                                 : widget.isDragInvalidHover
@@ -1211,13 +1211,13 @@ class _StackWidgetState extends State<_StackWidget>
                               ),
                             if (widget.isSelected && !isMultiGrabActive)
                               BoxShadow(
-                                color: GameColors.accent.withValues(alpha: 0.4),
+                                color: ThemeColors.accentColor.withValues(alpha: 0.4),
                                 blurRadius: 12,
                                 spreadRadius: 2,
                               ),
                             if (widget.isRecentlyCleared)
                               BoxShadow(
-                                color: GameColors.palette[2].withValues(
+                                color: ThemeColors.palette[2].withValues(
                                   alpha:
                                       0.4 *
                                       _glowAnimation.value *
@@ -1314,7 +1314,7 @@ class _StackWidgetState extends State<_StackWidget>
       children: layers.asMap().entries.toList().reversed.map<Widget>((entry) {
         final index = entry.key;
         final layer = entry.value;
-        final gradientColors = GameColors.getGradient(layer.colorIndex);
+        final gradientColors = ThemeColors.getGradient(layer.colorIndex);
 
         // Check if this layer is part of the grab zone (top N layers)
         final isInGrabZone =
@@ -1709,7 +1709,7 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
         final pos = _quadraticBezier(_startPos, controlPoint, _endPos, t);
 
         // Get the layer color for glow effect (use top layer color)
-        final layerColor = GameColors.getColor(
+        final layerColor = ThemeColors.getColor(
           widget.animatingLayer.layer.colorIndex,
         );
 
@@ -1730,7 +1730,7 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
                 children: allLayers.toList().asMap().entries.map((entry) {
                   final layer = entry.value;
                   final isLast = entry.key == allLayers.length - 1;
-                  final gradientColors = GameColors.getGradient(
+                  final gradientColors = ThemeColors.getGradient(
                     layer.colorIndex,
                   );
                   return Container(
@@ -1791,7 +1791,7 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: GameColors.getGradient(
+                colors: ThemeColors.getGradient(
                   widget.animatingLayer.layer.colorIndex,
                 ),
               ),
@@ -1943,7 +1943,7 @@ class _DragOverlay extends StatelessWidget {
 
     final localPos = renderBox.globalToLocal(globalPosition);
     final totalHeight = GameSizes.layerHeight * layers.length + (2 * (layers.length - 1));
-    final layerColor = GameColors.getColor(layers.last.colorIndex);
+    final layerColor = ThemeColors.getColor(layers.last.colorIndex);
 
     return Positioned(
       left: localPos.dx - GameSizes.stackWidth / 2,
@@ -1972,7 +1972,7 @@ class _DragOverlay extends StatelessWidget {
               children: layers.asMap().entries.map((entry) {
                 final layer = entry.value;
                 final isLast = entry.key == layers.length - 1;
-                final gradientColors = GameColors.getGradient(layer.colorIndex);
+                final gradientColors = ThemeColors.getGradient(layer.colorIndex);
                 return Container(
                   width: GameSizes.stackWidth,
                   height: GameSizes.layerHeight,

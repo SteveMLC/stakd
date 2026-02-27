@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 import '../models/achievement.dart';
 
 /// Bottom sheet showing achievement details
@@ -211,8 +212,10 @@ class _AchievementDetailSheetState extends State<AchievementDetailSheet>
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: () {
-                  // TODO: Share functionality
-                  Navigator.pop(context);
+                  final a = widget.achievement;
+                  Share.share(
+                    '🏆 I unlocked "${a.title}" in Stakd! ${a.description}',
+                  );
                 },
                 icon: const Icon(Icons.share, size: 18),
                 label: const Text(

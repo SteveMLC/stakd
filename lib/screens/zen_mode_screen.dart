@@ -14,6 +14,7 @@ import '../services/haptic_service.dart';
 import '../services/storage_service.dart';
 import '../services/garden_service.dart';
 import '../utils/constants.dart';
+import '../utils/theme_colors.dart';
 import '../widgets/game_board.dart';
 import '../widgets/hint_overlay.dart';
 import '../widgets/loading_text.dart';
@@ -224,10 +225,10 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: GameColors.surface,
-        title: Text('Use Hint?', style: TextStyle(color: GameColors.text)),
+        backgroundColor: ThemeColors.surfaceColor,
+        title: Text('Use Hint?', style: TextStyle(color: ThemeColors.textColor)),
         content: Text('Spend 50 coins for an extra hint?\n\nBalance: $coins 🪙',
-            style: TextStyle(color: GameColors.textMuted)),
+            style: TextStyle(color: ThemeColors.textMutedColor)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -235,7 +236,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            style: ElevatedButton.styleFrom(backgroundColor: GameColors.accent),
+            style: ElevatedButton.styleFrom(backgroundColor: ThemeColors.accentColor),
             child: const Text('Use Hint (50 🪙)'),
           ),
         ],
@@ -270,10 +271,10 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: GameColors.surface,
-        title: Text('Use Undo?', style: TextStyle(color: GameColors.text)),
+        backgroundColor: ThemeColors.surfaceColor,
+        title: Text('Use Undo?', style: TextStyle(color: ThemeColors.textColor)),
         content: Text('Spend 25 coins for an extra undo?\n\nBalance: $coins 🪙',
-            style: TextStyle(color: GameColors.textMuted)),
+            style: TextStyle(color: ThemeColors.textMutedColor)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -281,7 +282,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            style: ElevatedButton.styleFrom(backgroundColor: GameColors.accent),
+            style: ElevatedButton.styleFrom(backgroundColor: ThemeColors.accentColor),
             child: const Text('Undo (25 🪙)'),
           ),
         ],
@@ -1112,7 +1113,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                       margin: const EdgeInsets.symmetric(horizontal: 32),
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        color: GameColors.surface.withValues(alpha: 0.95),
+                        color: ThemeColors.surfaceColor.withValues(alpha: 0.95),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
                           color: GameColors.zen.withValues(alpha: 0.5),
@@ -1132,7 +1133,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                             'Drag blocks between stacks\nto sort by color',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: GameColors.text,
+                              color: ThemeColors.textColor,
                               fontSize: 18,
                               fontWeight: FontWeight.w500,
                               height: 1.4,
@@ -1142,7 +1143,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                           Text(
                             'Tap anywhere to continue',
                             style: TextStyle(
-                              color: GameColors.textMuted.withValues(alpha: 0.7),
+                              color: ThemeColors.textMutedColor.withValues(alpha: 0.7),
                               fontSize: 14,
                             ),
                           ),
@@ -1195,7 +1196,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
               Text(
                 'ZEN MODE',
                 style: TextStyle(
-                  color: GameColors.textMuted.withValues(alpha: 0.6),
+                  color: ThemeColors.textMutedColor.withValues(alpha: 0.6),
                   fontSize: 12,
                   letterSpacing: 3,
                   fontWeight: FontWeight.w300,
@@ -1205,7 +1206,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
               Text(
                 'Puzzle #${_puzzlesSolved + 1}',
                 style: TextStyle(
-                  color: GameColors.textMuted.withValues(alpha: 0.5),
+                  color: ThemeColors.textMutedColor.withValues(alpha: 0.5),
                   fontSize: 11,
                 ),
               ),
@@ -1238,7 +1239,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
             child: Text(
               '${ps.tierEmoji} ${ps.rankTitle}',
               style: TextStyle(
-                color: GameColors.textMuted.withValues(alpha: 0.5),
+                color: ThemeColors.textMutedColor.withValues(alpha: 0.5),
                 fontSize: 11,
                 fontWeight: FontWeight.w500,
               ),
@@ -1263,7 +1264,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 decoration: BoxDecoration(
-                  color: GameColors.surface.withValues(alpha: 0.3),
+                  color: ThemeColors.surfaceColor.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: Row(
@@ -1289,7 +1290,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                           decoration: BoxDecoration(
                             color: isSelected
                                 ? diffColor.withValues(alpha: 0.3)
-                                : GameColors.surface.withValues(alpha: 0.15),
+                                : ThemeColors.surfaceColor.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -1298,7 +1299,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                             style: TextStyle(
                               color: isSelected
                                   ? diffColor
-                                  : GameColors.textMuted.withValues(alpha: 0.6),
+                                  : ThemeColors.textMutedColor.withValues(alpha: 0.6),
                               fontSize: 13,
                               fontWeight: isSelected
                                   ? FontWeight.w600
@@ -1370,7 +1371,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             decoration: BoxDecoration(
-              color: GameColors.surface.withValues(alpha: 0.6),
+              color: ThemeColors.surfaceColor.withValues(alpha: 0.6),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
                 color: GameColors.zen.withValues(alpha: 0.3),
@@ -1396,7 +1397,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                 Text(
                   '${gameState.moveCount}',
                   style: TextStyle(
-                    color: GameColors.text,
+                    color: ThemeColors.textColor,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1405,7 +1406,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                 Text(
                   'moves',
                   style: TextStyle(
-                    color: GameColors.textMuted.withValues(alpha: 0.7),
+                    color: ThemeColors.textMutedColor.withValues(alpha: 0.7),
                     fontSize: 12,
                   ),
                 ),
@@ -1433,13 +1434,13 @@ class _ZenModeScreenState extends State<ZenModeScreen>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               decoration: BoxDecoration(
-                color: GameColors.surface.withValues(alpha: 0.7),
+                color: ThemeColors.surfaceColor.withValues(alpha: 0.7),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
                 '${state.stageIcon} ${state.stageName}  •  ${state.totalPuzzlesSolved} puzzles solved',
                 style: TextStyle(
-                  color: GameColors.text,
+                  color: ThemeColors.textColor,
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
@@ -1462,7 +1463,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
             bottom: MediaQuery.of(context).padding.bottom + 8,
           ),
           decoration: BoxDecoration(
-            color: GameColors.surface.withValues(alpha: 0.6),
+            color: ThemeColors.surfaceColor.withValues(alpha: 0.6),
             border: Border(
               top: BorderSide(
                 color: GameColors.zen.withValues(alpha: 0.2),
@@ -1563,8 +1564,8 @@ class _ZenActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = enabled
-        ? GameColors.text
-        : GameColors.textMuted.withValues(alpha: 0.4);
+        ? ThemeColors.textColor
+        : ThemeColors.textMutedColor.withValues(alpha: 0.4);
 
     return GestureDetector(
       onTap: onPressed,
@@ -1572,8 +1573,8 @@ class _ZenActionButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
           color: enabled
-              ? GameColors.surface.withValues(alpha: 0.5)
-              : GameColors.surface.withValues(alpha: 0.2),
+              ? ThemeColors.surfaceColor.withValues(alpha: 0.5)
+              : ThemeColors.surfaceColor.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: enabled
@@ -1600,7 +1601,7 @@ class _ZenActionButton extends StatelessWidget {
               Text(
                 '25🪙',
                 style: TextStyle(
-                  color: GameColors.textMuted.withValues(alpha: 0.5),
+                  color: ThemeColors.textMutedColor.withValues(alpha: 0.5),
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
                 ),
@@ -1638,7 +1639,7 @@ class _StatChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: GameColors.surface.withValues(alpha: 0.4),
+        color: ThemeColors.surfaceColor.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: GameColors.zen.withValues(alpha: 0.2),
@@ -1665,7 +1666,7 @@ class _StatChip extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              color: GameColors.textMuted.withValues(alpha: 0.6),
+              color: ThemeColors.textMutedColor.withValues(alpha: 0.6),
               fontSize: 10,
             ),
           ),
@@ -1701,7 +1702,7 @@ class _ZenIconButton extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: isActive
-                ? GameColors.surface.withValues(alpha: 0.5)
+                ? ThemeColors.surfaceColor.withValues(alpha: 0.5)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
           ),
@@ -1710,7 +1711,7 @@ class _ZenIconButton extends StatelessWidget {
             children: [
               Icon(
                 icon,
-                color: GameColors.textMuted.withValues(alpha: isActive ? 0.8 : 0.5),
+                color: ThemeColors.textMutedColor.withValues(alpha: isActive ? 0.8 : 0.5),
                 size: 22,
               ),
               if (label != null) ...[
@@ -1718,7 +1719,7 @@ class _ZenIconButton extends StatelessWidget {
                 Text(
                   label!,
                   style: TextStyle(
-                    color: GameColors.textMuted.withValues(alpha: isActive ? 0.7 : 0.4),
+                    color: ThemeColors.textMutedColor.withValues(alpha: isActive ? 0.7 : 0.4),
                     fontSize: 11,
                   ),
                 ),
@@ -1763,8 +1764,8 @@ class AmbientParticlesPainter extends CustomPainter {
       final opacity = 0.15 + sin(animPhase * 2) * 0.1;
 
       // Pick a color from the palette with low saturation
-      final colorIndex = i % GameColors.palette.length;
-      final baseColor = GameColors.palette[colorIndex];
+      final colorIndex = i % ThemeColors.palette.length;
+      final baseColor = ThemeColors.palette[colorIndex];
 
       // Desaturate and dim the color for ambient effect
       final color = Color.lerp(
