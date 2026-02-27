@@ -727,8 +727,27 @@ class _ZenModeScreenState extends State<ZenModeScreen>
 
     if (_preGeneratedStacks != null) {
       // Use the pre-generated puzzle — no loading screen!
-      final nextParams = _getAdaptiveDifficulty();
-      _currentPar = (nextParams.colors * nextParams.depth * 1.2).ceil();
+      // IMPORTANT: derive par from the ACTUAL pre-gen stacks, not current adaptive params
+      // (which may have changed tier since pre-gen was started)
+      final preGenDepth = _preGeneratedStacks!.first.maxDepth;
+      final preGenColors = _preGeneratedStacks!.where((s) => s.layers.isNotEmpty).map((s) => s.layers.map((l) => l.colorIndex).toSet()).expand((s) => s).toSet().length;
+      _currentPar = (preGenColors * preGenDepth * 1.2).ceil();
+      
+      // Validate pre-gen matches current difficulty expectations
+      final expectedParams = _getAdaptiveDifficulty();
+      if (preGenDepth != expectedParams.depth || preGenColors != expectedParams.colors) {
+        // Difficulty tier changed since pre-gen — discard stale puzzle, generate fresh
+        _preGeneratedStacks = null;
+        _fadeController.animateTo(0.0).then((_) {
+          if (!mounted) return;
+          _loadNewPuzzle();
+          _fadeController.animateTo(1.0).then((_) {
+            _isTransitioning = false;
+          });
+        });
+        _preGenerateNextPuzzle();
+        return;
+      }
       _fadeController.animateTo(0.0).then((_) {
         if (!mounted) return;
         _initialStacks = _preGeneratedStacks!.map((s) => GameStack(
