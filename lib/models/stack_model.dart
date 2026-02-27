@@ -137,7 +137,16 @@ class GameStack {
   GameStack copy() {
     return GameStack(
       layers: layers
-          .map((l) => Layer(colorIndex: l.colorIndex, id: l.id))
+          .map(
+            (l) => Layer(
+              colorIndex: l.colorIndex,
+              id: l.id,
+              type: l.type,
+              colors: l.colors == null ? null : List<int>.from(l.colors!),
+              lockedUntil: l.lockedUntil,
+              isFrozen: l.isFrozen,
+            ),
+          )
           .toList(),
       maxDepth: maxDepth,
       id: id,
