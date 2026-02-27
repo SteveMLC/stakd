@@ -1,0 +1,292 @@
+{
+  "replaced": [
+    {
+      "target": "zen_sand_plate.png",
+      "source": "zen_sand_plate_organic_v1.png",
+      "source_size": [
+        1536,
+        1024
+      ],
+      "new_size": [
+        512,
+        341
+      ],
+      "content_ratio": 0.2515,
+      "bright_ratio": 0.0
+    },
+    {
+      "target": "zen_sand_raked.png",
+      "source": "zen_sand_raked_v1.png",
+      "source_size": [
+        1024,
+        1024
+      ],
+      "new_size": [
+        512,
+        512
+      ],
+      "content_ratio": 1.0,
+      "bright_ratio": 0.0
+    },
+    {
+      "target": "zen_grass_base.png",
+      "source": "zen_grass_base_v1.png",
+      "source_size": [
+        1024,
+        1024
+      ],
+      "new_size": [
+        512,
+        512
+      ],
+      "content_ratio": 1.0,
+      "bright_ratio": 0.0
+    },
+    {
+      "target": "zen_rocks_small.png",
+      "source": "zen_rocks_small_v1.png",
+      "source_size": [
+        1024,
+        1024
+      ],
+      "new_size": [
+        512,
+        512
+      ],
+      "content_ratio": 0.1403,
+      "bright_ratio": 0.0011
+    },
+    {
+      "target": "zen_stepping_stones.png",
+      "source": "zen_stepping_stones_v1.png",
+      "source_size": [
+        1024,
+        1024
+      ],
+      "new_size": [
+        512,
+        512
+      ],
+      "content_ratio": 0.1334,
+      "bright_ratio": 0.0003
+    },
+    {
+      "target": "zen_shrub.png",
+      "source": "zen_shrub_low_v1.png",
+      "source_size": [
+        1024,
+        1024
+      ],
+      "new_size": [
+        512,
+        512
+      ],
+      "content_ratio": 0.2069,
+      "bright_ratio": 0.0001
+    },
+    {
+      "target": "zen_sand_swirl.png",
+      "source": "zen_sand_swirl_v1.png",
+      "source_size": [
+        1024,
+        1024
+      ],
+      "new_size": [
+        512,
+        512
+      ],
+      "content_ratio": 0.3426,
+      "bright_ratio": 0.0
+    },
+    {
+      "target": "zen_rocks_medium.png",
+      "source": "zen_rocks_medium_v1.png",
+      "source_size": [
+        1024,
+        1024
+      ],
+      "new_size": [
+        512,
+        512
+      ],
+      "content_ratio": 1.0,
+      "bright_ratio": 0.0
+    },
+    {
+      "target": "zen_bamboo.png",
+      "source": "zen_bamboo_v2.png",
+      "source_size": [
+        1024,
+        1024
+      ],
+      "new_size": [
+        512,
+        512
+      ],
+      "content_ratio": 0.2775,
+      "bright_ratio": 0.0018
+    },
+    {
+      "target": "zen_pond.png",
+      "source": "zen_pond_koi_v1.png",
+      "source_size": [
+        1024,
+        1024
+      ],
+      "new_size": [
+        512,
+        512
+      ],
+      "content_ratio": 0.2452,
+      "bright_ratio": 0.0005
+    },
+    {
+      "target": "zen_lily_pads.png",
+      "source": "zen_lily_pads_v1.png",
+      "source_size": [
+        1024,
+        1024
+      ],
+      "new_size": [
+        512,
+        512
+      ],
+      "content_ratio": 1.0,
+      "bright_ratio": 0.0
+    },
+    {
+      "target": "zen_blossoms_a.png",
+      "source": "zen_blossom_cluster_v1.png",
+      "source_size": [
+        1024,
+        1024
+      ],
+      "new_size": [
+        512,
+        512
+      ],
+      "content_ratio": 0.2213,
+      "bright_ratio": 0.0169
+    },
+    {
+      "target": "zen_blossoms_b.png",
+      "source": "zen_blossom_cluster_v1b.png",
+      "source_size": [
+        1024,
+        1024
+      ],
+      "new_size": [
+        512,
+        512
+      ],
+      "content_ratio": 0.2423,
+      "bright_ratio": 0.0013
+    },
+    {
+      "target": "zen_lantern.png",
+      "source": "zen_lantern_v1.png",
+      "source_size": [
+        1024,
+        1024
+      ],
+      "new_size": [
+        512,
+        512
+      ],
+      "content_ratio": 0.1409,
+      "bright_ratio": 0.003
+    },
+    {
+      "target": "zen_bonsai.png",
+      "source": "zen_bonsai_v5.png",
+      "source_size": [
+        1024,
+        1024
+      ],
+      "new_size": [
+        512,
+        512
+      ],
+      "content_ratio": 0.1763,
+      "bright_ratio": 0.0001
+    },
+    {
+      "target": "zen_shrine.png",
+      "source": "zen_shrine_stone_v1.png",
+      "source_size": [
+        1024,
+        1024
+      ],
+      "new_size": [
+        512,
+        512
+      ],
+      "content_ratio": 0.1793,
+      "bright_ratio": 0.0002
+    },
+    {
+      "target": "zen_bridge.png",
+      "source": "zen_bridge_v1.png",
+      "source_size": [
+        1024,
+        1024
+      ],
+      "new_size": [
+        512,
+        512
+      ],
+      "content_ratio": 1.0,
+      "bright_ratio": 0.0
+    },
+    {
+      "target": "zen_waterfall.png",
+      "source": "zen_waterfall_v1.png",
+      "source_size": [
+        1024,
+        1024
+      ],
+      "new_size": [
+        512,
+        512
+      ],
+      "content_ratio": 0.3001,
+      "bright_ratio": 0.0002
+    },
+    {
+      "target": "zen_mist.png",
+      "source": "zen_mist_v1.png",
+      "source_size": [
+        1536,
+        1024
+      ],
+      "new_size": [
+        512,
+        341
+      ],
+      "content_ratio": 1.0,
+      "bright_ratio": 0.0
+    }
+  ],
+  "expected": [
+    "zen_bamboo.png",
+    "zen_blossoms_a.png",
+    "zen_blossoms_b.png",
+    "zen_bonsai.png",
+    "zen_bridge.png",
+    "zen_grass_base.png",
+    "zen_lantern.png",
+    "zen_lily_pads.png",
+    "zen_mist.png",
+    "zen_pond.png",
+    "zen_rocks_medium.png",
+    "zen_rocks_small.png",
+    "zen_sand_plate.png",
+    "zen_sand_raked.png",
+    "zen_sand_swirl.png",
+    "zen_shrine.png",
+    "zen_shrub.png",
+    "zen_stepping_stones.png",
+    "zen_waterfall.png"
+  ],
+  "missing": []
+}
