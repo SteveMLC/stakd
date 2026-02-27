@@ -95,11 +95,20 @@ class _GardenElementState extends State<GardenElement>
 
   Future<void> _checkRevealState() async {
     _isUnlocked = GardenService.isUnlocked(widget.elementId);
+    debugPrint('GARDEN_ELEMENT: ${widget.elementId} isUnlocked=$_isUnlocked');
     
     if (!_isUnlocked) {
       // Not unlocked yet, stay hidden
+      if (mounted) setState(() {});
       return;
     }
+
+    // IMPORTANT: Set controller to fully visible immediately for unlocked elements.
+    // The reveal animation will override this if it's a first-time reveal.
+    // This prevents the "invisible on first build" race condition where
+    // SharedPreferences hasn't loaded yet but opacity starts at 0.
+    _controller.value = 1.0;
+    if (mounted) setState(() {});
 
     // Check if we've revealed this before
     final prefs = await SharedPreferences.getInstance();
@@ -107,13 +116,17 @@ class _GardenElementState extends State<GardenElement>
     
     final key = 'garden_revealed_${widget.elementId}';
     _hasBeenRevealed = prefs.getBool(key) ?? false;
+    debugPrint('GARDEN_ELEMENT: ${widget.elementId} hasBeenRevealed=$_hasBeenRevealed mounted=$mounted');
 
     if (_hasBeenRevealed) {
-      // Already revealed, show immediately
+      // Already revealed, ensure fully visible
       if (mounted) _controller.value = 1.0;
     } else {
-      // First time reveal - animate!
-      if (mounted) _triggerReveal();
+      // First time reveal - animate from 0!
+      if (mounted) {
+        _controller.value = 0.0; // Reset to animate
+        _triggerReveal();
+      }
       await prefs.setBool(key, true);
       if (!mounted) return; // Guard after second async gap
     }
@@ -173,6 +186,7 @@ class _GardenElementState extends State<GardenElement>
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('GARDEN_ELEMENT_BUILD: ${widget.elementId} _isUnlocked=$_isUnlocked controller=${_controller.value}');
     if (!_isUnlocked) {
       return const SizedBox.shrink();
     }
