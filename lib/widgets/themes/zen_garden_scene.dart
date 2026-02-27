@@ -42,6 +42,13 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
   int? _milestoneStage;
   String? _milestoneStageName;
 
+  // Cached particle unlock flags (updated once per build, not per animation frame)
+  bool _hasButterfly = false;
+  bool _hasPetals = false;
+  bool _hasFireflies = false;
+  bool _hasBirds = false;
+  bool _hasDragonflies = false;
+
   // Archetype accessor
   GardenArchetype get _archetype => gardenState.gardenArchetype;
 
@@ -170,12 +177,32 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
   Widget build(BuildContext context) {
     final state = gardenState;
     
+    // Cache particle unlock flags once per build (not per animation frame)
+    _hasButterfly = isUnlocked('butterfly');
+    _hasPetals = isUnlocked('petals');
+    _hasFireflies = isUnlocked('fireflies');
+    _hasBirds = isUnlocked('birds');
+    _hasDragonflies = isUnlocked('dragonflies');
+    
     // Check for audio updates on each build
     _checkAudioUpdates();
 
     return Stack(
       fit: StackFit.expand,
       children: [
+        // Layer -1: Guaranteed fallback gradient (always visible even if assets fail)
+        Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFF2C3E50),
+                Color(0xFF1A2530),
+              ],
+            ),
+          ),
+        ),
         // Layer 0: Sky gradient
         _buildSky(state.currentStage),
 
@@ -1013,7 +1040,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
   Widget _buildParticles() {
     final particles = <Widget>[];
 
-    if (isUnlocked('butterfly')) {
+    if (_hasButterfly) {
       particles.add(
         AnimatedBuilder(
           animation: _ambientController,
@@ -1039,7 +1066,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       );
     }
 
-    if (isUnlocked('petals')) {
+    if (_hasPetals) {
       // More petals with varied sizes and rotation
       for (var i = 0; i < _petalSeeds.length; i++) {
         final seed = _petalSeeds[i];
@@ -1076,7 +1103,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
       }
     }
 
-    if (isUnlocked('fireflies')) {
+    if (_hasFireflies) {
       // Enhanced fireflies with better glow and movement
       for (var i = 0; i < _fireflySeeds.length; i++) {
         final seed = _fireflySeeds[i];
@@ -1122,7 +1149,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     }
 
     // Birds flock flying across the sky (stage 8+)
-    if (isUnlocked('birds')) {
+    if (_hasBirds) {
       // V-formation offsets from the lead bird
       const vFormation = [
         Offset(0, 0),       // Lead bird
@@ -1165,7 +1192,7 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     }
 
     // Dragonflies near water (stage 7+)
-    if (isUnlocked('dragonflies')) {
+    if (_hasDragonflies) {
       for (var i = 0; i < 2; i++) {
         final baseX = 200.0 + i * 60;
         final baseY = 160.0;
