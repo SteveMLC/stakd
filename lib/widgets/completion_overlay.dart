@@ -76,7 +76,7 @@ class _CompletionOverlayState extends State<CompletionOverlay>
     );
     _confettiController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 3),
+      duration: const Duration(seconds: 4),
     );
 
     // Create controllers for each star animation (pop effect)
@@ -107,10 +107,9 @@ class _CompletionOverlayState extends State<CompletionOverlay>
     _fadeController.forward();
     Future.delayed(const Duration(milliseconds: 150), () {
       _scaleController.forward();
-      _confettiController.forward();
+      _confettiController.repeat();
       haptics.levelWinPattern();
       
-      // Animate stars in sequence
       _animateStars();
     });
   }

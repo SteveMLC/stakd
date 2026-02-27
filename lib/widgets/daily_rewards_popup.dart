@@ -116,28 +116,26 @@ class _DailyRewardsPopupState extends State<DailyRewardsPopup>
   Future<void> _claimReward() async {
     if (!_canClaim) return;
     
-    // Haptic feedback
     haptics.successPattern();
     
-    // Claim it
     final claimedReward = await _service.claimReward();
     
     if (claimedReward != null) {
-      // Play claim animation
       _claimController.forward();
       
-      // Show confetti
       setState(() {
         _showConfetti = true;
         _claimedReward = claimedReward;
       });
       
-      // Reload data after a short delay
       await Future.delayed(const Duration(milliseconds: 600));
       await _loadData();
       
-      // Reset animation
       _claimController.reset();
+      
+      // Auto-close after celebration so the dialog doesn't feel frozen
+      await Future.delayed(const Duration(milliseconds: 1200));
+      if (mounted) widget.onClose?.call();
     }
   }
 

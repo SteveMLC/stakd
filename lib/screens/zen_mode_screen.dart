@@ -302,7 +302,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   }
 
   void _restartPuzzle() {
-    if (_initialStacks == null) return;
+    if (_initialStacks == null || _isTransitioning) return;
     final fresh = _initialStacks!.map((s) => GameStack(
       layers: s.layers.map((l) => Layer(colorIndex: l.colorIndex, type: l.type, colors: l.colors, lockedUntil: l.lockedUntil, isFrozen: l.isFrozen)).toList(),
       maxDepth: s.maxDepth,
@@ -335,7 +335,8 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     final emptySlots = params.emptySlots;
     final tubes = <List<int>>[];
     for (int c = 0; c < colors; c++) {
-      tubes.add(List<int>.filled(depth, c));
+      // Use growable lists so we can removeLast() during shuffling
+      tubes.add(List<int>.filled(depth, c, growable: true));
     }
     for (int i = 0; i < emptySlots; i++) {
       tubes.add([]);
@@ -676,7 +677,10 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     if (_showCompletionOverlay) return;
     if (_isTransitioning) return;
     if (_isLoading) return;
-    if (gameState.moveCount == 0) return; // Don't trigger on fresh puzzle load
+    if (gameState.moveCount == 0) return;
+    
+    // Lock out re-entry BEFORE any side effects (coins, XP, stats)
+    _showCompletionOverlay = true;
     
     // Stop live timer
     _liveStopwatch.stop();
@@ -791,46 +795,42 @@ class _ZenModeScreenState extends State<ZenModeScreen>
   }
 
   /// Called when "Next Puzzle" is tapped on completion overlay.
-  /// Sequences: Completion → Achievement toasts → Rank Up → advance.
+  /// Sequences: Achievement toasts → Rank Up → Dismiss overlay → advance.
   void _advanceAfterCompletion() async {
     if (_isTransitioning) return;
+    _isTransitioning = true;
 
-    // Step 1: Dismiss completion overlay
-    setState(() {
-      _showCompletionOverlay = false;
-    });
-
-    // Step 2: Show achievement toasts one at a time
+    // Step 1: Show achievement toasts on top of the completion overlay
+    // (keeps confetti/stars visible so the app feels alive during toasts)
     while (_pendingAchievements.isNotEmpty) {
       final achievement = _pendingAchievements.removeAt(0);
       setState(() {
         _currentAchievementToast = achievement;
       });
-      // Wait for toast animation (slide in 0.4s + hold 2s + slide out 0.4s)
       await Future.delayed(const Duration(milliseconds: 2800));
       if (!mounted) return;
       setState(() {
         _currentAchievementToast = null;
       });
-      // Brief gap between toasts
       await Future.delayed(const Duration(milliseconds: 200));
       if (!mounted) return;
     }
 
-    // Step 3: Show rank up if pending (holds until tap)
+    // Step 2: Show rank up if pending (holds until tap)
     if (_pendingRankUp != null) {
       setState(() {
         _showRankUp = true;
       });
-      // Wait until user dismisses rank up (handled by _dismissRankUp)
       while (_showRankUp && mounted) {
         await Future.delayed(const Duration(milliseconds: 100));
       }
       if (!mounted) return;
     }
 
-    // Step 4: Actually advance to next puzzle
-    _isTransitioning = true;
+    // Step 3: Dismiss completion overlay and advance
+    setState(() {
+      _showCompletionOverlay = false;
+    });
 
     setState(() {
       _puzzlesSolved++;

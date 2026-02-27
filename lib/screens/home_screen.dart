@@ -549,95 +549,100 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: GameColors.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: GameColors.textMuted,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Choose Your Vibe',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'Zen mode adapts to your pace',
-                style: TextStyle(color: GameColors.textMuted),
-              ),
-              const SizedBox(height: 24),
-              _buildDifficultyOption(
-                title: 'Easy',
-                subtitle: '4 colors • Relaxed',
-                icon: Icons.wb_sunny,
-                accentColor: const Color(0xFF4CAF50), // Soft green
-                onTap: () => _startZen('easy'),
-              ),
-              _buildDifficultyOption(
-                title: 'Medium',
-                subtitle: '5 colors • Focused',
-                icon: Icons.cloud,
-                accentColor: const Color(0xFFFFB74D), // Warm amber
-                onTap: () => _startZen('medium'),
-              ),
-              _buildDifficultyOption(
-                title: 'Hard',
-                subtitle: '6 colors • Challenge',
-                icon: Icons.bolt,
-                accentColor: const Color(0xFFFF9800), // Warm orange
-                onTap: () => _startZen('hard'),
-              ),
-              _buildDifficultyOption(
-                title: 'Ultra',
-                subtitle: '7 colors • For masters',
-                icon: Icons.whatshot,
-                accentColor: const Color(0xFFE74C3C), // Deep red/crimson
-                onTap: () => _startZen('ultra'),
-              ),
-              const SizedBox(height: 8),
-              GestureDetector(
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _openGarden(context);
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: GameColors.zen.withValues(alpha: 0.3),
+        return SafeArea(
+          top: false,
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: GameColors.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: GameColors.textMuted,
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.park_outlined, color: GameColors.zen.withValues(alpha: 0.8), size: 18),
-                      const SizedBox(width: 8),
-                      Text(
-                        'View My Garden',
-                        style: TextStyle(
-                          color: GameColors.zen.withValues(alpha: 0.8),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Choose Your Vibe',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Zen mode adapts to your pace',
+                    style: TextStyle(color: GameColors.textMuted),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildDifficultyOption(
+                    title: 'Easy',
+                    subtitle: '4 colors • Relaxed',
+                    icon: Icons.wb_sunny,
+                    accentColor: const Color(0xFF4CAF50), // Soft green
+                    onTap: () => _startZen('easy'),
+                  ),
+                  _buildDifficultyOption(
+                    title: 'Medium',
+                    subtitle: '5 colors • Focused',
+                    icon: Icons.cloud,
+                    accentColor: const Color(0xFFFFB74D), // Warm amber
+                    onTap: () => _startZen('medium'),
+                  ),
+                  _buildDifficultyOption(
+                    title: 'Hard',
+                    subtitle: '6 colors • Challenge',
+                    icon: Icons.bolt,
+                    accentColor: const Color(0xFFFF9800), // Warm orange
+                    onTap: () => _startZen('hard'),
+                  ),
+                  _buildDifficultyOption(
+                    title: 'Ultra',
+                    subtitle: '7 colors • For masters',
+                    icon: Icons.whatshot,
+                    accentColor: const Color(0xFFE74C3C), // Deep red/crimson
+                    onTap: () => _startZen('ultra'),
+                  ),
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      _openGarden(context);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: GameColors.zen.withValues(alpha: 0.3),
                         ),
                       ),
-                    ],
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.park_outlined, color: GameColors.zen.withValues(alpha: 0.8), size: 18),
+                          const SizedBox(width: 8),
+                          Text(
+                            'View My Garden',
+                            style: TextStyle(
+                              color: GameColors.zen.withValues(alpha: 0.8),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+                  SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
+                ],
               ),
-              SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
-            ],
+            ),
           ),
         );
       },
