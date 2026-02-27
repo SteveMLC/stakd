@@ -167,11 +167,7 @@ class GardenService {
 
   /// Check if an element is unlocked
   static bool isUnlocked(String element) {
-    final result = _state.unlockedElements.contains(element);
-    if (!result) {
-      debugPrint('GardenService.isUnlocked("$element") = false | stage=${_state.currentStage} puzzles=${_state.totalPuzzlesSolved} unlocked=${_state.unlockedElements.length} elements');
-    }
-    return result;
+    return _state.unlockedElements.contains(element);
   }
 
   /// Get all elements that should be visible
