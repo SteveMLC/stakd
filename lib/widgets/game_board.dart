@@ -157,13 +157,9 @@ class _GameBoardState extends State<GameBoard>
                 final stackH = GameSizes.getStackHeight(maxDepth);
                 final totalBoardHeight = rows * (stackH + 16); // 16 = vertical padding
                 final availableHeight = constraints.maxHeight;
-                final scaleFactor = totalBoardHeight > availableHeight
-                    ? (availableHeight / totalBoardHeight).clamp(0.5, 1.0)
-                    : 1.0;
+                final needsScaling = totalBoardHeight > availableHeight;
 
-                return Transform.scale(
-                  scale: scaleFactor,
-                  child: Stack(
+                Widget boardContent = Stack(
                   children: [
                     // Particle bursts overlay
                     if (_currentBursts.isNotEmpty)
@@ -439,8 +435,26 @@ class _GameBoardState extends State<GameBoard>
                         boardContext: context,
                       ),
                   ],
-                ),
                 );
+
+                // If the board is taller than available space, use FittedBox
+                // to scale it down while preserving hit testing
+                if (needsScaling) {
+                  boardContent = SizedBox(
+                    width: constraints.maxWidth,
+                    height: availableHeight,
+                    child: FittedBox(
+                      fit: BoxFit.contain,
+                      child: SizedBox(
+                        width: constraints.maxWidth,
+                        height: totalBoardHeight,
+                        child: boardContent,
+                      ),
+                    ),
+                  );
+                }
+
+                return boardContent;
               },
             ),
           ),
