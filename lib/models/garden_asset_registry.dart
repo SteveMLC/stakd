@@ -71,6 +71,22 @@ class GardenAssetRegistry {
       unlockStage: 1,
       elementId: 'pebble_path',
     ),
+    GardenAsset(
+      id: 'zen_grass_1',
+      path: 'assets/images/zen-garden/zen_grass_1.png',
+      family: GardenAssetFamily.ground,
+      layer: GardenAssetLayer.background,
+      sizeClass: 's',
+      unlockStage: 1,
+    ),
+    GardenAsset(
+      id: 'zen_grass_base_alt',
+      path: 'assets/images/zen-garden/zen_grass_base_alt.png',
+      family: GardenAssetFamily.ground,
+      layer: GardenAssetLayer.background,
+      sizeClass: 'm',
+      unlockStage: 1,
+    ),
     
     // Stage 2: Flora
     GardenAsset(
@@ -90,6 +106,22 @@ class GardenAssetRegistry {
       sizeClass: 'm',
       unlockStage: 2,
     ),
+    GardenAsset(
+      id: 'zen_grass_2',
+      path: 'assets/images/zen-garden/zen_grass_2.png',
+      family: GardenAssetFamily.ground,
+      layer: GardenAssetLayer.background,
+      sizeClass: 's',
+      unlockStage: 2,
+    ),
+    GardenAsset(
+      id: 'zen_rocks_small_v2',
+      path: 'assets/images/zen-garden/zen_rocks_small_v2.png',
+      family: GardenAssetFamily.rocks,
+      layer: GardenAssetLayer.midground,
+      sizeClass: 'xs',
+      unlockStage: 2,
+    ),
     
     // Stage 3: Growth
     GardenAsset(
@@ -99,7 +131,7 @@ class GardenAssetRegistry {
       layer: GardenAssetLayer.midground,
       sizeClass: 'm',
       unlockStage: 3,
-      elementId: 'sapling', // replaces sapling with rocks
+      elementId: 'sapling',
     ),
     GardenAsset(
       id: 'zen_bamboo',
@@ -107,6 +139,30 @@ class GardenAssetRegistry {
       family: GardenAssetFamily.flora,
       layer: GardenAssetLayer.foreground,
       sizeClass: 'm',
+      unlockStage: 3,
+    ),
+    GardenAsset(
+      id: 'zen_flowers_purple',
+      path: 'assets/images/zen-garden/zen_flowers_purple.png',
+      family: GardenAssetFamily.flora,
+      layer: GardenAssetLayer.midground,
+      sizeClass: 's',
+      unlockStage: 3,
+    ),
+    GardenAsset(
+      id: 'zen_grass_3',
+      path: 'assets/images/zen-garden/zen_grass_3.png',
+      family: GardenAssetFamily.ground,
+      layer: GardenAssetLayer.background,
+      sizeClass: 's',
+      unlockStage: 3,
+    ),
+    GardenAsset(
+      id: 'zen_rocks_small_v3',
+      path: 'assets/images/zen-garden/zen_rocks_small_v3.png',
+      family: GardenAssetFamily.rocks,
+      layer: GardenAssetLayer.midground,
+      sizeClass: 'xs',
       unlockStage: 3,
     ),
     
@@ -128,6 +184,30 @@ class GardenAssetRegistry {
       sizeClass: 's',
       unlockStage: 4,
       elementId: 'lily_pads',
+    ),
+    GardenAsset(
+      id: 'zen_flowers_white',
+      path: 'assets/images/zen-garden/zen_flowers_white.png',
+      family: GardenAssetFamily.flora,
+      layer: GardenAssetLayer.midground,
+      sizeClass: 's',
+      unlockStage: 4,
+    ),
+    GardenAsset(
+      id: 'zen_rocks_medium_v2',
+      path: 'assets/images/zen-garden/zen_rocks_medium_v2.png',
+      family: GardenAssetFamily.rocks,
+      layer: GardenAssetLayer.midground,
+      sizeClass: 'm',
+      unlockStage: 4,
+    ),
+    GardenAsset(
+      id: 'zen_blossoms_c',
+      path: 'assets/images/zen-garden/zen_blossoms_c.png',
+      family: GardenAssetFamily.flora,
+      layer: GardenAssetLayer.midground,
+      sizeClass: 's',
+      unlockStage: 4,
     ),
     
     // Stage 5: Beauty
@@ -157,6 +237,30 @@ class GardenAssetRegistry {
       unlockStage: 5,
       elementId: 'lantern',
     ),
+    GardenAsset(
+      id: 'zen_shrine',
+      path: 'assets/images/zen-garden/zen_shrine.png',
+      family: GardenAssetFamily.structure,
+      layer: GardenAssetLayer.foreground,
+      sizeClass: 'm',
+      unlockStage: 5,
+    ),
+    GardenAsset(
+      id: 'zen_flowers_yellow',
+      path: 'assets/images/zen-garden/zen_flowers_yellow.png',
+      family: GardenAssetFamily.flora,
+      layer: GardenAssetLayer.midground,
+      sizeClass: 's',
+      unlockStage: 5,
+    ),
+    GardenAsset(
+      id: 'zen_shrub_gold',
+      path: 'assets/images/zen-garden/zen_shrub_gold.png',
+      family: GardenAssetFamily.flora,
+      layer: GardenAssetLayer.midground,
+      sizeClass: 's',
+      unlockStage: 5,
+    ),
     
     // Stage 6: Harmony
     GardenAsset(
@@ -168,13 +272,20 @@ class GardenAssetRegistry {
       unlockStage: 6,
     ),
     GardenAsset(
-      id: 'zen_shrine',
-      path: 'assets/images/zen-garden/zen_shrine.png',
-      family: GardenAssetFamily.structure,
+      id: 'zen_cherry_blossom_alt',
+      path: 'assets/images/zen-garden/zen_cherry_blossom_alt.png',
+      family: GardenAssetFamily.flora,
       layer: GardenAssetLayer.foreground,
       sizeClass: 'm',
       unlockStage: 6,
-      elementId: 'torii_gate',
+    ),
+    GardenAsset(
+      id: 'zen_stream',
+      path: 'assets/images/zen-garden/zen_stream.png',
+      family: GardenAssetFamily.water,
+      layer: GardenAssetLayer.midground,
+      sizeClass: 'm',
+      unlockStage: 6,
     ),
     
     // Stage 7: Sanctuary
@@ -196,6 +307,15 @@ class GardenAssetRegistry {
       unlockStage: 7,
       elementId: 'stream',
     ),
+    GardenAsset(
+      id: 'zen_torii_gate',
+      path: 'assets/images/zen-garden/zen_torii_gate.png',
+      family: GardenAssetFamily.structure,
+      layer: GardenAssetLayer.foreground,
+      sizeClass: 'm',
+      unlockStage: 7,
+      elementId: 'torii_gate',
+    ),
     
     // Stage 8: Atmosphere
     GardenAsset(
@@ -203,6 +323,14 @@ class GardenAssetRegistry {
       path: 'assets/images/zen-garden/zen_mist.png',
       family: GardenAssetFamily.atmosphere,
       layer: GardenAssetLayer.overlay,
+      sizeClass: 'l',
+      unlockStage: 8,
+    ),
+    GardenAsset(
+      id: 'zen_tree_autumn',
+      path: 'assets/images/zen-garden/zen_tree_autumn.png',
+      family: GardenAssetFamily.flora,
+      layer: GardenAssetLayer.foreground,
       sizeClass: 'l',
       unlockStage: 8,
     ),
