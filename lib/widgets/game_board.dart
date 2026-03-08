@@ -14,6 +14,10 @@ import '../utils/theme_colors.dart';
 // import '../engine/board_renderer.dart';
 // import '../engine/input_handler.dart';
 import 'particles/particle_burst.dart';
+import 'board/board_drag_layer.dart';
+import 'board/board_feedback_layer.dart';
+import 'board/board_grid.dart';
+import 'board/board_motion_layer.dart';
 import 'particles/confetti_overlay.dart';
 import 'combo_popup.dart';
 import 'color_flash_overlay.dart';
@@ -44,7 +48,7 @@ class GameBoard extends StatefulWidget {
 
   @override
   State<GameBoard> createState() => _GameBoardState();
-  
+
   /// Static method to clear all overlays from a GameBoard instance
   static void clearOverlays(BuildContext context) {
     final gameBoardState = context.findAncestorStateOfType<_GameBoardState>();
@@ -71,6 +75,7 @@ class _GameBoardState extends State<GameBoard>
   Offset _dragPosition = Offset.zero;
   List<Layer>? _dragLayers;
   int? _dragHoverTube;
+  final Map<int, Rect> _stackHitRects = {};
 
   @override
   void initState() {
@@ -155,11 +160,16 @@ class _GameBoardState extends State<GameBoard>
                   constraints.maxWidth,
                 );
                 final rows = (stackCount / maxStacksPerRow).ceil();
-                
+
                 // Calculate if board will overflow and scale down if needed
-                final maxDepth = stacks.isEmpty ? 4 : stacks.map((s) => s.maxDepth).reduce((a, b) => a > b ? a : b);
+                final maxDepth = stacks.isEmpty
+                    ? 4
+                    : stacks
+                          .map((s) => s.maxDepth)
+                          .reduce((a, b) => a > b ? a : b);
                 final stackH = GameSizes.getStackHeight(maxDepth);
-                final totalBoardHeight = rows * (stackH + 16); // 16 = vertical padding
+                final totalBoardHeight =
+                    rows * (stackH + 16); // 16 = vertical padding
                 final availableHeight = constraints.maxHeight;
                 final needsScaling = totalBoardHeight > availableHeight;
 
@@ -168,206 +178,232 @@ class _GameBoardState extends State<GameBoard>
                     // Particle bursts overlay
                     if (_currentBursts.isNotEmpty)
                       Positioned.fill(
-                        child: ParticleBurstOverlay(
-                          bursts: _currentBursts,
-                          onAllComplete: () {
-                            setState(() {
-                              _currentBursts = [];
-                            });
-                          },
+                        child: RepaintBoundary(
+                          child: ParticleBurstOverlay(
+                            bursts: _currentBursts,
+                            onAllComplete: () {
+                              setState(() {
+                                _currentBursts = [];
+                              });
+                            },
+                          ),
                         ),
                       ),
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(rows, (rowIndex) {
-                        final startIndex = rowIndex * maxStacksPerRow;
-                        final endIndex = (startIndex + maxStacksPerRow).clamp(
-                          0,
-                          stackCount,
-                        );
-                        final rowStacks = stacks.sublist(startIndex, endIndex);
+                    BoardGrid(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(rows, (rowIndex) {
+                          final startIndex = rowIndex * maxStacksPerRow;
+                          final endIndex = (startIndex + maxStacksPerRow).clamp(
+                            0,
+                            stackCount,
+                          );
+                          final rowStacks = stacks.sublist(
+                            startIndex,
+                            endIndex,
+                          );
 
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: List.generate(rowStacks.length, (index) {
-                              final actualIndex = startIndex + index;
-                              final stack = rowStacks[index];
-                              final isSelected =
-                                  actualIndex ==
-                                  widget.gameState.selectedStackIndex;
-                              final isRecentlyCleared = widget
-                                  .gameState
-                                  .recentlyCleared
-                                  .contains(actualIndex);
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: List.generate(rowStacks.length, (
+                                index,
+                              ) {
+                                final actualIndex = startIndex + index;
+                                final stack = rowStacks[index];
+                                final isSelected =
+                                    actualIndex ==
+                                    widget.gameState.selectedStackIndex;
+                                final isRecentlyCleared = widget
+                                    .gameState
+                                    .recentlyCleared
+                                    .contains(actualIndex);
 
-                              return Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: GameSizes.stackSpacing / 2,
-                                ),
-                                child: _StackWidget(
-                                  key: _stackKeys[actualIndex],
-                                  stack: stack,
-                                  index: actualIndex,
-                                  isSelected: isSelected,
-                                  isRecentlyCleared: isRecentlyCleared,
-                                  isMultiGrabMode:
-                                      widget.gameState.isMultiGrabMode,
-                                  multiGrabCount:
-                                      widget.gameState.multiGrabCount,
-                                  onTap: () {
-                                    // Don't process taps during drag
-                                    if (_isDragging) return;
-                                    // Check if there's an override handler (for power-up selection)
-                                    if (widget.onStackTapOverride != null) {
-                                      widget.onStackTapOverride!(actualIndex);
+                                return Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: GameSizes.stackSpacing / 2,
+                                  ),
+                                  child: _StackWidget(
+                                    key: _stackKeys[actualIndex],
+                                    stack: stack,
+                                    index: actualIndex,
+                                    isSelected: isSelected,
+                                    isRecentlyCleared: isRecentlyCleared,
+                                    isMultiGrabMode:
+                                        widget.gameState.isMultiGrabMode,
+                                    multiGrabCount:
+                                        widget.gameState.multiGrabCount,
+                                    onTap: () {
+                                      // Don't process taps during drag
+                                      if (_isDragging) return;
+                                      // Check if there's an override handler (for power-up selection)
+                                      if (widget.onStackTapOverride != null) {
+                                        widget.onStackTapOverride!(actualIndex);
+                                        widget.onTap?.call();
+                                        return;
+                                      }
+
+                                      final previousMoveCount =
+                                          widget.gameState.moveCount;
+                                      final previousCleared = List<int>.from(
+                                        widget.gameState.recentlyCleared,
+                                      );
+                                      final previousSelectedStack =
+                                          widget.gameState.selectedStackIndex;
+
+                                      widget.gameState.onStackTap(actualIndex);
                                       widget.onTap?.call();
-                                      return;
-                                    }
 
-                                    final previousMoveCount =
-                                        widget.gameState.moveCount;
-                                    final previousCleared = List<int>.from(
-                                      widget.gameState.recentlyCleared,
-                                    );
-                                    final previousSelectedStack =
-                                        widget.gameState.selectedStackIndex;
+                                      // Check if move was made
+                                      final moveMade =
+                                          widget.gameState.moveCount >
+                                          previousMoveCount;
 
-                                    widget.gameState.onStackTap(actualIndex);
-                                    widget.onTap?.call();
+                                      if (moveMade) {
+                                        widget.onMove?.call();
+                                      } else {
+                                        // Check if this was an invalid move attempt
+                                        // (tried to move to a stack that can't accept the layer)
+                                        final wasSourceSelected =
+                                            previousSelectedStack >= 0 &&
+                                            previousSelectedStack !=
+                                                actualIndex;
+                                        if (wasSourceSelected) {
+                                          final sourceStack = widget
+                                              .gameState
+                                              .stacks[previousSelectedStack];
+                                          final targetStack = widget
+                                              .gameState
+                                              .stacks[actualIndex];
 
-                                    // Check if move was made
-                                    final moveMade =
-                                        widget.gameState.moveCount >
-                                        previousMoveCount;
-
-                                    if (moveMade) {
-                                      widget.onMove?.call();
-                                    } else {
-                                      // Check if this was an invalid move attempt
-                                      // (tried to move to a stack that can't accept the layer)
-                                      final wasSourceSelected =
-                                          previousSelectedStack >= 0 &&
-                                          previousSelectedStack != actualIndex;
-                                      if (wasSourceSelected) {
-                                        final sourceStack = widget
-                                            .gameState
-                                            .stacks[previousSelectedStack];
-                                        final targetStack = widget
-                                            .gameState
-                                            .stacks[actualIndex];
-
-                                        // Invalid move: has source layer but target can't accept it
-                                        if (!sourceStack.isEmpty &&
-                                            !targetStack.canAccept(
-                                              sourceStack.topLayer!,
-                                            )) {
-                                          // Play error sound
-                                          AudioService().playError();
-                                          // Haptic feedback for invalid move
-                                          haptics.error();
-                                          // Trigger shake animation
-                                          _shakeController.forward(from: 0);
+                                          // Invalid move: has source layer but target can't accept it
+                                          if (!sourceStack.isEmpty &&
+                                              !targetStack.canAccept(
+                                                sourceStack.topLayer!,
+                                              )) {
+                                            // Play error sound
+                                            AudioService().playError();
+                                            // Haptic feedback for invalid move
+                                            haptics.error();
+                                            // Trigger shake animation
+                                            _shakeController.forward(from: 0);
+                                          }
                                         }
                                       }
-                                    }
 
-                                    final currentCleared =
-                                        widget.gameState.recentlyCleared;
-                                    if (currentCleared.isNotEmpty &&
-                                        !listEquals(
-                                          previousCleared,
+                                      final currentCleared =
+                                          widget.gameState.recentlyCleared;
+                                      if (currentCleared.isNotEmpty &&
+                                          !listEquals(
+                                            previousCleared,
+                                            currentCleared,
+                                          )) {
+                                        widget.onClear?.call();
+
+                                        // Get chain level (number of stacks cleared in one move)
+                                        final chainLevel =
+                                            widget.gameState.currentChainLevel;
+
+                                        // Trigger appropriate effects based on chain level
+                                        _triggerChainEffects(
                                           currentCleared,
-                                        )) {
-                                      widget.onClear?.call();
-
-                                      // Get chain level (number of stacks cleared in one move)
-                                      final chainLevel =
-                                          widget.gameState.currentChainLevel;
-
-                                      // Trigger appropriate effects based on chain level
-                                      _triggerChainEffects(
-                                        currentCleared,
-                                        chainLevel,
-                                      );
-                                    }
-                                  },
-                                  onMultiGrab: () {
-                                    widget.gameState.activateMultiGrab(
-                                      actualIndex,
-                                    );
-                                    widget.onTap?.call();
-                                  },
-                                  isPowerUpHighlighted:
-                                      widget.highlightedStacks?.contains(
+                                          chainLevel,
+                                        );
+                                      }
+                                    },
+                                    onMultiGrab: () {
+                                      widget.gameState.activateMultiGrab(
                                         actualIndex,
-                                      ) ??
-                                      false,
-                                  onDragStart: _onDragStart,
-                                  onDragUpdate: _onDragUpdate,
-                                  onDragEnd: _onDragEnd,
-                                  isDragSource: _isDragging && _dragSourceTube == actualIndex,
-                                  isDragValidTarget: _isDragging && _dragSourceTube != actualIndex && _isValidDropTarget(actualIndex),
-                                  isDragInvalidHover: _isDragging && _dragHoverTube == actualIndex && !_isValidDropTarget(actualIndex),
-                                ),
-                              );
-                            }),
-                          ),
-                        );
-                      }),
+                                      );
+                                      widget.onTap?.call();
+                                    },
+                                    isPowerUpHighlighted:
+                                        widget.highlightedStacks?.contains(
+                                          actualIndex,
+                                        ) ??
+                                        false,
+                                    onDragStart: _onDragStart,
+                                    onDragUpdate: _onDragUpdate,
+                                    onDragEnd: _onDragEnd,
+                                    isDragSource:
+                                        _isDragging &&
+                                        _dragSourceTube == actualIndex,
+                                    isDragValidTarget:
+                                        _isDragging &&
+                                        _dragSourceTube != actualIndex &&
+                                        _isValidDropTarget(actualIndex),
+                                    isDragInvalidHover:
+                                        _isDragging &&
+                                        _dragHoverTube == actualIndex &&
+                                        !_isValidDropTarget(actualIndex),
+                                  ),
+                                );
+                              }),
+                            ),
+                          );
+                        }),
+                      ),
                     ),
                     // Animation overlay
                     if (widget.gameState.animatingLayer != null)
-                      _AnimatedLayerOverlay(
-                        animatingLayer: widget.gameState.animatingLayer!,
-                        fromKey:
-                            _stackKeys[widget
-                                .gameState
-                                .animatingLayer!
-                                .fromStackIndex]!,
-                        toKey:
-                            _stackKeys[widget
-                                .gameState
-                                .animatingLayer!
-                                .toStackIndex]!,
-                        onComplete: () {
-                          // Trigger landing particle burst
-                          final destIndex = widget.gameState.animatingLayer!.toStackIndex;
-                          final layer = widget.gameState.animatingLayer!.layer;
-                          _triggerLandingBurst(destIndex, layer.colorIndex);
+                      BoardMotionLayer(
+                        child: _AnimatedLayerOverlay(
+                          animatingLayer: widget.gameState.animatingLayer!,
+                          fromKey:
+                              _stackKeys[widget
+                                  .gameState
+                                  .animatingLayer!
+                                  .fromStackIndex]!,
+                          toKey:
+                              _stackKeys[widget
+                                  .gameState
+                                  .animatingLayer!
+                                  .toStackIndex]!,
+                          onComplete: () {
+                            // Trigger landing particle burst
+                            final destIndex =
+                                widget.gameState.animatingLayer!.toStackIndex;
+                            final layer =
+                                widget.gameState.animatingLayer!.layer;
+                            _triggerLandingBurst(destIndex, layer.colorIndex);
 
-                          widget.gameState.completeMove();
-                          widget.onMove?.call();
-                          // Show combo popup for consecutive correct moves (3+)
-                          final combo = widget.gameState.currentCombo;
-                          if (combo >= 3) {
-                            setState(() {
-                              _showComboMultiplier = combo;
-                            });
-                            // Show one-time tooltip on first combo
-                            if (!_hasSeenComboTooltip) {
-                              _hasSeenComboTooltip = true;
-                              setState(() => _showComboTooltip = true);
-                              SharedPreferences.getInstance().then((prefs) {
-                                prefs.setBool('has_seen_combo_tooltip', true);
+                            widget.gameState.completeMove();
+                            widget.onMove?.call();
+                            // Show combo popup for consecutive correct moves (3+)
+                            final combo = widget.gameState.currentCombo;
+                            if (combo >= 3) {
+                              setState(() {
+                                _showComboMultiplier = combo;
                               });
-                              Future.delayed(const Duration(seconds: 3), () {
-                                if (mounted) setState(() => _showComboTooltip = false);
-                              });
+                              // Show one-time tooltip on first combo
+                              if (!_hasSeenComboTooltip) {
+                                _hasSeenComboTooltip = true;
+                                setState(() => _showComboTooltip = true);
+                                SharedPreferences.getInstance().then((prefs) {
+                                  prefs.setBool('has_seen_combo_tooltip', true);
+                                });
+                                Future.delayed(const Duration(seconds: 3), () {
+                                  if (mounted) {
+                                    setState(() => _showComboTooltip = false);
+                                  }
+                                });
+                              }
                             }
-                          }
-                        },
+                          },
+                        ),
                       ),
                     // Chain text popup overlay
                     if (_showChainLevel != null && _showChainLevel! >= 2)
-                      ChainTextPopupOverlay(
-                        chainLevel: _showChainLevel!,
-                        onComplete: () {
-                          setState(() {
-                            _showChainLevel = null;
-                          });
-                        },
+                      BoardFeedbackLayer(
+                        child: ChainTextPopupOverlay(
+                          chainLevel: _showChainLevel!,
+                          onComplete: () {
+                            setState(() {
+                              _showChainLevel = null;
+                            });
+                          },
+                        ),
                       ),
                     // Combo popup overlay - compact badge in top-right
                     if (_showComboMultiplier != null &&
@@ -393,7 +429,10 @@ class _GameBoardState extends State<GameBoard>
                         right: 8,
                         child: IgnorePointer(
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.black.withValues(alpha: 0.8),
                               borderRadius: BorderRadius.circular(10),
@@ -433,10 +472,12 @@ class _GameBoardState extends State<GameBoard>
                       ),
                     // Drag-and-drop overlay
                     if (_isDragging && _dragLayers != null)
-                      _DragOverlay(
-                        layers: _dragLayers!,
-                        globalPosition: _dragPosition,
-                        boardContext: context,
+                      BoardDragLayer(
+                        child: _DragOverlay(
+                          layers: _dragLayers!,
+                          globalPosition: _dragPosition,
+                          boardContext: context,
+                        ),
                       ),
                   ],
                 );
@@ -469,14 +510,44 @@ class _GameBoardState extends State<GameBoard>
 
   // ── Drag-and-drop handlers ──
 
+  void _updateStackHitRects() {
+    _stackHitRects.clear();
+    final stacks = widget.gameState.stacks;
+    for (int i = 0; i < stacks.length; i++) {
+      final key = _stackKeys[i];
+      if (key?.currentContext == null) {
+        continue;
+      }
+      final box = key!.currentContext!.findRenderObject() as RenderBox?;
+      if (box == null) {
+        continue;
+      }
+      final pos = box.localToGlobal(Offset.zero);
+      final size = box.size;
+      _stackHitRects[i] = Rect.fromLTWH(
+        pos.dx - 8,
+        pos.dy - 8,
+        size.width + 16,
+        size.height + 16,
+      );
+    }
+  }
+
   void _onDragStart(int tubeIndex, Offset globalPosition) {
-    if (widget.gameState.isComplete || widget.gameState.animatingLayer != null) return;
+    if (widget.gameState.isComplete ||
+        widget.gameState.animatingLayer != null) {
+      return;
+    }
     final stack = widget.gameState.stacks[tubeIndex];
-    if (stack.isEmpty || !stack.canPickUpTop) return;
+    if (stack.isEmpty || !stack.canPickUpTop) {
+      return;
+    }
 
     // Grab top group (multi-grab) automatically
     final topGroup = stack.getTopGroup();
     final isMulti = topGroup.length > 1;
+
+    _updateStackHitRects();
 
     setState(() {
       _isDragging = true;
@@ -496,25 +567,12 @@ class _GameBoardState extends State<GameBoard>
   void _onDragUpdate(Offset globalPosition) {
     if (!_isDragging) return;
 
-    // Determine which tube the finger is over
+    // Determine which tube the finger is over using cached hit rects
     int? hoverTube;
-    final stacks = widget.gameState.stacks;
-    for (int i = 0; i < stacks.length; i++) {
+    for (final entry in _stackHitRects.entries) {
+      final i = entry.key;
       if (i == _dragSourceTube) continue;
-      final key = _stackKeys[i];
-      if (key?.currentContext == null) continue;
-      final box = key!.currentContext!.findRenderObject() as RenderBox?;
-      if (box == null) continue;
-      final pos = box.localToGlobal(Offset.zero);
-      final size = box.size;
-      // Expand hit area slightly for easier targeting
-      final rect = Rect.fromLTWH(
-        pos.dx - 8,
-        pos.dy - 8,
-        size.width + 16,
-        size.height + 16,
-      );
-      if (rect.contains(globalPosition)) {
+      if (entry.value.contains(globalPosition)) {
         hoverTube = i;
         break;
       }
@@ -539,6 +597,7 @@ class _GameBoardState extends State<GameBoard>
       _dragSourceTube = -1;
       _dragLayers = null;
       _dragHoverTube = null;
+      _stackHitRects.clear();
     });
 
     if (targetTube == null || layers == null) {
@@ -577,7 +636,8 @@ class _GameBoardState extends State<GameBoard>
     }
 
     final currentCleared = gs.recentlyCleared;
-    if (currentCleared.isNotEmpty && !listEquals(previousCleared, currentCleared)) {
+    if (currentCleared.isNotEmpty &&
+        !listEquals(previousCleared, currentCleared)) {
       widget.onClear?.call();
       final chainLevel = gs.currentChainLevel;
       _triggerChainEffects(currentCleared, chainLevel);
@@ -611,11 +671,15 @@ class _GameBoardState extends State<GameBoard>
     if (!ThemeColors.hasParticles) return;
     final stackKey = _stackKeys[stackIndex];
     if (stackKey?.currentContext == null) return;
-    final renderBox = stackKey!.currentContext!.findRenderObject() as RenderBox?;
+    final renderBox =
+        stackKey!.currentContext!.findRenderObject() as RenderBox?;
     if (renderBox == null) return;
     final position = renderBox.localToGlobal(Offset.zero);
     final size = renderBox.size;
-    final center = Offset(position.dx + size.width / 2, position.dy + size.height - 10);
+    final center = Offset(
+      position.dx + size.width / 2,
+      position.dy + size.height - 10,
+    );
     final color = ThemeColors.getColor(colorIndex);
     setState(() {
       _currentBursts = [
@@ -980,10 +1044,10 @@ class _StackWidgetState extends State<_StackWidget>
 
   void _onPanUpdate(DragUpdateDetails details) {
     if (widget.stack.isEmpty || _panStartPosition == null) return;
-    
+
     final currentPos = details.globalPosition;
     final distance = (currentPos - _panStartPosition!).distance;
-    
+
     // Start drag if we've moved beyond the threshold and aren't dragging yet
     if (!_isDragging && distance >= _dragThreshold) {
       setState(() {
@@ -1024,10 +1088,10 @@ class _StackWidgetState extends State<_StackWidget>
   void _onLongPress() {
     // Long press is now only used for multi-grab
     if (widget.stack.isEmpty) return;
-    
+
     // Show long press visual feedback
     _setLongPressing(true);
-    
+
     final topGroup = widget.stack.getTopGroup();
     if (topGroup.length > 1) {
       haptics.successPattern();
@@ -1038,7 +1102,7 @@ class _StackWidgetState extends State<_StackWidget>
       // For single blocks, just treat as tap
       widget.onTap();
     }
-    
+
     // Hide long press visual feedback after a short delay
     Future.delayed(const Duration(milliseconds: 200), () {
       if (mounted) {
@@ -1112,187 +1176,199 @@ class _StackWidgetState extends State<_StackWidget>
               child: Opacity(
                 opacity: widget.isDragSource ? 0.4 : 1.0,
                 child: GestureDetector(
-                onTap: () {
-                  // Only process tap if we're not dragging
-                  if (!_isDragging) {
-                    haptics.lightTap();
-                    widget.onTap();
-                  }
-                },
-                onPanStart: _onPanStart,
-                onPanUpdate: _onPanUpdate,
-                onPanEnd: _onPanEnd,
-                onPanCancel: _onPanCancel,
-                onLongPress: _onLongPress,
-                child: SizedBox(
-                  width: GameSizes.stackWidth,
-                  height: GameSizes.getStackHeight(widget.stack.maxDepth),
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      AnimatedContainer(
-                        duration: GameDurations.buttonPress,
-                        width: double.infinity,
-                        height: double.infinity,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              ThemeColors.emptySlotColor.withValues(alpha: 0.85),
-                              ThemeColors.emptySlotColor,
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(
-                            GameSizes.stackBorderRadius,
-                          ),
-                          border: Border.all(
-                            color: widget.isDragValidTarget
-                                ? const Color(0xFF2ED573).withValues(alpha: 0.9)
-                                : widget.isDragInvalidHover
-                                ? const Color(0xFFFF4757).withValues(alpha: 0.7)
-                                : widget.isDragSource
-                                ? Colors.white.withValues(alpha: 0.3)
-                                : widget.isPowerUpHighlighted
-                                ? GameColors.zen.withValues(alpha: 0.9)
-                                : isMultiGrabActive
-                                ? glowColor.withValues(
-                                    alpha: 0.8 + multiGrabPulse * 0.2,
-                                  )
-                                : widget.isSelected
-                                ? ThemeColors.accentColor
-                                : widget.isRecentlyCleared
-                                ? ThemeColors.palette[2]
-                                : nearingCompletion
-                                ? glowColor.withValues(
-                                    alpha: 0.6 + pulseValue * 0.4,
-                                  )
-                                : ThemeColors.emptySlotColor,
-                            width: widget.isDragValidTarget
-                                ? 3
-                                : widget.isDragInvalidHover
-                                ? 3
-                                : widget.isPowerUpHighlighted
-                                ? 3
-                                : (isMultiGrabActive
-                                      ? 4
-                                      : (widget.isSelected
-                                            ? 3
-                                            : nearingCompletion
-                                            ? 2.5
-                                            : 2)),
-                          ),
-                          boxShadow: [
-                            // Drag valid target glow
-                            if (widget.isDragValidTarget)
-                              BoxShadow(
-                                color: const Color(0xFF2ED573).withValues(alpha: 0.5),
-                                blurRadius: 16,
-                                spreadRadius: 4,
-                              ),
-                            // Drag invalid hover
-                            if (widget.isDragInvalidHover)
-                              BoxShadow(
-                                color: const Color(0xFFFF4757).withValues(alpha: 0.3),
-                                blurRadius: 12,
-                                spreadRadius: 2,
-                              ),
-                            // Power-up highlight glow (magnet eligible)
-                            if (widget.isPowerUpHighlighted)
-                              BoxShadow(
-                                color: GameColors.zen.withValues(alpha: 0.5),
-                                blurRadius: 16,
-                                spreadRadius: 4,
-                              ),
-                            // Multi-grab glow effect (strongest)
-                            if (isMultiGrabActive)
-                              BoxShadow(
-                                color: glowColor.withValues(
-                                  alpha: 0.5 + multiGrabPulse * 0.3,
+                  onTap: () {
+                    // Only process tap if we're not dragging
+                    if (!_isDragging) {
+                      haptics.lightTap();
+                      widget.onTap();
+                    }
+                  },
+                  onPanStart: _onPanStart,
+                  onPanUpdate: _onPanUpdate,
+                  onPanEnd: _onPanEnd,
+                  onPanCancel: _onPanCancel,
+                  onLongPress: _onLongPress,
+                  child: SizedBox(
+                    width: GameSizes.stackWidth,
+                    height: GameSizes.getStackHeight(widget.stack.maxDepth),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        AnimatedContainer(
+                          duration: GameDurations.buttonPress,
+                          width: double.infinity,
+                          height: double.infinity,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                ThemeColors.emptySlotColor.withValues(
+                                  alpha: 0.85,
                                 ),
-                                blurRadius: 16 + multiGrabPulse * 8,
-                                spreadRadius: 4 + multiGrabPulse * 2,
-                              ),
-                            if (widget.isSelected && !isMultiGrabActive)
-                              BoxShadow(
-                                color: ThemeColors.accentColor.withValues(alpha: 0.4),
-                                blurRadius: 12,
-                                spreadRadius: 2,
-                              ),
-                            if (widget.isRecentlyCleared)
-                              BoxShadow(
-                                color: ThemeColors.palette[2].withValues(
-                                  alpha:
-                                      0.4 *
-                                      _glowAnimation.value *
+                                ThemeColors.emptySlotColor,
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(
+                              GameSizes.stackBorderRadius,
+                            ),
+                            border: Border.all(
+                              color: widget.isDragValidTarget
+                                  ? const Color(
+                                      0xFF2ED573,
+                                    ).withValues(alpha: 0.9)
+                                  : widget.isDragInvalidHover
+                                  ? const Color(
+                                      0xFFFF4757,
+                                    ).withValues(alpha: 0.7)
+                                  : widget.isDragSource
+                                  ? Colors.white.withValues(alpha: 0.3)
+                                  : widget.isPowerUpHighlighted
+                                  ? GameColors.zen.withValues(alpha: 0.9)
+                                  : isMultiGrabActive
+                                  ? glowColor.withValues(
+                                      alpha: 0.8 + multiGrabPulse * 0.2,
+                                    )
+                                  : widget.isSelected
+                                  ? ThemeColors.accentColor
+                                  : widget.isRecentlyCleared
+                                  ? ThemeColors.palette[2]
+                                  : nearingCompletion
+                                  ? glowColor.withValues(
+                                      alpha: 0.6 + pulseValue * 0.4,
+                                    )
+                                  : ThemeColors.emptySlotColor,
+                              width: widget.isDragValidTarget
+                                  ? 3
+                                  : widget.isDragInvalidHover
+                                  ? 3
+                                  : widget.isPowerUpHighlighted
+                                  ? 3
+                                  : (isMultiGrabActive
+                                        ? 4
+                                        : (widget.isSelected
+                                              ? 3
+                                              : nearingCompletion
+                                              ? 2.5
+                                              : 2)),
+                            ),
+                            boxShadow: [
+                              // Drag valid target glow
+                              if (widget.isDragValidTarget)
+                                BoxShadow(
+                                  color: const Color(
+                                    0xFF2ED573,
+                                  ).withValues(alpha: 0.5),
+                                  blurRadius: 16,
+                                  spreadRadius: 4,
+                                ),
+                              // Drag invalid hover
+                              if (widget.isDragInvalidHover)
+                                BoxShadow(
+                                  color: const Color(
+                                    0xFFFF4757,
+                                  ).withValues(alpha: 0.3),
+                                  blurRadius: 12,
+                                  spreadRadius: 2,
+                                ),
+                              // Power-up highlight glow (magnet eligible)
+                              if (widget.isPowerUpHighlighted)
+                                BoxShadow(
+                                  color: GameColors.zen.withValues(alpha: 0.5),
+                                  blurRadius: 16,
+                                  spreadRadius: 4,
+                                ),
+                              // Multi-grab glow effect (strongest)
+                              if (isMultiGrabActive)
+                                BoxShadow(
+                                  color: glowColor.withValues(
+                                    alpha: 0.5 + multiGrabPulse * 0.3,
+                                  ),
+                                  blurRadius: 16 + multiGrabPulse * 8,
+                                  spreadRadius: 4 + multiGrabPulse * 2,
+                                ),
+                              if (widget.isSelected && !isMultiGrabActive)
+                                BoxShadow(
+                                  color: ThemeColors.accentColor.withValues(
+                                    alpha: 0.4,
+                                  ),
+                                  blurRadius: 12,
+                                  spreadRadius: 2,
+                                ),
+                              if (widget.isRecentlyCleared)
+                                BoxShadow(
+                                  color: ThemeColors.palette[2].withValues(
+                                    alpha:
+                                        0.4 *
+                                        _glowAnimation.value *
+                                        (_completionGlowController.isAnimating
+                                            ? _completionGlowAnimation.value
+                                            : 1.0),
+                                  ),
+                                  blurRadius:
+                                      16 *
+                                      (_completionGlowController.isAnimating
+                                          ? _completionGlowAnimation.value
+                                          : 1.0),
+                                  spreadRadius:
+                                      4 *
                                       (_completionGlowController.isAnimating
                                           ? _completionGlowAnimation.value
                                           : 1.0),
                                 ),
-                                blurRadius:
-                                    16 *
-                                    (_completionGlowController.isAnimating
-                                        ? _completionGlowAnimation.value
-                                        : 1.0),
-                                spreadRadius:
-                                    4 *
-                                    (_completionGlowController.isAnimating
-                                        ? _completionGlowAnimation.value
-                                        : 1.0),
-                              ),
-                            // Glow effect for nearing completion (3+ matching layers)
-                            if (nearingCompletion &&
-                                !widget.isSelected &&
-                                !widget.isRecentlyCleared &&
-                                !isMultiGrabActive)
-                              BoxShadow(
-                                color: glowColor.withValues(
-                                  alpha:
-                                      (0.2 + pulseValue * 0.3) *
-                                      completionProgress,
+                              // Glow effect for nearing completion (3+ matching layers)
+                              if (nearingCompletion &&
+                                  !widget.isSelected &&
+                                  !widget.isRecentlyCleared &&
+                                  !isMultiGrabActive)
+                                BoxShadow(
+                                  color: glowColor.withValues(
+                                    alpha:
+                                        (0.2 + pulseValue * 0.3) *
+                                        completionProgress,
+                                  ),
+                                  blurRadius: 8 + completionProgress * 8,
+                                  spreadRadius: completionProgress * 3,
                                 ),
-                                blurRadius: 8 + completionProgress * 8,
-                                spreadRadius: completionProgress * 3,
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.35),
+                                blurRadius: 12,
+                                offset: const Offset(0, 6),
                               ),
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.35),
-                              blurRadius: 12,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(
-                            GameSizes.stackBorderRadius - 2,
+                            ],
                           ),
-                          child: _buildLayers(),
-                        ),
-                      ),
-                      if (_isLongPressing && !_isDragging)
-                        Positioned.fill(
-                          child: IgnorePointer(
-                            child: _LongPressRing(
-                              color: glowColor,
-                              borderRadius: GameSizes.stackBorderRadius + 6,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(
+                              GameSizes.stackBorderRadius - 2,
                             ),
+                            child: _buildLayers(),
                           ),
                         ),
-                      if (_shouldShowMultiGrabIndicator)
-                        Positioned(
-                          top: -14,
-                          left: 0,
-                          right: 0,
-                          child: Center(
-                            child: _MultiGrabIndicator(
-                              count: widget.stack.topGroupSize,
-                              animation: _multiGrabIndicatorAnimation,
+                        if (_isLongPressing && !_isDragging)
+                          Positioned.fill(
+                            child: IgnorePointer(
+                              child: _LongPressRing(
+                                color: glowColor,
+                                borderRadius: GameSizes.stackBorderRadius + 6,
+                              ),
                             ),
                           ),
-                        ),
-                    ],
+                        if (_shouldShowMultiGrabIndicator)
+                          Positioned(
+                            top: -14,
+                            left: 0,
+                            right: 0,
+                            child: Center(
+                              child: _MultiGrabIndicator(
+                                count: widget.stack.topGroupSize,
+                                animation: _multiGrabIndicatorAnimation,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
               ),
             ),
           );
@@ -1388,7 +1464,8 @@ class _StackWidgetState extends State<_StackWidget>
                   ),
                 ),
                 // Colorblind pattern overlay
-                if (GameColors.isUltraMode || StorageService().getColorblindMode())
+                if (GameColors.isUltraMode ||
+                    StorageService().getColorblindMode())
                   Positioned.fill(
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(4),
@@ -1478,14 +1555,17 @@ class _MultiGrabIndicator extends StatelessWidget {
       builder: (context, child) {
         final pulse = animation.value;
         return Tooltip(
-          message: '🔥 Same-color streak! Stack matching colors for bonus points',
+          message:
+              '🔥 Same-color streak! Stack matching colors for bonus points',
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
               color: Colors.black.withValues(alpha: 0.4 + pulse * 0.1),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: const Color(0xFFFFD700).withValues(alpha: 0.4 + pulse * 0.2),
+                color: const Color(
+                  0xFFFFD700,
+                ).withValues(alpha: 0.4 + pulse * 0.2),
                 width: 1.5,
               ),
             ),
@@ -1539,8 +1619,8 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
 
     // Snappy animations - shorter durations
     final duration = widget.animatingLayer.isMultiGrab
-        ? const Duration(milliseconds: 200)
-        : const Duration(milliseconds: 150);
+        ? const Duration(milliseconds: 165)
+        : const Duration(milliseconds: 125);
 
     _controller = AnimationController(vsync: this, duration: duration);
 
@@ -1670,10 +1750,12 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
       _startPos = Offset(fromGlobal.dx, fromLayerY);
       _endPos = Offset(toGlobal.dx, toLayerY);
 
-      // Arc height based on distance - higher for multi-grab
-      final distance = (_endPos - _startPos).distance;
-      final baseArc = (distance * 0.3).clamp(40.0, 80.0);
-      _arcHeight = widget.animatingLayer.isMultiGrab ? baseArc * 1.3 : baseArc;
+      // Arc height tuned for snappier trajectories
+      final dx = (_endPos.dx - _startPos.dx).abs();
+      final dy = (_endPos.dy - _startPos.dy).abs();
+      final horizontalBias = (dx / (dy + 1)).clamp(0.6, 2.0);
+      final baseArc = (18 + dx * 0.18 * horizontalBias).clamp(20.0, 58.0);
+      _arcHeight = widget.animatingLayer.isMultiGrab ? baseArc * 1.2 : baseArc;
       _positionsReady = true;
     });
   }
@@ -1897,8 +1979,12 @@ class _DashedBorderPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
 
     final rrect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(strokeWidth / 2, strokeWidth / 2, 
-                     size.width - strokeWidth, size.height - strokeWidth),
+      Rect.fromLTWH(
+        strokeWidth / 2,
+        strokeWidth / 2,
+        size.width - strokeWidth,
+        size.height - strokeWidth,
+      ),
       Radius.circular(borderRadius),
     );
 
@@ -1909,10 +1995,7 @@ class _DashedBorderPainter extends CustomPainter {
       double distance = 0.0;
       while (distance < metric.length) {
         final double length = dashLength.clamp(0, metric.length - distance);
-        canvas.drawPath(
-          metric.extractPath(distance, distance + length),
-          paint,
-        );
+        canvas.drawPath(metric.extractPath(distance, distance + length), paint);
         distance += dashLength + gapLength;
       }
     }
@@ -1921,9 +2004,9 @@ class _DashedBorderPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _DashedBorderPainter oldDelegate) {
     return oldDelegate.color != color ||
-           oldDelegate.strokeWidth != strokeWidth ||
-           oldDelegate.dashLength != dashLength ||
-           oldDelegate.gapLength != gapLength;
+        oldDelegate.strokeWidth != strokeWidth ||
+        oldDelegate.dashLength != dashLength ||
+        oldDelegate.gapLength != gapLength;
   }
 }
 
@@ -1946,7 +2029,8 @@ class _DragOverlay extends StatelessWidget {
     if (renderBox == null) return const SizedBox.shrink();
 
     final localPos = renderBox.globalToLocal(globalPosition);
-    final totalHeight = GameSizes.layerHeight * layers.length + (2 * (layers.length - 1));
+    final totalHeight =
+        GameSizes.layerHeight * layers.length + (2 * (layers.length - 1));
     final layerColor = ThemeColors.getColor(layers.last.colorIndex);
 
     return Positioned(
@@ -1976,7 +2060,9 @@ class _DragOverlay extends StatelessWidget {
               children: layers.asMap().entries.map((entry) {
                 final layer = entry.value;
                 final isLast = entry.key == layers.length - 1;
-                final gradientColors = ThemeColors.getGradient(layer.colorIndex);
+                final gradientColors = ThemeColors.getGradient(
+                  layer.colorIndex,
+                );
                 return Container(
                   width: GameSizes.stackWidth,
                   height: GameSizes.layerHeight,
@@ -2066,8 +2152,16 @@ class _ColorblindPatternPainter extends CustomPainter {
         break;
       case 1: // Diagonal stripes
         const spacing = 7.0;
-        for (double i = -size.height; i < size.width + size.height; i += spacing) {
-          canvas.drawLine(Offset(i, 0), Offset(i + size.height, size.height), paint);
+        for (
+          double i = -size.height;
+          i < size.width + size.height;
+          i += spacing
+        ) {
+          canvas.drawLine(
+            Offset(i, 0),
+            Offset(i + size.height, size.height),
+            paint,
+          );
         }
         break;
       case 2: // Dots
@@ -2083,9 +2177,21 @@ class _ColorblindPatternPainter extends CustomPainter {
         break;
       case 3: // Crosshatch
         const spacing = 7.0;
-        for (double i = -size.height; i < size.width + size.height; i += spacing) {
-          canvas.drawLine(Offset(i, 0), Offset(i + size.height, size.height), paint);
-          canvas.drawLine(Offset(i, size.height), Offset(i + size.height, 0), paint);
+        for (
+          double i = -size.height;
+          i < size.width + size.height;
+          i += spacing
+        ) {
+          canvas.drawLine(
+            Offset(i, 0),
+            Offset(i + size.height, size.height),
+            paint,
+          );
+          canvas.drawLine(
+            Offset(i, size.height),
+            Offset(i + size.height, 0),
+            paint,
+          );
         }
         break;
       case 4: // Circles
