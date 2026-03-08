@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/stack_model.dart';
 import '../services/haptic_service.dart';
 import '../utils/constants.dart';
-import 'layer_widget.dart';
+import 'board/stack_render_widget.dart';
 
 /// Displays a single stack with its layers
 class StackWidget extends StatelessWidget {
@@ -30,105 +30,10 @@ class StackWidget extends StatelessWidget {
         duration: GameDurations.buttonPress,
         curve: Curves.easeOutCubic,
         transform: Matrix4.translationValues(0, isSelected ? -10 : 0, 0),
-        child: Container(
-          width: GameSizes.stackWidth,
-          height: GameSizes.stackHeight,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                GameColors.empty.withValues(alpha: 0.85),
-                GameColors.empty,
-              ],
-            ),
-            borderRadius: BorderRadius.circular(GameSizes.stackBorderRadius),
-            border: Border.all(
-              color: isSelected
-                  ? GameColors.accent
-                  : isHighlighted
-                  ? GameColors.accent.withValues(alpha: 0.5)
-                  : GameColors.surface,
-              width: isSelected ? 3 : 2,
-            ),
-            boxShadow: [
-              if (isSelected)
-                BoxShadow(
-                  color: GameColors.accent.withValues(alpha: 0.5),
-                  blurRadius: 16,
-                  spreadRadius: 2,
-                ),
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.3),
-                offset: const Offset(0, 4),
-                blurRadius: 8,
-              ),
-            ],
-          ),
-          clipBehavior: Clip.hardEdge,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final maxHeight = constraints.maxHeight;
-              final layerCount = stack.layers.length;
-              final baseHeight = GameSizes.layerHeight;
-              final gap = 2.0;
-              final bottomPadding = 4.0;
-              final totalNeeded = layerCount > 0
-                  ? (baseHeight * layerCount) + (gap * (layerCount - 1)) + bottomPadding
-                  : 0.0;
-              final effectiveHeight = totalNeeded > maxHeight && layerCount > 0
-                  ? (maxHeight - bottomPadding - (gap * (layerCount - 1))) / layerCount
-                  : baseHeight;
-
-              return Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  // Layers (bottom to top)
-                  ...stack.layers.asMap().entries.map((entry) {
-                final index = entry.key;
-                final layer = entry.value;
-                final isTop = index == stack.layers.length - 1;
-
-                return Padding(
-                  padding: EdgeInsets.only(
-                    bottom: index == 0 ? bottomPadding : gap,
-                    left: 4,
-                    right: 4,
-                  ),
-                  child: LayerWidget(
-                    layer: layer,
-                    isTop: isTop,
-                    height: effectiveHeight,
-                  ),
-                );
-              }),
-
-              // Empty slots indicator
-              if (stack.isEmpty)
-                Expanded(
-                  child: Center(
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: GameColors.textMuted.withValues(alpha: 0.15),
-                          width: 2,
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.add,
-                        color: GameColors.textMuted.withValues(alpha: 0.2),
-                        size: 24,
-                      ),
-                    ),
-                  ),
-                ),
-                ],
-              );
-            },
-          ),
+        child: StackRenderWidget(
+          stack: stack,
+          selected: isSelected,
+          highlighted: isHighlighted,
         ),
       ),
     );

@@ -14,6 +14,10 @@ import '../utils/theme_colors.dart';
 // import '../engine/board_renderer.dart';
 // import '../engine/input_handler.dart';
 import 'particles/particle_burst.dart';
+import 'board/board_drag_layer.dart';
+import 'board/board_feedback_layer.dart';
+import 'board/board_grid.dart';
+import 'board/board_motion_layer.dart';
 import 'particles/confetti_overlay.dart';
 import 'combo_popup.dart';
 import 'color_flash_overlay.dart';
@@ -185,208 +189,221 @@ class _GameBoardState extends State<GameBoard>
                           ),
                         ),
                       ),
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(rows, (rowIndex) {
-                        final startIndex = rowIndex * maxStacksPerRow;
-                        final endIndex = (startIndex + maxStacksPerRow).clamp(
-                          0,
-                          stackCount,
-                        );
-                        final rowStacks = stacks.sublist(startIndex, endIndex);
+                    BoardGrid(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(rows, (rowIndex) {
+                          final startIndex = rowIndex * maxStacksPerRow;
+                          final endIndex = (startIndex + maxStacksPerRow).clamp(
+                            0,
+                            stackCount,
+                          );
+                          final rowStacks = stacks.sublist(
+                            startIndex,
+                            endIndex,
+                          );
 
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: List.generate(rowStacks.length, (index) {
-                              final actualIndex = startIndex + index;
-                              final stack = rowStacks[index];
-                              final isSelected =
-                                  actualIndex ==
-                                  widget.gameState.selectedStackIndex;
-                              final isRecentlyCleared = widget
-                                  .gameState
-                                  .recentlyCleared
-                                  .contains(actualIndex);
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: List.generate(rowStacks.length, (
+                                index,
+                              ) {
+                                final actualIndex = startIndex + index;
+                                final stack = rowStacks[index];
+                                final isSelected =
+                                    actualIndex ==
+                                    widget.gameState.selectedStackIndex;
+                                final isRecentlyCleared = widget
+                                    .gameState
+                                    .recentlyCleared
+                                    .contains(actualIndex);
 
-                              return Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: GameSizes.stackSpacing / 2,
-                                ),
-                                child: _StackWidget(
-                                  key: _stackKeys[actualIndex],
-                                  stack: stack,
-                                  index: actualIndex,
-                                  isSelected: isSelected,
-                                  isRecentlyCleared: isRecentlyCleared,
-                                  isMultiGrabMode:
-                                      widget.gameState.isMultiGrabMode,
-                                  multiGrabCount:
-                                      widget.gameState.multiGrabCount,
-                                  onTap: () {
-                                    // Don't process taps during drag
-                                    if (_isDragging) return;
-                                    // Check if there's an override handler (for power-up selection)
-                                    if (widget.onStackTapOverride != null) {
-                                      widget.onStackTapOverride!(actualIndex);
+                                return Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: GameSizes.stackSpacing / 2,
+                                  ),
+                                  child: _StackWidget(
+                                    key: _stackKeys[actualIndex],
+                                    stack: stack,
+                                    index: actualIndex,
+                                    isSelected: isSelected,
+                                    isRecentlyCleared: isRecentlyCleared,
+                                    isMultiGrabMode:
+                                        widget.gameState.isMultiGrabMode,
+                                    multiGrabCount:
+                                        widget.gameState.multiGrabCount,
+                                    onTap: () {
+                                      // Don't process taps during drag
+                                      if (_isDragging) return;
+                                      // Check if there's an override handler (for power-up selection)
+                                      if (widget.onStackTapOverride != null) {
+                                        widget.onStackTapOverride!(actualIndex);
+                                        widget.onTap?.call();
+                                        return;
+                                      }
+
+                                      final previousMoveCount =
+                                          widget.gameState.moveCount;
+                                      final previousCleared = List<int>.from(
+                                        widget.gameState.recentlyCleared,
+                                      );
+                                      final previousSelectedStack =
+                                          widget.gameState.selectedStackIndex;
+
+                                      widget.gameState.onStackTap(actualIndex);
                                       widget.onTap?.call();
-                                      return;
-                                    }
 
-                                    final previousMoveCount =
-                                        widget.gameState.moveCount;
-                                    final previousCleared = List<int>.from(
-                                      widget.gameState.recentlyCleared,
-                                    );
-                                    final previousSelectedStack =
-                                        widget.gameState.selectedStackIndex;
+                                      // Check if move was made
+                                      final moveMade =
+                                          widget.gameState.moveCount >
+                                          previousMoveCount;
 
-                                    widget.gameState.onStackTap(actualIndex);
-                                    widget.onTap?.call();
+                                      if (moveMade) {
+                                        widget.onMove?.call();
+                                      } else {
+                                        // Check if this was an invalid move attempt
+                                        // (tried to move to a stack that can't accept the layer)
+                                        final wasSourceSelected =
+                                            previousSelectedStack >= 0 &&
+                                            previousSelectedStack !=
+                                                actualIndex;
+                                        if (wasSourceSelected) {
+                                          final sourceStack = widget
+                                              .gameState
+                                              .stacks[previousSelectedStack];
+                                          final targetStack = widget
+                                              .gameState
+                                              .stacks[actualIndex];
 
-                                    // Check if move was made
-                                    final moveMade =
-                                        widget.gameState.moveCount >
-                                        previousMoveCount;
-
-                                    if (moveMade) {
-                                      widget.onMove?.call();
-                                    } else {
-                                      // Check if this was an invalid move attempt
-                                      // (tried to move to a stack that can't accept the layer)
-                                      final wasSourceSelected =
-                                          previousSelectedStack >= 0 &&
-                                          previousSelectedStack != actualIndex;
-                                      if (wasSourceSelected) {
-                                        final sourceStack = widget
-                                            .gameState
-                                            .stacks[previousSelectedStack];
-                                        final targetStack = widget
-                                            .gameState
-                                            .stacks[actualIndex];
-
-                                        // Invalid move: has source layer but target can't accept it
-                                        if (!sourceStack.isEmpty &&
-                                            !targetStack.canAccept(
-                                              sourceStack.topLayer!,
-                                            )) {
-                                          // Play error sound
-                                          AudioService().playError();
-                                          // Haptic feedback for invalid move
-                                          haptics.error();
-                                          // Trigger shake animation
-                                          _shakeController.forward(from: 0);
+                                          // Invalid move: has source layer but target can't accept it
+                                          if (!sourceStack.isEmpty &&
+                                              !targetStack.canAccept(
+                                                sourceStack.topLayer!,
+                                              )) {
+                                            // Play error sound
+                                            AudioService().playError();
+                                            // Haptic feedback for invalid move
+                                            haptics.error();
+                                            // Trigger shake animation
+                                            _shakeController.forward(from: 0);
+                                          }
                                         }
                                       }
-                                    }
 
-                                    final currentCleared =
-                                        widget.gameState.recentlyCleared;
-                                    if (currentCleared.isNotEmpty &&
-                                        !listEquals(
-                                          previousCleared,
+                                      final currentCleared =
+                                          widget.gameState.recentlyCleared;
+                                      if (currentCleared.isNotEmpty &&
+                                          !listEquals(
+                                            previousCleared,
+                                            currentCleared,
+                                          )) {
+                                        widget.onClear?.call();
+
+                                        // Get chain level (number of stacks cleared in one move)
+                                        final chainLevel =
+                                            widget.gameState.currentChainLevel;
+
+                                        // Trigger appropriate effects based on chain level
+                                        _triggerChainEffects(
                                           currentCleared,
-                                        )) {
-                                      widget.onClear?.call();
-
-                                      // Get chain level (number of stacks cleared in one move)
-                                      final chainLevel =
-                                          widget.gameState.currentChainLevel;
-
-                                      // Trigger appropriate effects based on chain level
-                                      _triggerChainEffects(
-                                        currentCleared,
-                                        chainLevel,
-                                      );
-                                    }
-                                  },
-                                  onMultiGrab: () {
-                                    widget.gameState.activateMultiGrab(
-                                      actualIndex,
-                                    );
-                                    widget.onTap?.call();
-                                  },
-                                  isPowerUpHighlighted:
-                                      widget.highlightedStacks?.contains(
+                                          chainLevel,
+                                        );
+                                      }
+                                    },
+                                    onMultiGrab: () {
+                                      widget.gameState.activateMultiGrab(
                                         actualIndex,
-                                      ) ??
-                                      false,
-                                  onDragStart: _onDragStart,
-                                  onDragUpdate: _onDragUpdate,
-                                  onDragEnd: _onDragEnd,
-                                  isDragSource:
-                                      _isDragging &&
-                                      _dragSourceTube == actualIndex,
-                                  isDragValidTarget:
-                                      _isDragging &&
-                                      _dragSourceTube != actualIndex &&
-                                      _isValidDropTarget(actualIndex),
-                                  isDragInvalidHover:
-                                      _isDragging &&
-                                      _dragHoverTube == actualIndex &&
-                                      !_isValidDropTarget(actualIndex),
-                                ),
-                              );
-                            }),
-                          ),
-                        );
-                      }),
+                                      );
+                                      widget.onTap?.call();
+                                    },
+                                    isPowerUpHighlighted:
+                                        widget.highlightedStacks?.contains(
+                                          actualIndex,
+                                        ) ??
+                                        false,
+                                    onDragStart: _onDragStart,
+                                    onDragUpdate: _onDragUpdate,
+                                    onDragEnd: _onDragEnd,
+                                    isDragSource:
+                                        _isDragging &&
+                                        _dragSourceTube == actualIndex,
+                                    isDragValidTarget:
+                                        _isDragging &&
+                                        _dragSourceTube != actualIndex &&
+                                        _isValidDropTarget(actualIndex),
+                                    isDragInvalidHover:
+                                        _isDragging &&
+                                        _dragHoverTube == actualIndex &&
+                                        !_isValidDropTarget(actualIndex),
+                                  ),
+                                );
+                              }),
+                            ),
+                          );
+                        }),
+                      ),
                     ),
                     // Animation overlay
                     if (widget.gameState.animatingLayer != null)
-                      _AnimatedLayerOverlay(
-                        animatingLayer: widget.gameState.animatingLayer!,
-                        fromKey:
-                            _stackKeys[widget
-                                .gameState
-                                .animatingLayer!
-                                .fromStackIndex]!,
-                        toKey:
-                            _stackKeys[widget
-                                .gameState
-                                .animatingLayer!
-                                .toStackIndex]!,
-                        onComplete: () {
-                          // Trigger landing particle burst
-                          final destIndex =
-                              widget.gameState.animatingLayer!.toStackIndex;
-                          final layer = widget.gameState.animatingLayer!.layer;
-                          _triggerLandingBurst(destIndex, layer.colorIndex);
+                      BoardMotionLayer(
+                        child: _AnimatedLayerOverlay(
+                          animatingLayer: widget.gameState.animatingLayer!,
+                          fromKey:
+                              _stackKeys[widget
+                                  .gameState
+                                  .animatingLayer!
+                                  .fromStackIndex]!,
+                          toKey:
+                              _stackKeys[widget
+                                  .gameState
+                                  .animatingLayer!
+                                  .toStackIndex]!,
+                          onComplete: () {
+                            // Trigger landing particle burst
+                            final destIndex =
+                                widget.gameState.animatingLayer!.toStackIndex;
+                            final layer =
+                                widget.gameState.animatingLayer!.layer;
+                            _triggerLandingBurst(destIndex, layer.colorIndex);
 
-                          widget.gameState.completeMove();
-                          widget.onMove?.call();
-                          // Show combo popup for consecutive correct moves (3+)
-                          final combo = widget.gameState.currentCombo;
-                          if (combo >= 3) {
-                            setState(() {
-                              _showComboMultiplier = combo;
-                            });
-                            // Show one-time tooltip on first combo
-                            if (!_hasSeenComboTooltip) {
-                              _hasSeenComboTooltip = true;
-                              setState(() => _showComboTooltip = true);
-                              SharedPreferences.getInstance().then((prefs) {
-                                prefs.setBool('has_seen_combo_tooltip', true);
+                            widget.gameState.completeMove();
+                            widget.onMove?.call();
+                            // Show combo popup for consecutive correct moves (3+)
+                            final combo = widget.gameState.currentCombo;
+                            if (combo >= 3) {
+                              setState(() {
+                                _showComboMultiplier = combo;
                               });
-                              Future.delayed(const Duration(seconds: 3), () {
-                                if (mounted) {
-                                  setState(() => _showComboTooltip = false);
-                                }
-                              });
+                              // Show one-time tooltip on first combo
+                              if (!_hasSeenComboTooltip) {
+                                _hasSeenComboTooltip = true;
+                                setState(() => _showComboTooltip = true);
+                                SharedPreferences.getInstance().then((prefs) {
+                                  prefs.setBool('has_seen_combo_tooltip', true);
+                                });
+                                Future.delayed(const Duration(seconds: 3), () {
+                                  if (mounted) {
+                                    setState(() => _showComboTooltip = false);
+                                  }
+                                });
+                              }
                             }
-                          }
-                        },
+                          },
+                        ),
                       ),
                     // Chain text popup overlay
                     if (_showChainLevel != null && _showChainLevel! >= 2)
-                      ChainTextPopupOverlay(
-                        chainLevel: _showChainLevel!,
-                        onComplete: () {
-                          setState(() {
-                            _showChainLevel = null;
-                          });
-                        },
+                      BoardFeedbackLayer(
+                        child: ChainTextPopupOverlay(
+                          chainLevel: _showChainLevel!,
+                          onComplete: () {
+                            setState(() {
+                              _showChainLevel = null;
+                            });
+                          },
+                        ),
                       ),
                     // Combo popup overlay - compact badge in top-right
                     if (_showComboMultiplier != null &&
@@ -455,10 +472,12 @@ class _GameBoardState extends State<GameBoard>
                       ),
                     // Drag-and-drop overlay
                     if (_isDragging && _dragLayers != null)
-                      _DragOverlay(
-                        layers: _dragLayers!,
-                        globalPosition: _dragPosition,
-                        boardContext: context,
+                      BoardDragLayer(
+                        child: _DragOverlay(
+                          layers: _dragLayers!,
+                          globalPosition: _dragPosition,
+                          boardContext: context,
+                        ),
                       ),
                   ],
                 );
