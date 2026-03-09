@@ -60,11 +60,13 @@ class _GameBoardState extends State<GameBoard>
     with SingleTickerProviderStateMixin {
   late final Map<int, GlobalKey> _stackKeys;
   List<ParticleBurstData> _currentBursts = [];
-  int? _showComboMultiplier;
-  int? _showChainLevel;
-  Color? _flashColor;
-  bool _showConfetti = false;
-  bool _showComboTooltip = false;
+
+  // ValueNotifiers for transient overlays — avoids full setState rebuilds
+  final ValueNotifier<int?> _showComboMultiplier = ValueNotifier<int?>(null);
+  final ValueNotifier<int?> _showChainLevel = ValueNotifier<int?>(null);
+  final ValueNotifier<Color?> _flashColor = ValueNotifier<Color?>(null);
+  final ValueNotifier<bool> _showConfetti = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> _showComboTooltip = ValueNotifier<bool>(false);
   bool _hasSeenComboTooltip = false;
   late AnimationController _shakeController;
   late Animation<double> _shakeAnimation;
@@ -114,17 +116,20 @@ class _GameBoardState extends State<GameBoard>
   @override
   void dispose() {
     _shakeController.dispose();
+    _showComboMultiplier.dispose();
+    _showChainLevel.dispose();
+    _flashColor.dispose();
+    _showConfetti.dispose();
+    _showComboTooltip.dispose();
     super.dispose();
   }
 
   /// Clear all visible overlays (combo, chain, confetti, etc.)
   void clearAllOverlays() {
-    setState(() {
-      _showComboMultiplier = null;
-      _showChainLevel = null;
-      _flashColor = null;
-      _showConfetti = false;
-    });
+    _showComboMultiplier.value = null;
+    _showChainLevel.value = null;
+    _flashColor.value = null;
+    _showConfetti.value = false;
   }
 
   @override
@@ -373,19 +378,17 @@ class _GameBoardState extends State<GameBoard>
                             // Show combo popup for consecutive correct moves (3+)
                             final combo = widget.gameState.currentCombo;
                             if (combo >= 3) {
-                              setState(() {
-                                _showComboMultiplier = combo;
-                              });
+                              _showComboMultiplier.value = combo;
                               // Show one-time tooltip on first combo
                               if (!_hasSeenComboTooltip) {
                                 _hasSeenComboTooltip = true;
-                                setState(() => _showComboTooltip = true);
+                                _showComboTooltip.value = true;
                                 SharedPreferences.getInstance().then((prefs) {
                                   prefs.setBool('has_seen_combo_tooltip', true);
                                 });
                                 Future.delayed(const Duration(seconds: 3), () {
                                   if (mounted) {
-                                    setState(() => _showComboTooltip = false);
+                                    _showComboTooltip.value = false;
                                   }
                                 });
                               }
@@ -394,82 +397,100 @@ class _GameBoardState extends State<GameBoard>
                         ),
                       ),
                     // Chain text popup overlay
-                    if (_showChainLevel != null && _showChainLevel! >= 2)
-                      BoardFeedbackLayer(
-                        child: ChainTextPopupOverlay(
-                          chainLevel: _showChainLevel!,
-                          onComplete: () {
-                            setState(() {
-                              _showChainLevel = null;
-                            });
-                          },
-                        ),
-                      ),
-                    // Combo popup overlay - compact badge in top-right
-                    if (_showComboMultiplier != null &&
-                        _showComboMultiplier! >= 3)
-                      Positioned(
-                        top: 4,
-                        right: 8,
-                        child: IgnorePointer(
-                          child: ComboPopup(
-                            comboMultiplier: _showComboMultiplier!,
+                    ValueListenableBuilder<int?>(
+                      valueListenable: _showChainLevel,
+                      builder: (context, chainLevel, _) {
+                        if (chainLevel == null || chainLevel < 2) return const SizedBox.shrink();
+                        return BoardFeedbackLayer(
+                          child: ChainTextPopupOverlay(
+                            chainLevel: chainLevel,
                             onComplete: () {
-                              setState(() {
-                                _showComboMultiplier = null;
-                              });
+                              _showChainLevel.value = null;
                             },
                           ),
-                        ),
-                      ),
+                        );
+                      },
+                    ),
+                    // Combo popup overlay - compact badge in top-right
+                    ValueListenableBuilder<int?>(
+                      valueListenable: _showComboMultiplier,
+                      builder: (context, combo, _) {
+                        if (combo == null || combo < 3) return const SizedBox.shrink();
+                        return Positioned(
+                          top: 4,
+                          right: 8,
+                          child: IgnorePointer(
+                            child: ComboPopup(
+                              comboMultiplier: combo,
+                              onComplete: () {
+                                _showComboMultiplier.value = null;
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                     // Combo tooltip (one-time)
-                    if (_showComboTooltip)
-                      Positioned(
-                        top: 28,
-                        right: 8,
-                        child: IgnorePointer(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.8),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Text(
-                              '🔥 Same-color streak!\nStack matching colors for bonus points',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                height: 1.3,
+                    ValueListenableBuilder<bool>(
+                      valueListenable: _showComboTooltip,
+                      builder: (context, show, _) {
+                        if (!show) return const SizedBox.shrink();
+                        return Positioned(
+                          top: 28,
+                          right: 8,
+                          child: IgnorePointer(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.8),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Text(
+                                '🔥 Same-color streak!\nStack matching colors for bonus points',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  height: 1.3,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ),
+                        );
+                      },
+                    ),
                     // Color flash overlay for chains
-                    if (_flashColor != null)
-                      Positioned.fill(
-                        child: ColorFlashOverlay(
-                          color: _flashColor!,
-                          duration: const Duration(milliseconds: 400),
-                          onComplete: () {
-                            setState(() {
-                              _flashColor = null;
-                            });
-                          },
-                        ),
-                      ),
+                    ValueListenableBuilder<Color?>(
+                      valueListenable: _flashColor,
+                      builder: (context, color, _) {
+                        if (color == null) return const SizedBox.shrink();
+                        return Positioned.fill(
+                          child: ColorFlashOverlay(
+                            color: color,
+                            duration: const Duration(milliseconds: 400),
+                            onComplete: () {
+                              _flashColor.value = null;
+                            },
+                          ),
+                        );
+                      },
+                    ),
                     // Confetti for mega chains (4+)
-                    if (_showConfetti)
-                      Positioned.fill(
-                        child: ConfettiOverlay(
-                          colors: ThemeColors.palette,
-                          confettiCount: 60,
-                          duration: const Duration(seconds: 2),
-                        ),
-                      ),
+                    ValueListenableBuilder<bool>(
+                      valueListenable: _showConfetti,
+                      builder: (context, show, _) {
+                        if (!show) return const SizedBox.shrink();
+                        return Positioned.fill(
+                          child: ConfettiOverlay(
+                            colors: ThemeColors.palette,
+                            confettiCount: 60,
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                    ),
                     // Drag-and-drop overlay
                     if (_isDragging && _dragLayers != null)
                       BoardDragLayer(
@@ -779,10 +800,8 @@ class _GameBoardState extends State<GameBoard>
     widget.onChain?.call(chainLevel);
 
     // Chain level 2+: Show chain popup and enhanced effects
-    setState(() {
-      _showChainLevel = chainLevel;
-      _flashColor = _getChainFlashColor(chainLevel);
-    });
+    _showChainLevel.value = chainLevel;
+    _flashColor.value = _getChainFlashColor(chainLevel);
 
     // Play chain sound
     AudioService().playChain(chainLevel);
@@ -797,15 +816,11 @@ class _GameBoardState extends State<GameBoard>
 
     // Confetti for mega chains (4+)
     if (chainLevel >= 4) {
-      setState(() {
-        _showConfetti = true;
-      });
+      _showConfetti.value = true;
       // Auto-hide confetti after animation
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) {
-          setState(() {
-            _showConfetti = false;
-          });
+          _showConfetti.value = false;
         }
       });
     }

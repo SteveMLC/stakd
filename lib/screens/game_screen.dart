@@ -1019,8 +1019,8 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                 children: [
                   Column(
                     children: [
-                      // Top bar
-                      _buildTopBar(gameState),
+                      // Top bar (wrapped in RepaintBoundary to avoid repaints during drag/animation)
+                      RepaintBoundary(child: _buildTopBar(gameState)),
 
                       // Game board
                       Expanded(
@@ -1065,11 +1065,11 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                           ),
                         ),
 
-                      // Banner ad
-                      _buildBannerAd(),
+                      // Banner ad (wrapped in RepaintBoundary)
+                      RepaintBoundary(child: _buildBannerAd()),
 
-                      // Bottom controls
-                      _buildBottomControls(gameState, iap),
+                      // Bottom controls (wrapped in RepaintBoundary)
+                      RepaintBoundary(child: _buildBottomControls(gameState, iap)),
                     ],
                   ),
 

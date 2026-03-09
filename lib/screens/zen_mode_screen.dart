@@ -387,7 +387,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     try {
       final gameState = context.read<GameState>();
       if (gameState.moveCount > 0 && !gameState.isComplete && !_isTransitioning) {
-        debugPrint('BLOCKED: _loadNewPuzzle() called during active gameplay (${gameState.moveCount} moves)');
+        if (kDebugMode) debugPrint('BLOCKED: _loadNewPuzzle() called during active gameplay (${gameState.moveCount} moves)');
         return;
       }
     } catch (_) {
@@ -413,7 +413,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
     // Safety timeout: if loading takes >5s, force sync fallback
     _loadingTimeout = Timer(const Duration(seconds: 5), () {
       if (_isLoading && mounted) {
-        debugPrint('EMERGENCY: Loading timeout hit, using sync fallback');
+        if (kDebugMode) debugPrint('EMERGENCY: Loading timeout hit, using sync fallback');
         final fallbackParams = LevelParams(
           colors: params.colors,
           depth: 3,
@@ -434,7 +434,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
         .timeout(
           const Duration(seconds: 3),
           onTimeout: () {
-            debugPrint('Puzzle gen timeout after 3s, using sync fallback');
+            if (kDebugMode) debugPrint('Puzzle gen timeout after 3s, using sync fallback');
             // Don't compute() again — generate synchronously with simpler params
             final fallbackParams = LevelParams(
               colors: params.colors,
@@ -455,13 +455,13 @@ class _ZenModeScreenState extends State<ZenModeScreen>
           if (!_isLoading) return;
           if (encodedStacks.isEmpty) return;
           _loadingTimeout?.cancel();
-          debugPrint('Puzzle gen took ${genTimer.elapsedMilliseconds}ms (${params.colors}c ${params.depth}d)');
+          if (kDebugMode) debugPrint('Puzzle gen took ${genTimer.elapsedMilliseconds}ms (${params.colors}c ${params.depth}d)');
           final stacks = decodeStacksFromIsolate(encodedStacks, params.depth);
           // Apply special blocks (locked/frozen) based on difficulty params
           try {
             LevelGenerator().applySpecialBlocks(stacks, params);
           } catch (e) {
-            debugPrint('applySpecialBlocks failed: $e');
+            if (kDebugMode) debugPrint('applySpecialBlocks failed: $e');
             // Continue without special blocks rather than crash
           }
           _initialStacks = stacks.map((s) => GameStack(
@@ -489,7 +489,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
           if (mounted) {
             _loadingTimeout?.cancel();
             // On any error, use sync fallback instead of showing error
-            debugPrint('Puzzle gen error: $e, using sync fallback');
+            if (kDebugMode) debugPrint('Puzzle gen error: $e, using sync fallback');
             if (_isLoading) {
               _initPuzzleFromSyncFallback(params);
             }
@@ -547,7 +547,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
         .timeout(
           const Duration(seconds: 3),
           onTimeout: () {
-            debugPrint('Pre-gen timeout, generating sync fallback');
+            if (kDebugMode) debugPrint('Pre-gen timeout, generating sync fallback');
             usedSyncFallback = true;
             // Generate synchronously instead of another compute()
             final depth = params.depth;
@@ -595,7 +595,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
             try {
               LevelGenerator().applySpecialBlocks(stacks, params);
             } catch (e) {
-              debugPrint('applySpecialBlocks (pre-gen) failed: $e');
+              if (kDebugMode) debugPrint('applySpecialBlocks (pre-gen) failed: $e');
             }
           }
           _preGeneratedStacks = stacks;
@@ -848,7 +848,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
       final expectedParams = _getAdaptiveDifficulty();
       if (preGenDepth != expectedParams.depth || preGenColors != expectedParams.colors) {
         // Difficulty tier changed since pre-gen — discard stale puzzle, use sync fallback
-        debugPrint('Pre-gen stale (${preGenColors}c${preGenDepth}d vs ${expectedParams.colors}c${expectedParams.depth}d), sync fallback');
+        if (kDebugMode) debugPrint('Pre-gen stale (${preGenColors}c${preGenDepth}d vs ${expectedParams.colors}c${expectedParams.depth}d), sync fallback');
         _preGeneratedStacks = null;
         _fadeController.animateTo(0.0).then((_) {
           if (!mounted) return;
@@ -974,14 +974,14 @@ class _ZenModeScreenState extends State<ZenModeScreen>
           SafeArea(
             child: Column(
               children: [
-                // Top bar (hidden in garden view)
-                if (!_showGardenView) _buildTopBar(),
+                // Top bar (hidden in garden view, wrapped in RepaintBoundary)
+                if (!_showGardenView) RepaintBoundary(child: _buildTopBar()),
 
                 // Rank indicator + Difficulty slider (hidden in garden view)
-                if (!_showGardenView) _buildRankAndDifficulty(),
+                if (!_showGardenView) RepaintBoundary(child: _buildRankAndDifficulty()),
 
                 // Stats bar
-                if (!_showGardenView) _buildStatsBar(),
+                if (!_showGardenView) RepaintBoundary(child: _buildStatsBar()),
 
                 // Game board or Garden view (with fade animation)
                 Expanded(
