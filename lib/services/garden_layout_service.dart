@@ -4,10 +4,15 @@ import 'package:flutter/widgets.dart';
 
 import '../models/garden_layout_node.dart';
 import '../models/garden_scene_plan.dart';
+import '../models/normalized_position.dart';
 
 class GardenLayoutService {
   const GardenLayoutService();
 
+  /// Build a plan using normalized 0–1 coordinates.
+  /// The returned nodes store both a legacy pixel [Rect] (for backward compat)
+  /// and a [NormalizedPosition].  Prefer [NormalizedPosition] and resolve to
+  /// pixels only at render time via [GardenLayoutNode.resolve].
   GardenScenePlan buildPlan({
     required Size sceneSize,
     required List<String> unlockedElementIds,
@@ -19,16 +24,29 @@ class GardenLayoutService {
     for (var i = 0; i < unlockedElementIds.length; i++) {
       final id = unlockedElementIds[i];
       final tier = _tierFor(id);
-      final w = sceneSize.width * (0.10 + rng.nextDouble() * 0.18);
-      final h = sceneSize.height * (0.06 + rng.nextDouble() * 0.16);
-      final x = rng.nextDouble() * (sceneSize.width - w);
-      final y = _yForTier(tier, sceneSize, rng, h);
+
+      // Generate normalized 0–1 dimensions
+      final nw = 0.10 + rng.nextDouble() * 0.18;
+      final nh = 0.06 + rng.nextDouble() * 0.16;
+      final nx = rng.nextDouble() * (1.0 - nw);
+      final ny = _nyForTier(tier, rng, nh);
+
+      final normalizedRect = NormalizedPosition(nx: nx, ny: ny, nw: nw, nh: nh);
+
+      // Also store a pixel Rect for legacy code paths
+      final pixelRect = Rect.fromLTWH(
+        nx * sceneSize.width,
+        ny * sceneSize.height,
+        nw * sceneSize.width,
+        nh * sceneSize.height,
+      );
 
       nodes.add(
         GardenLayoutNode(
           elementId: id,
           tier: tier,
-          rect: Rect.fromLTWH(x, y, w, h),
+          rect: pixelRect,
+          normalizedRect: normalizedRect,
           zIndex: i,
         ),
       );
@@ -62,29 +80,25 @@ class GardenLayoutService {
     return GardenLayoutTier.ground;
   }
 
-  double _yForTier(
-    GardenLayoutTier tier,
-    Size sceneSize,
-    Random rng,
-    double h,
-  ) {
+  /// Returns a normalized y value (0–1) for the given tier.
+  double _nyForTier(GardenLayoutTier tier, Random rng, double nh) {
     switch (tier) {
       case GardenLayoutTier.sky:
-        return rng.nextDouble() * sceneSize.height * 0.25;
+        return rng.nextDouble() * 0.25;
       case GardenLayoutTier.distant:
-        return sceneSize.height * (0.18 + rng.nextDouble() * 0.12);
+        return 0.18 + rng.nextDouble() * 0.12;
       case GardenLayoutTier.water:
-        return sceneSize.height * (0.58 + rng.nextDouble() * 0.10);
+        return 0.58 + rng.nextDouble() * 0.10;
       case GardenLayoutTier.ground:
-        return sceneSize.height * (0.62 + rng.nextDouble() * 0.14);
+        return 0.62 + rng.nextDouble() * 0.14;
       case GardenLayoutTier.floraBack:
-        return sceneSize.height * (0.46 + rng.nextDouble() * 0.20);
+        return 0.46 + rng.nextDouble() * 0.20;
       case GardenLayoutTier.floraFront:
-        return sceneSize.height * (0.64 + rng.nextDouble() * 0.20);
+        return 0.64 + rng.nextDouble() * 0.20;
       case GardenLayoutTier.structures:
-        return sceneSize.height * (0.52 + rng.nextDouble() * 0.16);
+        return 0.52 + rng.nextDouble() * 0.16;
       case GardenLayoutTier.ambient:
-        return sceneSize.height - h - 6;
+        return 1.0 - nh - 0.01;
     }
   }
 }

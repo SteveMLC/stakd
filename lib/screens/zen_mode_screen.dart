@@ -155,8 +155,11 @@ class _ZenModeScreenState extends State<ZenModeScreen>
       }
     });
 
-    // Load first puzzle after build
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadNewPuzzle());
+    // Pre-cache common zen garden assets to eliminate first-open jank
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _precacheGardenAssets();
+      _loadNewPuzzle();
+    });
   }
 
   // Cached reference to avoid context.read() in dispose
@@ -495,6 +498,44 @@ class _ZenModeScreenState extends State<ZenModeScreen>
             }
           }
         });
+  }
+
+  /// Pre-cache common zen garden image assets so the garden view doesn't jank.
+  void _precacheGardenAssets() {
+    if (!mounted) return;
+    const gardenAssets = [
+      'assets/images/backgrounds/slate_bg.jpg',
+      'assets/images/zen-garden/zen_sand_plate.png',
+      'assets/images/zen-garden/zen_rocks_small.png',
+      'assets/images/zen-garden/zen_rocks_medium.png',
+      'assets/images/zen-garden/zen_pagoda.png',
+      'assets/images/zen-garden/zen_shrine.png',
+      'assets/images/zen-garden/zen_pond.png',
+      'assets/images/zen-garden/zen_pond_empty.png',
+      'assets/images/zen-garden/zen_lantern.png',
+      'assets/images/zen-garden/zen_bridge.png',
+      'assets/images/zen-garden/zen_bamboo.png',
+      'assets/images/zen-garden/zen_bonsai.png',
+      'assets/images/zen-garden/zen_grass_base.png',
+      'assets/images/zen-garden/zen_grass_1.png',
+      'assets/images/zen-garden/zen_grass_2.png',
+      'assets/images/zen-garden/zen_tree_young.png',
+      'assets/images/zen-garden/zen_tree_autumn.png',
+      'assets/images/zen-garden/zen_blossoms_a.png',
+      'assets/images/zen-garden/zen_blossoms_b.png',
+      'assets/images/zen-garden/zen_mist.png',
+      'assets/images/zen-garden/zen_bench.png',
+      'assets/images/zen-garden/zen_stepping_stones.png',
+      'assets/images/zen-garden/zen_lily_pads.png',
+      'assets/images/zen-garden/zen_waterfall.png',
+      'assets/images/zen-garden/zen_shrub.png',
+      'assets/images/zen-garden/zen_flowers_white.png',
+      'assets/images/zen-garden/zen_flowers_yellow.png',
+      'assets/images/zen-garden/zen_flowers_purple.png',
+    ];
+    for (final asset in gardenAssets) {
+      precacheImage(AssetImage(asset), context);
+    }
   }
 
   void _checkOnboarding() async {
@@ -1175,7 +1216,7 @@ class _ZenModeScreenState extends State<ZenModeScreen>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       CircularProgressIndicator(color: GameColors.zen),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       LoadingText(),
                     ],
                   ),

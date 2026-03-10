@@ -8,6 +8,7 @@ import '../../services/garden_service.dart';
 import '../../utils/garden_variation.dart';
 import '../garden/garden_element.dart';
 import '../garden/growth_milestone.dart';
+import '../garden/seasonal_overlay_widget.dart';
 import 'base_theme_scene.dart';
 
 class ZenGardenScene extends BaseThemeScene {
@@ -174,13 +175,20 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     super.dispose();
   }
 
-  // ── Draggable position management ──
+  // ── Draggable position management (normalized 0–1 coords) ──
 
   Future<void> _loadPositions() async {
     final prefs = await SharedPreferences.getInstance();
-    final keys = prefs.getKeys().where((k) => k.startsWith('garden_pos_'));
+
+    // Migration: detect old pixel-based saves and convert to normalized
+    final migrated = prefs.getBool('garden_pos_migrated') ?? false;
+    if (!migrated) {
+      await _migratePixelPositions(prefs);
+    }
+
+    final keys = prefs.getKeys().where((k) => k.startsWith('garden_npos_'));
     for (final key in keys) {
-      final id = key.replaceFirst('garden_pos_', '');
+      final id = key.replaceFirst('garden_npos_', '');
       final parts = prefs.getString(key)?.split(',');
       if (parts != null && parts.length == 2) {
         final dx = double.tryParse(parts[0]);
@@ -193,14 +201,50 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     if (mounted) setState(() {});
   }
 
-  Future<void> _savePosition(String elementId, Offset pos) async {
+  /// Migrate old pixel-based garden_pos_ keys to normalized garden_npos_ keys.
+  Future<void> _migratePixelPositions(SharedPreferences prefs) async {
+    // Try to read the screen size that was in effect when positions were saved.
+    // Fall back to a reasonable default (iPhone-ish 390×844).
+    final savedW = prefs.getDouble('garden_screenSizeAtSave_w') ?? 390.0;
+    final savedH = prefs.getDouble('garden_screenSizeAtSave_h') ?? 844.0;
+
+    final oldKeys = prefs.getKeys().where((k) => k.startsWith('garden_pos_')).toList();
+    for (final key in oldKeys) {
+      final id = key.replaceFirst('garden_pos_', '');
+      final parts = prefs.getString(key)?.split(',');
+      if (parts != null && parts.length == 2) {
+        final dx = double.tryParse(parts[0]);
+        final dy = double.tryParse(parts[1]);
+        if (dx != null && dy != null) {
+          // Normalize by dividing by screen size
+          final nx = (dx / savedW).clamp(0.0, 1.0);
+          final ny = (dy / savedH).clamp(0.0, 1.0);
+          await prefs.setString('garden_npos_$id', '$nx,$ny');
+        }
+      }
+      // Remove old key
+      await prefs.remove(key);
+    }
+    await prefs.setBool('garden_pos_migrated', true);
+  }
+
+  /// Save a normalized position (0–1).
+  Future<void> _savePosition(String elementId, Offset normalizedPos) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('garden_pos_$elementId', '${pos.dx},${pos.dy}');
+    await prefs.setString(
+        'garden_npos_$elementId', '${normalizedPos.dx},${normalizedPos.dy}');
+  }
+
+  /// Save current screen size for future migration reference.
+  Future<void> _saveScreenSize(Size size) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('garden_screenSizeAtSave_w', size.width);
+    await prefs.setDouble('garden_screenSizeAtSave_h', size.height);
   }
 
   Future<void> _resetAllPositions() async {
     final prefs = await SharedPreferences.getInstance();
-    final keys = prefs.getKeys().where((k) => k.startsWith('garden_pos_')).toList();
+    final keys = prefs.getKeys().where((k) => k.startsWith('garden_npos_')).toList();
     for (final key in keys) {
       await prefs.remove(key);
     }
@@ -209,7 +253,8 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
 
   /// Wraps a garden element as a draggable Positioned widget.
   /// [elementId] is used to persist position.
-  /// [defaultLeft]/[defaultBottom] are the default layout positions.
+  /// [defaultLeft]/[defaultBottom] are the default layout positions (pixels).
+  /// Custom positions are stored as normalized 0–1 offsets.
   Widget _draggablePositioned({
     required String elementId,
     required double defaultLeft,
@@ -221,44 +266,58 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     final customPos = _customPositions[elementId];
     
     if (customPos != null) {
-      // Custom position stored as (left, top)
-      return Positioned(
-        left: customPos.dx,
-        top: customPos.dy,
-        child: GestureDetector(
-          onPanUpdate: (details) {
-            setState(() {
-              final old = _customPositions[elementId]!;
-              _customPositions[elementId] = Offset(
-                old.dx + details.delta.dx,
-                old.dy + details.delta.dy,
-              );
-            });
-          },
-          onPanEnd: (_) {
-            final pos = _customPositions[elementId];
-            if (pos != null) _savePosition(elementId, pos);
-          },
-          child: child,
-        ),
+      // Custom position stored as normalized (0–1). Convert to pixels at render.
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final sceneW = constraints.maxWidth > 0 ? constraints.maxWidth : MediaQuery.of(context).size.width;
+          final sceneH = constraints.maxHeight > 0 ? constraints.maxHeight : MediaQuery.of(context).size.height;
+          return Stack(
+            children: [
+              Positioned(
+                left: customPos.dx * sceneW,
+                top: customPos.dy * sceneH,
+                child: GestureDetector(
+                  onPanUpdate: (details) {
+                    setState(() {
+                      final old = _customPositions[elementId]!;
+                      _customPositions[elementId] = Offset(
+                        (old.dx + details.delta.dx / sceneW).clamp(0.0, 1.0),
+                        (old.dy + details.delta.dy / sceneH).clamp(0.0, 1.0),
+                      );
+                    });
+                  },
+                  onPanEnd: (_) {
+                    final pos = _customPositions[elementId];
+                    if (pos != null) _savePosition(elementId, pos);
+                    _saveScreenSize(Size(sceneW, sceneH));
+                  },
+                  child: child,
+                ),
+              ),
+            ],
+          );
+        },
       );
     }
 
-    // Default position: convert bottom-based to a key-based Positioned
-    // We use a LayoutBuilder in the parent to know actual size, but for simplicity
-    // we wrap in a builder that converts on first drag.
+    // Default position: convert bottom-based to a key-based Positioned.
+    // On first drag, convert to normalized position.
     if (useRight && defaultRight != null) {
       return Positioned(
         bottom: defaultBottom,
         right: defaultRight,
         child: GestureDetector(
           onPanStart: (details) {
-            // Convert to absolute position on first drag
+            // Convert to normalized position on first drag
             final renderBox = context.findRenderObject() as RenderBox?;
             if (renderBox != null) {
+              final size = renderBox.size;
               final globalPos = details.globalPosition;
               final localPos = renderBox.globalToLocal(globalPos);
-              _customPositions[elementId] = Offset(localPos.dx - 20, localPos.dy - 20);
+              _customPositions[elementId] = Offset(
+                ((localPos.dx - 20) / size.width).clamp(0.0, 1.0),
+                ((localPos.dy - 20) / size.height).clamp(0.0, 1.0),
+              );
               setState(() {});
             }
           },
@@ -274,9 +333,13 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
         onPanStart: (details) {
           final renderBox = context.findRenderObject() as RenderBox?;
           if (renderBox != null) {
+            final size = renderBox.size;
             final globalPos = details.globalPosition;
             final localPos = renderBox.globalToLocal(globalPos);
-            _customPositions[elementId] = Offset(localPos.dx - 20, localPos.dy - 20);
+            _customPositions[elementId] = Offset(
+              ((localPos.dx - 20) / size.width).clamp(0.0, 1.0),
+              ((localPos.dy - 20) / size.height).clamp(0.0, 1.0),
+            );
             setState(() {});
           }
         },
@@ -321,32 +384,46 @@ class _ZenGardenSceneState extends BaseThemeSceneState<ZenGardenScene>
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Layer 0: Sky/background
-        _buildSky(state.currentStage),
-
-        // Layer 1: Distant background
-        if (isUnlocked('mountain')) _buildDistantBackground(),
-
-        // Ground assets
-        ...groundAssets,
-
-        // Water features
-        ...waterList,
-
-        // Flora
-        ...floraList,
-
-        // Structures
-        ...structuresList,
-
-        // Particles - only particles rebuild on animation tick
-        AnimatedBuilder(
-          animation: _ambientController,
-          builder: (context, child) => _buildParticles(),
+        // RepaintBoundary: Static background layers (sky, distant background, ground)
+        RepaintBoundary(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              _buildSky(state.currentStage),
+              if (isUnlocked('mountain')) _buildDistantBackground(),
+            ],
+          ),
         ),
 
-        // Mist overlay (stage 8+)
-        if (state.currentStage >= 8) _buildMistOverlay(),
+        // RepaintBoundary: Static scene layers (ground, water, flora, structures)
+        RepaintBoundary(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              ...groundAssets,
+              ...waterList,
+              ...floraList,
+              ...structuresList,
+            ],
+          ),
+        ),
+
+        // RepaintBoundary: Animated particles (fireflies, petals, butterflies, birds, dragonflies)
+        RepaintBoundary(
+          child: AnimatedBuilder(
+            animation: _ambientController,
+            builder: (context, child) => _buildParticles(),
+          ),
+        ),
+
+        // RepaintBoundary: Mist / clouds overlay (slow animation, separate)
+        if (state.currentStage >= 8)
+          RepaintBoundary(child: _buildMistOverlay()),
+
+        // RepaintBoundary: Seasonal overlay (cherry blossoms / fireflies / leaves / frost)
+        RepaintBoundary(
+          child: SeasonalOverlayWidget(animation: _ambientController),
+        ),
 
         // Stats overlay with reset button
         if (widget.showStats)
