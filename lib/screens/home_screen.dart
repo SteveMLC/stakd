@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/constants.dart';
 import '../services/daily_challenge_service.dart';
@@ -29,18 +30,34 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   bool _isDailyCompleted = false;
   int _dailyStreak = 0;
   bool _highlightStreak = false;
   bool _hasUnclaimedReward = false;
   int _coinBalance = 0;
 
+  // Logo animation
+  late AnimationController _logoController;
+  bool _logoWiggling = false;
+
   @override
   void initState() {
     super.initState();
+    // Staggered bounce-in on load
+    _logoController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..forward();
     _loadDailyData();
     _checkDailyRewards();
+  }
+
+  @override
+  void dispose() {
+    _logoController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadDailyData() async {
@@ -452,62 +469,123 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _onLogoTap() {
+    if (_logoWiggling) return;
+    _logoWiggling = true;
+    HapticFeedback.lightImpact();
+    _logoController.reset();
+    _logoController.forward().then((_) {
+      _logoWiggling = false;
+    });
+  }
+
   Widget _buildLogo() {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(3, (index) {
-            final colors = [
-              GameColors.palette[0],
-              GameColors.palette[1],
-              GameColors.palette[2],
-            ];
-            return Container(
-              width: 40,
-              height: 80,
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              decoration: BoxDecoration(
-                color: GameColors.empty,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: List.generate(3, (layerIndex) {
-                  return Container(
-                    width: 32,
-                    height: 20,
-                    margin: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: colors[(index + layerIndex) % 3],
-                      borderRadius: BorderRadius.circular(4),
+    return GestureDetector(
+      onTap: _onLogoTap,
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(3, (index) {
+              final colors = [
+                GameColors.palette[0],
+                GameColors.palette[1],
+                GameColors.palette[2],
+              ];
+              // Staggered bounce-in: each tube drops in with slight delay
+              final staggerDelay = index * 0.15; // 0, 0.15, 0.30
+              final interval = Interval(
+                staggerDelay,
+                (staggerDelay + 0.5).clamp(0.0, 1.0),
+                curve: Curves.elasticOut,
+              );
+              return AnimatedBuilder(
+                animation: _logoController,
+                builder: (context, child) {
+                  final t = interval.transform(_logoController.value);
+                  // On initial load: bounce-in from above
+                  // On tap (wiggle): gentle rotation
+                  final isWiggle = _logoWiggling && _logoController.value > 0;
+                  final wiggleAngle = isWiggle
+                      ? sin(_logoController.value * 6 * pi) * 0.05 * (1.0 - _logoController.value)
+                      : 0.0;
+                  return Transform.translate(
+                    offset: Offset(0, (1.0 - t) * -30),
+                    child: Transform.rotate(
+                      angle: wiggleAngle,
+                      child: Opacity(
+                        opacity: t.clamp(0.0, 1.0),
+                        child: child,
+                      ),
                     ),
                   );
-                }),
+                },
+                child: Container(
+                  width: 40,
+                  height: 80,
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(
+                    color: GameColors.empty,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: List.generate(3, (layerIndex) {
+                      return Container(
+                        width: 32,
+                        height: 20,
+                        margin: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: colors[(index + layerIndex) % 3],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 24),
+          // Title text with staggered fade-in
+          AnimatedBuilder(
+            animation: _logoController,
+            builder: (context, child) {
+              final t = Interval(0.3, 0.8, curve: Curves.easeOut)
+                  .transform(_logoController.value);
+              final isWiggle = _logoWiggling && _logoController.value > 0;
+              final scale = isWiggle
+                  ? 1.0 + sin(_logoController.value * 4 * pi) * 0.02 * (1.0 - _logoController.value)
+                  : 1.0;
+              return Transform.scale(
+                scale: scale,
+                child: Opacity(
+                  opacity: t.clamp(0.0, 1.0),
+                  child: child,
+                ),
+              );
+            },
+            child: ShaderMask(
+              shaderCallback: (bounds) => LinearGradient(
+                colors: [
+                  GameColors.accent,
+                  GameColors.palette[1],
+                  GameColors.accent,
+                ],
+              ).createShader(bounds),
+              child: const Text(
+                'SORTBLOOM',
+                style: TextStyle(
+                  fontSize: 56,
+                  fontWeight: FontWeight.bold,
+                  color: GameColors.text,
+                  letterSpacing: 8,
+                ),
               ),
-            );
-          }),
-        ),
-        const SizedBox(height: 24),
-        ShaderMask(
-          shaderCallback: (bounds) => LinearGradient(
-            colors: [
-              GameColors.accent,
-              GameColors.palette[1],
-              GameColors.accent,
-            ],
-          ).createShader(bounds),
-          child: const Text(
-            'SORTBLOOM',
-            style: TextStyle(
-              fontSize: 56,
-              fontWeight: FontWeight.bold,
-              color: GameColors.text,
-              letterSpacing: 8,
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -740,14 +818,17 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
             ),
           ),
         ),
-        AnimatedBuilder(
-          animation: _controller,
-          builder: (context, _) {
-            return CustomPaint(
-              painter: _StarFieldPainter(_stars, _controller.value),
-              size: Size.infinite,
-            );
-          },
+        // RepaintBoundary isolates star field repaints from menu buttons
+        RepaintBoundary(
+          child: AnimatedBuilder(
+            animation: _controller,
+            builder: (context, _) {
+              return CustomPaint(
+                painter: _StarFieldPainter(_stars, _controller.value),
+                size: Size.infinite,
+              );
+            },
+          ),
         ),
         widget.child,
       ],
