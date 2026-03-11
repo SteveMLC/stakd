@@ -217,10 +217,21 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
     }
   }
 
+  bool _showingCompletion = false; // SNAPPY FIX: Prevent duplicate menus
+
   void _captureCompletionTime(GameState gameState) {
-    if (!gameState.isComplete || _completionDuration != null) return;
+    // SNAPPY FIX: Multiple guards to prevent duplicate completion
+    if (!gameState.isComplete) return;
+    if (_completionDuration != null) return;
+    if (_showingCompletion) return; // Prevent race condition
+    
+    _showingCompletion = true; // Lock immediately
+    
     final startTime = _levelStartTime;
-    if (startTime == null) return;
+    if (startTime == null) {
+      _showingCompletion = false;
+      return;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted || _completionDuration != null) return;
 
@@ -291,6 +302,7 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
     context.read<GameState>().initGame(stacks, _currentLevel, par: par);
     _levelStartTime = DateTime.now();
     _completionDuration = null;
+    _showingCompletion = false; // SNAPPY FIX: Reset completion lock
 
     // Reset hint state
     setState(() {

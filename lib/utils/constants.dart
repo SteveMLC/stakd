@@ -110,12 +110,17 @@ class GameSizes {
 
 /// Animation durations
 class GameDurations {
-  static const Duration layerMove = Duration(milliseconds: 150);
-  static const Duration stackClear = Duration(milliseconds: 400);
-  static const Duration levelComplete = Duration(milliseconds: 800);
-  static const Duration buttonPress = Duration(milliseconds: 100);
-  static const Duration multiGrabHold = Duration(milliseconds: 300);
-  static const Duration multiGrabPulse = Duration(milliseconds: 600);
+  // SNAPPY GAMEPLAY: Reduced durations for instant feel
+  static const Duration layerMove = Duration(milliseconds: 120);  // Was 150
+  static const Duration stackClear = Duration(milliseconds: 300); // Was 400
+  static const Duration levelComplete = Duration(milliseconds: 500); // Was 800
+  static const Duration buttonPress = Duration(milliseconds: 80); // Was 100
+  static const Duration multiGrabHold = Duration(milliseconds: 250); // Was 300
+  static const Duration multiGrabPulse = Duration(milliseconds: 500); // Was 600
+  
+  // Snappy curves for instant feel
+  static const Curve fastEaseOut = Cubic(0.2, 0, 0.2, 1);
+  static const Curve springBounce = Cubic(0.34, 1.56, 0.64, 1);
 }
 
 /// Game configuration
