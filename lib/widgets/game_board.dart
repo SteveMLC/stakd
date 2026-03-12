@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -78,6 +79,7 @@ class _GameBoardState extends State<GameBoard>
   List<Layer>? _dragLayers;
   int? _dragHoverTube;
   final Map<int, Rect> _stackHitRects = {};
+  Timer? _dragSafetyTimer; // BUG FIX: Safety timer to prevent stuck overlays
 
   @override
   void initState() {
@@ -121,6 +123,7 @@ class _GameBoardState extends State<GameBoard>
     _flashColor.dispose();
     _showConfetti.dispose();
     _showComboTooltip.dispose();
+    _dragSafetyTimer?.cancel(); // BUG FIX: Cancel safety timer
     super.dispose();
   }
 
@@ -578,11 +581,38 @@ class _GameBoardState extends State<GameBoard>
       _dragHoverTube = null;
     });
 
+    // BUG FIX: Start safety timer to prevent stuck overlay
+    _startDragSafetyTimer();
+
     haptics.mediumImpact();
     if (isMulti) {
       StorageService().setMultiGrabUsed();
       StorageService().incrementMultiGrabUsage();
     }
+  }
+
+  /// BUG FIX: Force clear all drag state to prevent stuck overlay
+  void _forceClearDragState() {
+    _isDragging = false;
+    _dragSourceTube = -1;
+    _dragLayers = null;
+    _dragHoverTube = null;
+    _stackHitRects.clear();
+    _dragSafetyTimer?.cancel(); // Cancel safety timer
+    _dragSafetyTimer = null;
+  }
+
+  /// BUG FIX: Start safety timer to auto-clear stuck drag
+  void _startDragSafetyTimer() {
+    _dragSafetyTimer?.cancel();
+    _dragSafetyTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted && _isDragging) {
+        debugPrint('DRAG SAFETY: Force clearing stuck drag overlay');
+        setState(() {
+          _forceClearDragState();
+        });
+      }
+    });
   }
 
   void _onDragUpdate(Offset globalPosition) {
@@ -612,13 +642,19 @@ class _GameBoardState extends State<GameBoard>
     final sourceTube = _dragSourceTube;
     final layers = _dragLayers;
 
+    // BUG FIX: Force clear drag state immediately with post-frame callback
+    // to ensure overlay disappears even if move logic fails
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _isDragging) {
+        setState(() {
+          _forceClearDragState();
+        });
+      }
+    });
+
     // Clear drag state first
     setState(() {
-      _isDragging = false;
-      _dragSourceTube = -1;
-      _dragLayers = null;
-      _dragHoverTube = null;
-      _stackHitRects.clear();
+      _forceClearDragState();
     });
 
     if (targetTube == null || layers == null) {
