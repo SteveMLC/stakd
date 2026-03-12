@@ -605,7 +605,7 @@ class _GameBoardState extends State<GameBoard>
   /// BUG FIX: Start safety timer to auto-clear stuck drag
   void _startDragSafetyTimer() {
     _dragSafetyTimer?.cancel();
-    _dragSafetyTimer = Timer(const Duration(seconds: 5), () {
+    _dragSafetyTimer = Timer(const Duration(seconds: 3), () { // Reduced from 5 to 3 seconds
       if (mounted && _isDragging) {
         debugPrint('DRAG SAFETY: Force clearing stuck drag overlay');
         setState(() {
@@ -1113,9 +1113,10 @@ class _StackWidgetState extends State<_StackWidget>
   }
 
   void _onPanEnd(DragEndDetails details) {
+    // BUG FIX: Always notify parent drag ended, even if _isDragging flag is wrong
+    widget.onDragEnd?.call();
+    
     if (_isDragging) {
-      // End drag
-      widget.onDragEnd?.call();
       setState(() {
         _isDragging = false;
       });
@@ -1125,9 +1126,10 @@ class _StackWidgetState extends State<_StackWidget>
   }
 
   void _onPanCancel() {
+    // BUG FIX: Always notify parent drag ended
+    widget.onDragEnd?.call();
+    
     if (_isDragging) {
-      // Cancel drag
-      widget.onDragEnd?.call();
       setState(() {
         _isDragging = false;
       });
