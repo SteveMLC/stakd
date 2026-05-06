@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/semantics.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'models/game_state.dart';
@@ -20,6 +22,12 @@ import 'app.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Force semantics tree on web in debug mode so end-to-end tooling can
+  // inspect widgets via the accessibility tree. No-op in release builds.
+  if (kIsWeb && kDebugMode) {
+    SemanticsBinding.instance.ensureSemantics();
+  }
 
   // Lock to portrait mode
   await SystemChrome.setPreferredOrientations([

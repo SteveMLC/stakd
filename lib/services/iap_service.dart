@@ -74,7 +74,24 @@ class IapService extends ChangeNotifier {
 
     _loadLocalEntitlements();
 
-    _isAvailable = await _iap.isAvailable();
+    // The in_app_purchase plugin has no web implementation; calling it
+    // throws a MissingPluginException. Treat web as "store unavailable"
+    // so the rest of the app can run for development/testing.
+    if (kIsWeb) {
+      _isAvailable = false;
+      _errorMessage = 'In-app purchases are unavailable on web.';
+      notifyListeners();
+      return;
+    }
+
+    try {
+      _isAvailable = await _iap.isAvailable();
+    } catch (e) {
+      _isAvailable = false;
+      _errorMessage = 'In-app purchases are unavailable: $e';
+      notifyListeners();
+      return;
+    }
     if (!_isAvailable) {
       _errorMessage = 'In-app purchases are unavailable.';
       notifyListeners();

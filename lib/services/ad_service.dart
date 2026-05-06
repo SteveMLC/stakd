@@ -28,6 +28,13 @@ class AdService {
   Future<void> init() async {
     if (_initialized) return;
 
+    // google_mobile_ads has no web implementation; skip silently so the
+    // rest of the app can run on web for development/testing.
+    if (kIsWeb) {
+      _initialized = true;
+      return;
+    }
+
     try {
       await MobileAds.instance.initialize();
       _initialized = true;

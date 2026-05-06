@@ -88,7 +88,15 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
     super.initState();
     _currentLevel = widget.level;
     _checkTutorial();
-    _loadLevel();
+    // Defer to the next frame: _loadLevel calls
+    // GameState.initGame -> notifyListeners, which would mark a parent
+    // _InheritedProviderScope dirty during build (initState runs during
+    // the build phase) and assert. The first paint will draw an empty
+    // board for one frame, which is fine.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _loadLevel();
+    });
   }
 
   @override

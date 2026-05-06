@@ -15,10 +15,7 @@ import '../utils/theme_colors.dart';
 // import '../engine/board_renderer.dart';
 // import '../engine/input_handler.dart';
 import 'particles/particle_burst.dart';
-import 'board/board_drag_layer.dart';
-import 'board/board_feedback_layer.dart';
 import 'board/board_grid.dart';
-import 'board/board_motion_layer.dart';
 import 'particles/confetti_overlay.dart';
 import 'combo_popup.dart';
 import 'color_flash_overlay.dart';
@@ -353,22 +350,26 @@ class _GameBoardState extends State<GameBoard>
                         }),
                       ),
                     ),
-                    // Animation overlay
+                    // Animation overlay — must be a direct Stack child so the
+                    // overlay's `Positioned` reaches the outer Stack. Any
+                    // RenderObjectWidget (IgnorePointer, RepaintBoundary)
+                    // between Positioned and Stack pins the moving layer to
+                    // the top-left. The overlay handles its own pointer
+                    // ignoring inside.
                     if (widget.gameState.animatingLayer != null)
-                      BoardMotionLayer(
-                        child: _AnimatedLayerOverlay(
-                          animatingLayer: widget.gameState.animatingLayer!,
-                          fromKey:
-                              _stackKeys[widget
-                                  .gameState
-                                  .animatingLayer!
-                                  .fromStackIndex]!,
-                          toKey:
-                              _stackKeys[widget
-                                  .gameState
-                                  .animatingLayer!
-                                  .toStackIndex]!,
-                          onComplete: () {
+                      _AnimatedLayerOverlay(
+                        animatingLayer: widget.gameState.animatingLayer!,
+                        fromKey:
+                            _stackKeys[widget
+                                .gameState
+                                .animatingLayer!
+                                .fromStackIndex]!,
+                        toKey:
+                            _stackKeys[widget
+                                .gameState
+                                .animatingLayer!
+                                .toStackIndex]!,
+                        onComplete: () {
                             // Trigger landing particle burst
                             final destIndex =
                                 widget.gameState.animatingLayer!.toStackIndex;
@@ -397,20 +398,21 @@ class _GameBoardState extends State<GameBoard>
                               }
                             }
                           },
-                        ),
                       ),
                     // Chain text popup overlay
                     ValueListenableBuilder<int?>(
                       valueListenable: _showChainLevel,
                       builder: (context, chainLevel, _) {
                         if (chainLevel == null || chainLevel < 2) return const SizedBox.shrink();
-                        return BoardFeedbackLayer(
-                          child: ChainTextPopupOverlay(
-                            chainLevel: chainLevel,
-                            onComplete: () {
-                              _showChainLevel.value = null;
-                            },
-                          ),
+                        // ChainTextPopupOverlay returns a Positioned.fill, so
+                        // it must be a direct Stack child. Wrapping it in a
+                        // RepaintBoundary (the old BoardFeedbackLayer) breaks
+                        // the Positioned/Stack ParentData contract.
+                        return ChainTextPopupOverlay(
+                          chainLevel: chainLevel,
+                          onComplete: () {
+                            _showChainLevel.value = null;
+                          },
                         );
                       },
                     ),
@@ -494,14 +496,16 @@ class _GameBoardState extends State<GameBoard>
                         );
                       },
                     ),
-                    // Drag-and-drop overlay
+                    // Drag-and-drop overlay — _DragOverlay returns a
+                    // Positioned, so it must be a direct Stack child. Any
+                    // RenderObjectWidget wrapper (RepaintBoundary, etc.)
+                    // breaks the Positioned/Stack ParentData chain and
+                    // pins the dragged layer to the top-left.
                     if (_isDragging && _dragLayers != null)
-                      BoardDragLayer(
-                        child: _DragOverlay(
-                          layers: _dragLayers!,
-                          globalPosition: _dragPosition,
-                          boardContext: context,
-                        ),
+                      _DragOverlay(
+                        layers: _dragLayers!,
+                        globalPosition: _dragPosition,
+                        boardContext: context,
                       ),
                   ],
                 );
