@@ -6,9 +6,6 @@ import '../utils/constants.dart';
 import '../services/daily_challenge_service.dart';
 import '../services/daily_rewards_service.dart';
 import '../services/currency_service.dart';
-import '../services/progression_service.dart';
-import '../widgets/rank_badge.dart';
-import '../widgets/xp_progress_bar.dart';
 import '../widgets/game_button.dart';
 import '../widgets/daily_streak_badge.dart';
 import '../widgets/daily_rewards_popup.dart';
@@ -287,7 +284,6 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildTopBar() {
-    final progressionService = ProgressionService();
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
@@ -295,7 +291,7 @@ class _HomeScreenState extends State<HomeScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Coin balance
+              // Coin balance (secondary currency — power-ups + cosmetics).
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: _openDailyRewards,
@@ -311,14 +307,11 @@ class _HomeScreenState extends State<HomeScreen>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
-                        '🪙',
-                        style: TextStyle(fontSize: 18),
-                      ),
+                      const Text('🪙', style: TextStyle(fontSize: 18)),
                       const SizedBox(width: 6),
                       Text(
                         '$_coinBalance',
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: GameColors.text,
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -331,17 +324,8 @@ class _HomeScreenState extends State<HomeScreen>
 
               const Spacer(),
 
-              // Rank badge
-              RankBadge(
-                rank: progressionService.currentRank,
-                tierEmoji: progressionService.tierEmoji,
-                title: progressionService.rankTitle,
-                showTitle: false,
-              ),
-
-              const SizedBox(width: 12),
-
-              // Daily rewards button
+              // Daily rewards button (warehouse meta progress lives in
+              // WarehouseHud below, so the old rank/XP-bar widgets are gone).
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: _openDailyRewards,
@@ -398,18 +382,6 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ),
             ],
-          ),
-          // XP progress bar
-          const SizedBox(height: 12),
-          XPProgressBar(
-            currentXP: progressionService.totalXP,
-            xpForCurrentRank: progressionService.xpForCurrentRank,
-            xpForNextRank: progressionService.xpForNextRank,
-            rank: progressionService.currentRank,
-            rankTitle: progressionService.rankTitle,
-            nextRankTitle: progressionService.currentRank < 25
-                ? ProgressionService.ranks[progressionService.currentRank].title
-                : 'Max Rank',
           ),
         ],
       ),
