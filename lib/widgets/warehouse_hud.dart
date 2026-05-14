@@ -218,46 +218,123 @@ class _CashChipState extends State<_CashChip> {
   }
 }
 
-class _LevelBar extends StatelessWidget {
+class _LevelBar extends StatefulWidget {
   final WarehouseEconomyService economy;
   const _LevelBar({required this.economy});
 
   @override
+  State<_LevelBar> createState() => _LevelBarState();
+}
+
+class _LevelBarState extends State<_LevelBar> {
+  // Smoothly tween the progress bar fill so XP gains read as a
+  // satisfying "moving forward" beat instead of an instant snap.
+  late double _displayed;
+  double _from = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _displayed = widget.economy.levelProgressFraction;
+  }
+
+  @override
+  void didUpdateWidget(covariant _LevelBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final next = widget.economy.levelProgressFraction;
+    if (next != _displayed) {
+      _from = _displayed;
+      _displayed = next;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final level = economy.warehouseLevel;
-    final fraction = economy.levelProgressFraction;
+    final level = widget.economy.warehouseLevel;
+    final inLevel = widget.economy.xpInCurrentLevel;
+    final needed = widget.economy.xpNeededForCurrentLevel;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Text(
-              'WH Lv $level',
-              style: const TextStyle(
-                color: GameColors.text,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.5,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: GameColors.accent.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(
+                  color: GameColors.accent.withValues(alpha: 0.45),
+                  width: 0.8,
+                ),
+              ),
+              child: Text(
+                'WH Lv $level',
+                style: const TextStyle(
+                  color: GameColors.accent,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.6,
+                ),
               ),
             ),
             const Spacer(),
             Text(
-              '${economy.xpInCurrentLevel}/${economy.xpNeededForCurrentLevel} XP',
+              '$inLevel/$needed XP',
               style: const TextStyle(
                 color: GameColors.textMuted,
-                fontSize: 11,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
         ),
         const SizedBox(height: 4),
+        // Animated tween fill — wraps the LinearProgressIndicator in
+        // a 700ms easeOutCubic tween so XP gains slide rather than
+        // snap. The bar itself stays the same shape so we can swap
+        // in a fancier custom painter later without API changes.
         ClipRRect(
           borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: fraction,
-            minHeight: 6,
-            backgroundColor: GameColors.background.withValues(alpha: 0.4),
-            valueColor: const AlwaysStoppedAnimation<Color>(GameColors.accent),
+          child: TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: _from, end: _displayed),
+            duration: const Duration(milliseconds: 700),
+            curve: Curves.easeOutCubic,
+            builder: (context, value, _) => Stack(
+              children: [
+                LinearProgressIndicator(
+                  value: value,
+                  minHeight: 7,
+                  backgroundColor:
+                      GameColors.background.withValues(alpha: 0.5),
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                    GameColors.accent,
+                  ),
+                ),
+                // Bright leading-edge highlight on the fill so the
+                // tween reads as "advancing" not "lengthening".
+                Positioned.fill(
+                  child: FractionallySizedBox(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: value.clamp(0.0, 1.0),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                          colors: [
+                            GameColors.accent.withValues(alpha: 0.0),
+                            GameColors.accent.withValues(alpha: 0.0),
+                            Colors.white.withValues(alpha: 0.55),
+                          ],
+                          stops: const [0.0, 0.85, 1.0],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
