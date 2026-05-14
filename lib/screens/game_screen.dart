@@ -24,6 +24,7 @@ import '../widgets/completion_overlay.dart';
 import '../widgets/hint_overlay.dart';
 import '../widgets/jam_recovery_modal.dart';
 import '../widgets/multi_grab_hint_overlay.dart';
+import '../widgets/warehouse_hud.dart';
 import '../widgets/tutorial_overlay.dart';
 import '../widgets/power_up_bar.dart';
 import '../widgets/power_up_effects.dart';
@@ -395,6 +396,7 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
     _levelStartTime = DateTime.now();
     _completionDuration = null;
     _showingCompletion = false; // SNAPPY FIX: Reset completion lock
+    _showingJamModal = false; // Re-arm jam modal for the new level.
 
     // Reset hint state
     setState(() {
@@ -1126,6 +1128,13 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                     children: [
                       // Top bar (wrapped in RepaintBoundary to avoid repaints during drag/animation)
                       RepaintBoundary(child: _buildTopBar(gameState)),
+
+                      // Warehouse meta HUD: cash + WH level + XP + tier badge.
+                      const RepaintBoundary(
+                        child: WarehouseHud(
+                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        ),
+                      ),
 
                       // Game board
                       Expanded(
