@@ -15,7 +15,6 @@ import 'daily_challenge_screen.dart';
 import 'settings_screen.dart';
 import 'leaderboard_screen.dart';
 import '../utils/route_transitions.dart';
-import 'theme_store_screen.dart';
 import 'achievements_screen.dart';
 import 'forklift_shop_screen.dart';
 
@@ -198,8 +197,8 @@ class _HomeScreenState extends State<HomeScreen>
                     children: [
                       Expanded(
                         child: GameButton(
-                          text: 'Levels',
-                          icon: Icons.flag,
+                          text: 'Contracts',
+                          icon: Icons.assignment_outlined,
                           isPrimary: false,
                           isSmall: true,
                           onPressed: () => _openLevelSelect(context),
@@ -207,12 +206,16 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                       const SizedBox(width: 12),
                       Expanded(
+                        // Themes are locked to the warehouse palette for v1.
+                        // Greyed-out button signals "later" without breaking
+                        // the 3x2 grid layout.
                         child: GameButton(
                           text: 'Themes',
-                          icon: Icons.palette,
+                          icon: Icons.palette_outlined,
                           isPrimary: false,
                           isSmall: true,
-                          onPressed: () => _openThemeStore(context),
+                          isDisabled: true,
+                          onPressed: () {},
                         ),
                       ),
                     ],
@@ -582,11 +585,6 @@ class _HomeScreenState extends State<HomeScreen>
     Navigator.of(context).push(fadeSlideRoute(const ContractSelectScreen()));
   }
 
-  void _openThemeStore(BuildContext context) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const ThemeStoreScreen()));
-  }
 
   void _openForkliftShop(BuildContext context) {
     Navigator.of(context).push(fadeSlideRoute(const ForkliftShopScreen()));

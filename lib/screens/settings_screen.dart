@@ -2,11 +2,8 @@ import 'package:flutter/material.dart';
 import '../services/audio_service.dart';
 import '../services/haptic_service.dart';
 import '../services/storage_service.dart';
-import '../services/theme_service.dart';
 import '../utils/constants.dart';
 import '../widgets/game_button.dart';
-import '../utils/route_transitions.dart';
-import 'theme_store_screen.dart';
 
 /// Settings screen
 class SettingsScreen extends StatefulWidget {
@@ -225,57 +222,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildThemeButton() {
-    final themeService = ThemeService();
-    final currentTheme = themeService.currentTheme;
-
-    return GestureDetector(
-      onTap: () {
-        haptics.lightTap();
-        Navigator.of(context).push(
-          fadeSlideRoute(const ThemeStoreScreen()),
-        ).then((_) {
-          // Refresh when returning from theme store
-          if (mounted) setState(() {});
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: GameColors.surface,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Text(
-              currentTheme.icon,
-              style: const TextStyle(fontSize: 24),
+    // Warehouse Sort v1 ships with a locked theme (warehouse warm gray
+    // + safety yellow), so the row is informational only — no theme
+    // store entry. Themes will return in v1.1 with multiple unlockable
+    // dock skins.
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: GameColors.surface,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: const [
+          Icon(Icons.palette_outlined, size: 24, color: GameColors.text),
+          SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Theme', style: TextStyle(fontSize: 16)),
+                Text(
+                  'Default Warehouse',
+                  style: TextStyle(fontSize: 12, color: GameColors.textMuted),
+                ),
+              ],
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Theme',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  Text(
-                    currentTheme.name,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: GameColors.textMuted,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: GameColors.textMuted,
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

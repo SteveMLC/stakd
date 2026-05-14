@@ -90,7 +90,7 @@ class _MultiGrabHintOverlayState extends State<MultiGrabHintOverlay>
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'Pro tip',
+                    "Foreman's Tip",
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -99,7 +99,7 @@ class _MultiGrabHintOverlayState extends State<MultiGrabHintOverlay>
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'Long press to grab multiple\nmatching layers at once.',
+                    'Long-press a bay to grab a whole\nstack of same-color crates at once.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 16,
@@ -109,7 +109,7 @@ class _MultiGrabHintOverlayState extends State<MultiGrabHintOverlay>
                   ),
                   const SizedBox(height: 10),
                   const Text(
-                    'Faster solving, fewer moves',
+                    'Ship faster, save your move budget',
                     style: TextStyle(
                       fontSize: 13,
                       color: GameColors.textMuted,
@@ -118,7 +118,7 @@ class _MultiGrabHintOverlayState extends State<MultiGrabHintOverlay>
                   const SizedBox(height: 18),
                   TextButton(
                     onPressed: widget.onDismiss,
-                    child: const Text('Got it'),
+                    child: const Text('Got it, boss'),
                   ),
                 ],
               ),
