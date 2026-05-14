@@ -1,159 +1,73 @@
-# Stakd: Color Sort Puzzle
+# Warehouse Sort
 
-A satisfying color sorting puzzle game built with Flutter.
+Sort crates, ship orders, grow your warehouse empire. A casual sort-puzzle game with a tycoon-style progression meta-loop, built with Flutter.
 
-## 🎮 Game Concept
+## Game concept
 
-Stack colored layers into matching piles in this zen-like puzzle game. Features multiple difficulty levels, relaxing sounds, and beautiful animations.
+- **Puzzle layer:** Tap-to-select / tap-to-place sort puzzles. Fill horizontal bays with same-color crates. Includes Frozen crates (tap twice to thaw).
+- **Meta layer:** Each shipment earns cash and XP. Cash buys business tier upgrades (Local Warehouse → Regional Hub) and cosmetic skins. XP fills your Warehouse Level, which unlocks new mechanics every few hours of play.
+- **Retention hooks:** Daily Contract (shared seed, ×3 cash), 7-day streak with cosmetic rewards, and four power-ups (Dynamite Crate, Re-Route Shipment, Bay Crane, Foreman's Advice).
 
-## 🎨 App Icon
+## Bundle identifiers
 
-The Stakd app icon features vibrant stacked layers representing the core game mechanic, designed with a modern, playful, zen aesthetic.
+- Package: `warehouse_sort`
+- Android applicationId / namespace: `com.go7studio.warehousesort`
+- Display name: `Warehouse Sort`
 
-### Icon Specifications
-- **Size:** 1024x1024 pixels (source)
-- **Design:** 5 colorful stacked layers
-- **Colors:** Purple → Blue → Teal → Green → Yellow (gradient)
-- **Style:** Rounded corners, subtle shadows, zen circle background
-- **Platforms:** Android (adaptive icons included)
+## Tech stack
 
-### Regenerating Icons
+- Flutter 3.8+ / Dart 3.8+
+- `provider` for state, `shared_preferences` for persistence
+- AdMob (`google_mobile_ads`) + in-app purchases (`in_app_purchase`)
 
-If you need to regenerate the app icons:
+## Getting started
 
-1. **Generate the base icon:**
-   ```bash
-   flutter test test/generate_icon_test.dart
-   ```
-   This creates `assets/icon/app_icon.png` (1024x1024)
-
-2. **Generate platform-specific icons:**
-   ```bash
-   flutter pub run flutter_launcher_icons
-   ```
-   This creates:
-   - Android launcher icons (mdpi, hdpi, xhdpi, xxhdpi, xxxhdpi)
-   - Android adaptive icons (API 26+)
-   - Background color in `android/app/src/main/res/values/colors.xml`
-
-### Icon Configuration
-
-Icon generation is configured in `pubspec.yaml`:
-
-```yaml
-flutter_launcher_icons:
-  android: true
-  ios: false
-  image_path: "assets/icon/app_icon.png"
-  adaptive_icon_background: "#F5F5F5"
-  adaptive_icon_foreground: "assets/icon/app_icon.png"
+```bash
+flutter pub get
+flutter run
 ```
 
-### Customizing the Icon
+Web dev loop (with hot reload):
 
-To modify the icon design, edit `test/generate_icon_test.dart`:
+```bash
+bash scripts/dev_web.sh start
+```
 
-- **Colors:** Modify the `colors` array (lines 29-35)
-- **Layer count:** Change loop range (line 47)
-- **Layer dimensions:** Adjust `layerWidth`, `layerHeight`, `layerSpacing` (lines 42-44)
-- **Style:** Modify gradients, shadows, corner radius
+Type check + lint:
 
-After making changes, re-run both generation commands above.
+```bash
+bash scripts/check.sh
+```
 
-## 🚀 Getting Started
+## Building for release
 
-### Prerequisites
-- Flutter SDK 3.8.0 or higher
-- Android Studio / Xcode
-- Dart 3.8.0 or higher
-
-### Installation
-
-1. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   cd stakd
-   ```
-
-2. Install dependencies:
-   ```bash
-   flutter pub get
-   ```
-
-3. Run the app:
-   ```bash
-   flutter run
-   ```
-
-### Building for Release
-
-**Android:**
+**Android App Bundle (for Play Store):**
 ```bash
 flutter build appbundle
 # Output: build/app/outputs/bundle/release/app-release.aab
 ```
 
-**Android APK:**
+**Android APK (for testing):**
 ```bash
 flutter build apk --split-per-abi
 # Output: build/app/outputs/flutter-apk/
 ```
 
-## 📱 Features
+## Project structure
 
-- Multiple difficulty levels (Easy, Medium, Hard, Expert)
-- Zen mode for relaxation
-- Beautiful particle effects
-- Satisfying sound feedback
-- Theme customization
-- Ad-supported (AdMob)
-- In-app purchases (remove ads, unlock themes)
-
-## 🛠️ Development
-
-### Project Structure
 ```
 lib/
-├── main.dart                 # App entry point
-├── screens/                  # Game screens
-├── widgets/                  # Reusable widgets
-├── providers/                # State management
-├── models/                   # Game logic
-└── utils/                    # Helpers
-
-assets/
-├── sounds/                   # Audio files
-├── images/                   # Game graphics
-└── icon/                     # App icon source
+├── engine/        # Move validation, board controller
+├── models/        # GameState, Layer, GameStack
+├── progression/   # Warehouse leveling, XP curves
+├── services/      # Audio, AdMob, IAP, Achievements, Currency, etc.
+├── screens/       # Home, Game, Settings, Level Select, Daily, etc.
+├── widgets/       # Board, bays, particles, overlays, power-up bar
+├── utils/         # Constants, sizing helpers
+├── app.dart       # MaterialApp + provider tree
+└── main.dart      # Service bootstrap
 ```
 
-### Testing
-```bash
-flutter test
-```
+## History
 
-### Code Style
-```bash
-flutter analyze
-```
-
-## 📦 Dependencies
-
-- `provider` - State management
-- `google_mobile_ads` - Monetization
-- `audioplayers` - Sound effects
-- `shared_preferences` - Local storage
-- `in_app_purchase` - Premium features
-- `flutter_launcher_icons` - Icon generation
-
-## 📄 License
-
-All rights reserved.
-
-## 🤝 Contributing
-
-This is a private project. Contact the maintainer for contribution guidelines.
-
----
-
-**Built with ❤️ using Flutter**
+Warehouse Sort was rebranded from "SortBloom" (formerly "Stakd") on 2026-05-13. Git history preserves the full evolution from the original sort-puzzle MVP to today's tycoon-puzzle hybrid.

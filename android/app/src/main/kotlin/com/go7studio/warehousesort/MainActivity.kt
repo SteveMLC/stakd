@@ -1,4 +1,4 @@
-package com.go7studio.stakd
+package com.go7studio.warehousesort
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -8,14 +8,14 @@ import 'services/theme_service.dart';
 import 'services/zen_audio_service.dart';
 import 'utils/constants.dart';
 
-class StakdApp extends StatefulWidget {
-  const StakdApp({super.key});
+class WarehouseSortApp extends StatefulWidget {
+  const WarehouseSortApp({super.key});
 
   @override
-  State<StakdApp> createState() => _StakdAppState();
+  State<WarehouseSortApp> createState() => _WarehouseSortAppState();
 }
 
-class _StakdAppState extends State<StakdApp> with WidgetsBindingObserver {
+class _WarehouseSortAppState extends State<WarehouseSortApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
@@ -54,7 +54,7 @@ class _StakdAppState extends State<StakdApp> with WidgetsBindingObserver {
         final isDark = theme.backgroundColor.computeLuminance() < 0.5;
 
         return MaterialApp(
-          title: 'SortBloom',
+          title: 'Warehouse Sort',
           debugShowCheckedModeBanner: false,
           theme: ThemeData(
             useMaterial3: true,

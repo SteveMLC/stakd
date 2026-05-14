@@ -27,7 +27,7 @@ class _ReviewPromptDialogState extends State<ReviewPromptDialog>
   late Animation<double> _fadeAnimation;
 
   static const String _storeUrl =
-      'https://play.google.com/store/apps/details?id=com.go7studio.stakd';
+      'https://play.google.com/store/apps/details?id=com.go7studio.warehousesort';
 
   @override
   void initState() {
@@ -124,7 +124,7 @@ class _ReviewPromptDialogState extends State<ReviewPromptDialog>
 
                 // Title
                 const Text(
-                  'Enjoying SortBloom?',
+                  'Enjoying Warehouse Sort?',
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,

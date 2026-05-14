@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stakd/models/game_state.dart';
-import 'package:stakd/models/layer_model.dart';
-import 'package:stakd/models/stack_model.dart';
+import 'package:warehouse_sort/models/game_state.dart';
+import 'package:warehouse_sort/models/layer_model.dart';
+import 'package:warehouse_sort/models/stack_model.dart';
 
 /// Smoke tests for core gameplay logic.
 ///
-/// We avoid pumping `StakdApp` directly because it depends on platform
+/// We avoid pumping `WarehouseSortApp` directly because it depends on platform
 /// channels (SharedPreferences, AdMob, IAP, etc.) that aren't available
 /// in a unit-test environment. App-level integration tests should run
 /// via `flutter test integration_test/` against a device or emulator.

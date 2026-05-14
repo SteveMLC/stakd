@@ -77,7 +77,7 @@ void main() async {
         ChangeNotifierProvider.value(value: ThemeService()),
         ChangeNotifierProvider.value(value: PowerUpService()),
       ],
-      child: const StakdApp(),
+      child: const WarehouseSortApp(),
     ),
   );
 }

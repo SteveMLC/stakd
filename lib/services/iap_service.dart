@@ -13,21 +13,21 @@ class IapService extends ChangeNotifier {
   factory IapService() => _instance;
   IapService._internal();
 
-  static const String removeAdsProductId = 'com.go7studio.stakd.remove_ads';
-  static const String hintPack10ProductId = 'com.go7studio.stakd.hint_pack_10';
+  static const String removeAdsProductId = 'com.go7studio.warehousesort.remove_ads';
+  static const String hintPack10ProductId = 'com.go7studio.warehousesort.hint_pack_10';
   static const int hintPackAmount = 10;
 
   // Power-up pack product IDs
-  static const String powerUpPack5ProductId = 'com.go7studio.stakd.powerup_pack_5';
-  static const String powerUpPack20ProductId = 'com.go7studio.stakd.powerup_pack_20';
-  static const String powerUpPack50ProductId = 'com.go7studio.stakd.powerup_pack_50';
+  static const String powerUpPack5ProductId = 'com.go7studio.warehousesort.powerup_pack_5';
+  static const String powerUpPack20ProductId = 'com.go7studio.warehousesort.powerup_pack_20';
+  static const String powerUpPack50ProductId = 'com.go7studio.warehousesort.powerup_pack_50';
   static const int powerUpPack5Amount = 5;
   static const int powerUpPack20Amount = 20;
   static const int powerUpPack50Amount = 50;
 
-  // Flip with --dart-define=STAKD_IAP_TEST_IDS=true for store test IDs.
+  // Flip with --dart-define=WAREHOUSE_SORT_IAP_TEST_IDS=true for store test IDs.
   static const bool useTestProductIds = bool.fromEnvironment(
-    'STAKD_IAP_TEST_IDS',
+    'WAREHOUSE_SORT_IAP_TEST_IDS',
     defaultValue: false,
   );
 

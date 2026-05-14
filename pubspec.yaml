@@ -1,5 +1,5 @@
-name: stakd
-description: "SortBloom: Color Sort Puzzle - A satisfying color sorting game"
+name: warehouse_sort
+description: "Warehouse Sort: Sort crates, ship orders, grow your warehouse empire."
 publish_to: 'none'
 version: 1.0.0+1
 
