@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:math' as math;
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -175,6 +177,7 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       body: AnimatedBackground(
+        ambient: true,
         child: SafeArea(
           child: Center(
             child: Column(
@@ -300,30 +303,74 @@ class _HomeScreenState extends State<HomeScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Coin balance (secondary currency — power-ups + cosmetics).
+              // Coin balance — gold chip with circular coin icon
+              // (was the 🪙 emoji which rendered as a "?" tofu on some
+              // iOS font sets).
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: _openDailyRewards,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.fromLTRB(8, 6, 14, 6),
                   decoration: BoxDecoration(
-                    color: GameColors.surface.withValues(alpha: 0.7),
+                    gradient: const LinearGradient(
+                      colors: [
+                        Color(0xFF3A4250),
+                        Color(0xFF252B36),
+                      ],
+                    ),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: const Color(0xFFFFD700).withValues(alpha: 0.3),
+                      color: const Color(0xFFFFD700).withValues(alpha: 0.55),
+                      width: 1.2,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color:
+                            const Color(0xFFFFD700).withValues(alpha: 0.20),
+                        blurRadius: 6,
+                      ),
+                    ],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text('🪙', style: TextStyle(fontSize: 18)),
-                      const SizedBox(width: 6),
+                      Container(
+                        width: 22,
+                        height: 22,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const RadialGradient(
+                            colors: [
+                              Color(0xFFFFEB7A),
+                              Color(0xFFFFC107),
+                              Color(0xFFB8860B),
+                            ],
+                          ),
+                          border: Border.all(
+                            color: const Color(0xFF8B6914),
+                            width: 1,
+                          ),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'C',
+                            style: TextStyle(
+                              color: Color(0xFF6B4F00),
+                              fontWeight: FontWeight.w900,
+                              fontSize: 13,
+                              height: 1.1,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       Text(
                         '$_coinBalance',
                         style: const TextStyle(
                           color: GameColors.text,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w900,
                           fontSize: 16,
+                          letterSpacing: 0.5,
                         ),
                       ),
                     ],
@@ -422,47 +469,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildPlayButton() {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => _openLevelSelect(context),
-      child: Container(
-        width: double.infinity,
-        margin: const EdgeInsets.symmetric(horizontal: 32),
-        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              GameColors.accent,
-              GameColors.accent.withValues(alpha: 0.7),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: GameColors.accent.withValues(alpha: 0.5),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(Icons.local_shipping, size: 32, color: GameColors.text),
-            SizedBox(width: 12),
-            Text(
-              'PLAY',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: GameColors.text,
-                letterSpacing: 2,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    return _JuicyPlayButton(onTap: () => _openLevelSelect(context));
   }
 
   void _onLogoTap() {
@@ -685,6 +692,187 @@ class _WarehousePlacard extends StatelessWidget {
   }
 }
 
+/// The home screen's hero PLAY button — pulses, glows, and idle-shakes
+/// like a forklift revving its engine. Press-down squashes it, release
+/// pops with overshoot. The truck icon also bobs subtly inside the
+/// button so even at idle the menu feels alive.
+class _JuicyPlayButton extends StatefulWidget {
+  final VoidCallback onTap;
+  const _JuicyPlayButton({required this.onTap});
+
+  @override
+  State<_JuicyPlayButton> createState() => _JuicyPlayButtonState();
+}
+
+class _JuicyPlayButtonState extends State<_JuicyPlayButton>
+    with TickerProviderStateMixin {
+  // Slow breath: 1.0 → 1.04 → 1.0 over 2.0s, repeating.
+  late final AnimationController _breath = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2000),
+  )..repeat(reverse: true);
+  // Forklift bob: tiny up-down on the truck icon.
+  late final AnimationController _bob = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  )..repeat(reverse: true);
+  // Tap squash: scale to 0.95 on press, snap back.
+  late final AnimationController _press = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 90),
+  );
+  // Idle micro-wiggle every ~5s so the eye keeps returning.
+  late final AnimationController _wiggle = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 600),
+  );
+  Timer? _wiggleTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _wiggleTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) {
+        if (!mounted) return;
+        _wiggle.forward(from: 0);
+      },
+    );
+  }
+
+  @override
+  void deactivate() {
+    // Stop tickers before the ancestor restructure so TickerMode
+    // lookups don't fire against a deactivated parent.
+    _breath.stop();
+    _bob.stop();
+    _press.stop();
+    _wiggle.stop();
+    _wiggleTimer?.cancel();
+    super.deactivate();
+  }
+
+  @override
+  void dispose() {
+    _wiggleTimer?.cancel();
+    _breath.dispose();
+    _bob.dispose();
+    _press.dispose();
+    _wiggle.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => _press.forward(),
+      onTapUp: (_) {
+        _press.reverse();
+        HapticFeedback.mediumImpact();
+        widget.onTap();
+      },
+      onTapCancel: () => _press.reverse(),
+      child: AnimatedBuilder(
+        animation: Listenable.merge([_breath, _bob, _press, _wiggle]),
+        builder: (context, _) {
+          // Breath scale: 1.00 → 1.04 with the cosine of the controller
+          // so the curve is smooth at top and bottom of the cycle.
+          final breath = 1.0 + 0.04 * (1.0 - math.cos(_breath.value * math.pi)) / 2.0;
+          // Press squash + wiggle nudge stack onto the breath.
+          final squash = 1.0 - _press.value * 0.06;
+          final wiggleX = math.sin(_wiggle.value * math.pi * 3) *
+              4.0 *
+              (1.0 - _wiggle.value);
+          final bob = math.sin(_bob.value * math.pi) * 2.5;
+
+          return Transform.translate(
+            offset: Offset(wiggleX, 0),
+            child: Transform.scale(
+              scale: breath * squash,
+              child: Container(
+                width: double.infinity,
+                margin: const EdgeInsets.symmetric(horizontal: 28),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 22,
+                  horizontal: 24,
+                ),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFFFFD24A),
+                      GameColors.accent,
+                      Color(0xFFE6A800),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.35),
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    // Outer glow — pulses with the breath.
+                    BoxShadow(
+                      color: GameColors.accent
+                          .withValues(alpha: 0.35 + (breath - 1.0) * 6),
+                      blurRadius: 28,
+                      spreadRadius: 2 + (breath - 1.0) * 12,
+                    ),
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.35),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Transform.translate(
+                      offset: Offset(0, bob),
+                      child: const Icon(
+                        Icons.local_shipping,
+                        size: 34,
+                        color: GameColors.text,
+                        shadows: [
+                          Shadow(
+                            color: Color(0x77000000),
+                            blurRadius: 4,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    const Text(
+                      'PLAY',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                        color: GameColors.text,
+                        letterSpacing: 4,
+                        shadows: [
+                          Shadow(
+                            color: Color(0x88000000),
+                            blurRadius: 3,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
 class _CornerRivet extends StatelessWidget {
   const _CornerRivet();
 
@@ -712,17 +900,26 @@ class _CornerRivet extends StatelessWidget {
 
 class AnimatedBackground extends StatefulWidget {
   final Widget child;
+  /// When true, also paint the ambient drifting motes + idle forklift
+  /// pass. Off by default so screens with their own foreground (game
+  /// board, contract list) don't compete with background ambience.
+  final bool ambient;
 
-  const AnimatedBackground({super.key, required this.child});
+  const AnimatedBackground({
+    super.key,
+    required this.child,
+    this.ambient = false,
+  });
 
   @override
   State<AnimatedBackground> createState() => _AnimatedBackgroundState();
 }
 
 class _AnimatedBackgroundState extends State<AnimatedBackground> {
-  // No more animations — warehouse background is a static dock grid +
-  // safety stripes, which reads as "warehouse" much better than the old
-  // SortBloom drifting star field.
+  // Ambient animations live in _WarehouseAmbience (its own State) so the
+  // tickers aren't owned by the screen background — they tear down
+  // cleanly during navigation without dragging the parent's TickerMode
+  // lookup into the deactivate path.
 
   @override
   Widget build(BuildContext context) {
@@ -747,10 +944,193 @@ class _AnimatedBackgroundState extends State<AnimatedBackground> {
             size: Size.infinite,
           ),
         ),
+        // Ambient ticker-driven motes + idle forklift live in their
+        // own State so they don't share TickerMode with the rest of
+        // the screen tree.
+        if (widget.ambient) const Positioned.fill(child: _WarehouseAmbience()),
         widget.child,
       ],
     );
   }
+}
+
+/// Owns the ambient drifting-mote + periodic forklift animations.
+/// Wrapped in its own State so the tickers are isolated from the
+/// AnimatedBackground / Scaffold tree — when the home screen tears
+/// down during navigation, this widget tears down too, but its
+/// tickers don't trigger TickerMode lookups in any ancestor that's
+/// also being deactivated. Stops cleanly via the standard
+/// AnimationController.dispose flow.
+class _WarehouseAmbience extends StatefulWidget {
+  const _WarehouseAmbience();
+
+  @override
+  State<_WarehouseAmbience> createState() => _WarehouseAmbienceState();
+}
+
+class _WarehouseAmbienceState extends State<_WarehouseAmbience>
+    with TickerProviderStateMixin {
+  late final AnimationController _moteCtrl;
+  late final AnimationController _forkliftCtrl;
+  Timer? _forkliftTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _moteCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 24),
+    )..repeat();
+    _forkliftCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 8),
+    );
+    Future.delayed(const Duration(seconds: 3), () {
+      if (!mounted) return;
+      _forkliftCtrl.forward(from: 0);
+    });
+    _forkliftTimer = Timer.periodic(const Duration(seconds: 18), (_) {
+      if (!mounted) return;
+      _forkliftCtrl.forward(from: 0);
+    });
+  }
+
+  @override
+  void deactivate() {
+    // Stop tickers BEFORE the ancestor tree restructure happens —
+    // otherwise the next tick lookup of TickerMode triggers the
+    // "deactivated widget's ancestor" assertion.
+    _moteCtrl.stop();
+    _forkliftCtrl.stop();
+    _forkliftTimer?.cancel();
+    super.deactivate();
+  }
+
+  @override
+  void dispose() {
+    _moteCtrl.dispose();
+    _forkliftCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Stack(
+        children: [
+          RepaintBoundary(
+            child: AnimatedBuilder(
+              animation: _moteCtrl,
+              builder: (context, _) => CustomPaint(
+                painter: _DustMotesPainter(progress: _moteCtrl.value),
+                size: Size.infinite,
+              ),
+            ),
+          ),
+          AnimatedBuilder(
+            animation: _forkliftCtrl,
+            builder: (context, _) {
+              if (_forkliftCtrl.value == 0) return const SizedBox.shrink();
+              return CustomPaint(
+                size: Size.infinite,
+                painter: _AmbientForkliftPainter(
+                  progress: _forkliftCtrl.value,
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Slow-drifting dust motes (tiny dim circles) across the screen.
+/// Cheap — 30 motes, redrawn at the controller's animation rate.
+class _DustMotesPainter extends CustomPainter {
+  final double progress;
+  static const _seed = 71;
+  static const _count = 28;
+
+  const _DustMotesPainter({required this.progress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rng = math.Random(_seed);
+    final paint = Paint()..color = const Color(0xFFFFC107).withValues(alpha: 0.10);
+    for (var i = 0; i < _count; i++) {
+      final baseX = rng.nextDouble() * size.width;
+      final baseY = rng.nextDouble() * size.height;
+      final speed = 0.4 + rng.nextDouble() * 0.6;
+      final radius = 1.0 + rng.nextDouble() * 1.6;
+      // Slow horizontal drift; wraps around screen width.
+      final dx = (baseX + progress * size.width * speed) % size.width;
+      // Tiny vertical bob via sine wave.
+      final dy = baseY +
+          math.sin((progress + i / _count) * math.pi * 2) * 8.0;
+      canvas.drawCircle(Offset(dx, dy), radius, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DustMotesPainter oldDelegate) =>
+      oldDelegate.progress != progress;
+}
+
+/// Tiny ambient forklift that drives left → right across the bottom
+/// quarter of the screen. Same stencil silhouette as the splash but
+/// shrunk + drawn directly on the background so it puts a small life
+/// signal on the home without competing with the menu.
+class _AmbientForkliftPainter extends CustomPainter {
+  final double progress; // 0..1
+  const _AmbientForkliftPainter({required this.progress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = 60.0;
+    final h = 38.0;
+    // Move from off-screen left to off-screen right.
+    final x = -w + progress * (size.width + w * 2);
+    // Sit in lower third of the screen (above bottom nav padding).
+    final y = size.height * 0.68;
+    canvas.save();
+    canvas.translate(x, y);
+
+    final body = Paint()..color = const Color(0xFFFFC107).withValues(alpha: 0.55);
+    final dark = Paint()..color = const Color(0xFF1A1F26).withValues(alpha: 0.65);
+
+    // Forks
+    canvas.drawRect(Rect.fromLTWH(0, h * 0.62, w * 0.22, h * 0.07), dark);
+    canvas.drawRect(Rect.fromLTWH(0, h * 0.78, w * 0.22, h * 0.07), dark);
+    // Mast
+    canvas.drawRect(Rect.fromLTWH(w * 0.05, h * 0.12, w * 0.06, h * 0.62), dark);
+    // Cab
+    canvas.drawRRect(
+      RRect.fromRectAndCorners(
+        Rect.fromLTWH(w * 0.22, h * 0.28, w * 0.55, h * 0.48),
+        topLeft: const Radius.circular(4),
+        topRight: const Radius.circular(8),
+      ),
+      body,
+    );
+    // Counterweight
+    canvas.drawRect(Rect.fromLTWH(w * 0.78, h * 0.45, w * 0.20, h * 0.32), body);
+    // Wheels
+    canvas.drawCircle(Offset(w * 0.35, h * 0.84), h * 0.13, dark);
+    canvas.drawCircle(Offset(w * 0.80, h * 0.84), h * 0.16, dark);
+    // Red beacon
+    canvas.drawCircle(
+      Offset(w * 0.52, h * 0.22),
+      h * 0.05,
+      Paint()..color = const Color(0xFFE53935).withValues(alpha: 0.8),
+    );
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _AmbientForkliftPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }
 
 /// Paints a subtle warehouse "dock floor" pattern: a grid of dark

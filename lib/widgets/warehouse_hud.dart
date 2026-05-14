@@ -140,8 +140,42 @@ class _CashChipState extends State<_CashChip> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(Icons.attach_money, size: 18, color: Color(0xFFFFD24A)),
-        const SizedBox(width: 2),
+        // Gold dollar disc — matches the home coin chip styling so the
+        // currency vocabulary is consistent across the HUD and top
+        // bar. The flat Icons.attach_money felt like a placeholder.
+        Container(
+          width: 22,
+          height: 22,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const RadialGradient(
+              colors: [
+                Color(0xFFFFEB7A),
+                Color(0xFFFFC107),
+                Color(0xFFB8860B),
+              ],
+            ),
+            border: Border.all(color: const Color(0xFF8B6914), width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFFFD700).withValues(alpha: 0.45),
+                blurRadius: 4,
+              ),
+            ],
+          ),
+          child: const Center(
+            child: Text(
+              '\$',
+              style: TextStyle(
+                color: Color(0xFF6B4F00),
+                fontWeight: FontWeight.w900,
+                fontSize: 13,
+                height: 1.1,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
         TweenAnimationBuilder<double>(
           // Tween from previous value to new value; format as we go for
           // a satisfying "numbers go UP" ticker.
@@ -158,8 +192,9 @@ class _CashChipState extends State<_CashChip> {
               _format(shown),
               style: const TextStyle(
                 color: GameColors.text,
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                fontSize: 17,
+                letterSpacing: 0.5,
               ),
             );
           },

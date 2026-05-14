@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -14,6 +16,73 @@ import '../utils/constants.dart';
 /// the player is closest to. Powers the accretive feel — the player
 /// always sees a goal in arm's reach.
 ///
+/// Slowly pulses + rotates the milestone icon so the "next reward
+/// dangling for you" banner has a heartbeat. Cheap — one
+/// StatefulWidget, one ticker, no per-frame allocation.
+class _MilestoneIcon extends StatefulWidget {
+  final IconData icon;
+  final Color color;
+  const _MilestoneIcon({required this.icon, required this.color});
+
+  @override
+  State<_MilestoneIcon> createState() => _MilestoneIconState();
+}
+
+class _MilestoneIconState extends State<_MilestoneIcon>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2400),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, _) {
+        final t = _ctrl.value;
+        // Scale 1.0 → 1.18, rotate ±0.1 rad.
+        final scale = 1.0 + 0.18 * math.sin(t * math.pi);
+        final rot = 0.1 * math.sin(t * math.pi * 2);
+        return Transform.rotate(
+          angle: rot,
+          child: Transform.scale(
+            scale: scale,
+            child: Container(
+              width: 26,
+              height: 26,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: widget.color.withValues(alpha: 0.18),
+                border: Border.all(
+                  color: widget.color
+                      .withValues(alpha: 0.4 + 0.6 * math.sin(t * math.pi)),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.color.withValues(
+                      alpha: 0.15 + 0.35 * math.sin(t * math.pi),
+                    ),
+                    blurRadius: 10,
+                  ),
+                ],
+              ),
+              child: Icon(widget.icon, size: 14, color: widget.color),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 /// Priority order (first match wins):
 ///   1. Frozen crates unlock at Warehouse Level 5 (until reached)
 ///   2. Regional Hub purchase ($5,000 + Lv 10)
@@ -55,8 +124,30 @@ class NextMilestoneBanner extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(m.icon, size: 18, color: GameColors.accent),
-            const SizedBox(width: 10),
+            // Static glowing chip (animated version caused
+            // TickerProvider re-creation during navigation finalize
+            // — pulled out, swap back in once we own the widget
+            // lifecycle properly).
+            Container(
+              width: 26,
+              height: 26,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: GameColors.accent.withValues(alpha: 0.18),
+                border: Border.all(
+                  color: GameColors.accent.withValues(alpha: 0.55),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: GameColors.accent.withValues(alpha: 0.25),
+                    blurRadius: 8,
+                  ),
+                ],
+              ),
+              child: Icon(m.icon, size: 14, color: GameColors.accent),
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
