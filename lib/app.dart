@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import 'screens/home_screen.dart';
 import 'services/audio_service.dart';
 import 'services/theme_service.dart';
-import 'services/zen_audio_service.dart';
 import 'utils/constants.dart';
 
 class WarehouseSortApp extends StatefulWidget {
@@ -31,15 +30,12 @@ class _WarehouseSortAppState extends State<WarehouseSortApp> with WidgetsBinding
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final audioService = AudioService();
-    final zenAudioService = ZenAudioService();
 
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
       unawaited(audioService.pauseForLifecycle());
-      unawaited(zenAudioService.pauseForLifecycle());
     } else if (state == AppLifecycleState.resumed) {
       unawaited(audioService.resumeFromLifecycle());
-      unawaited(zenAudioService.resumeFromLifecycle());
     }
   }
 

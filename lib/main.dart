@@ -15,7 +15,6 @@ import 'services/theme_service.dart';
 import 'services/currency_service.dart';
 import 'services/leaderboard_service.dart';
 import 'services/power_up_service.dart';
-import 'services/garden_service.dart';
 import 'services/stats_service.dart';
 import 'services/progression_service.dart';
 import 'app.dart';
@@ -55,7 +54,6 @@ void main() async {
   await ThemeService().init();
   await LeaderboardService().init();
   await PowerUpService().initializeDefaults();
-  await GardenService.init();
   await StatsService().init();
   await ProgressionService().init();
 

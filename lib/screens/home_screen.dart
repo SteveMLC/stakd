@@ -15,8 +15,6 @@ import '../widgets/daily_rewards_popup.dart';
 import 'daily_challenge_screen.dart';
 import 'level_select_screen.dart';
 import 'settings_screen.dart';
-import 'zen_mode_screen.dart';
-// import 'zen_garden_screen.dart'; // Garden navigation removed
 import 'leaderboard_screen.dart';
 import '../utils/route_transitions.dart';
 import 'theme_store_screen.dart';
@@ -188,7 +186,7 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ),
                 const Spacer(flex: 2),
-                _buildZenModeButton(),
+                _buildPlayButton(),
                 const SizedBox(height: 24),
                 _buildDailyChallengeSection(context),
                 const SizedBox(height: 16),
@@ -426,9 +424,9 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildZenModeButton() {
+  Widget _buildPlayButton() {
     return GestureDetector(
-      onTap: _showZenDifficultyPicker,
+      onTap: () => _openLevelSelect(context),
       child: Container(
         width: double.infinity,
         margin: const EdgeInsets.symmetric(horizontal: 32),
@@ -452,10 +450,10 @@ class _HomeScreenState extends State<HomeScreen>
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: const [
-            Icon(Icons.spa, size: 32, color: GameColors.text),
+            Icon(Icons.local_shipping, size: 32, color: GameColors.text),
             SizedBox(width: 12),
             Text(
-              'ZEN MODE',
+              'PLAY',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -593,18 +591,6 @@ class _HomeScreenState extends State<HomeScreen>
     Navigator.of(context).push(fadeSlideRoute(const LevelSelectScreen()));
   }
 
-  void _startZen(String difficulty) {
-    Navigator.of(context).pop();
-    Navigator.of(context).push(
-      fadeSlideRoute(ZenModeScreen(difficulty: difficulty)),
-    );
-  }
-
-  // Garden navigation removed — garden viewable in zen mode only
-  // void _openGarden(BuildContext context) {
-  //   Navigator.of(context).push(fadeSlideRoute(const ZenGardenScreen()));
-  // }
-
   void _openThemeStore(BuildContext context) {
     Navigator.of(
       context,
@@ -621,141 +607,6 @@ class _HomeScreenState extends State<HomeScreen>
 
   void _openAchievements(BuildContext context) {
     Navigator.of(context).push(fadeSlideRoute(const AchievementsScreen()));
-  }
-
-  void _showZenDifficultyPicker() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return SafeArea(
-          top: false,
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: GameColors.surface,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: GameColors.textMuted,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Choose Your Vibe',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Zen mode adapts to your pace',
-                    style: TextStyle(color: GameColors.textMuted),
-                  ),
-                  const SizedBox(height: 24),
-                  _buildDifficultyOption(
-                    title: 'Easy',
-                    subtitle: '4 colors • Relaxed',
-                    icon: Icons.wb_sunny,
-                    accentColor: const Color(0xFF4CAF50), // Soft green
-                    onTap: () => _startZen('easy'),
-                  ),
-                  _buildDifficultyOption(
-                    title: 'Medium',
-                    subtitle: '5 colors • Focused',
-                    icon: Icons.cloud,
-                    accentColor: const Color(0xFFFFB74D), // Warm amber
-                    onTap: () => _startZen('medium'),
-                  ),
-                  _buildDifficultyOption(
-                    title: 'Hard',
-                    subtitle: '6 colors • Challenge',
-                    icon: Icons.bolt,
-                    accentColor: const Color(0xFFFF9800), // Warm orange
-                    onTap: () => _startZen('hard'),
-                  ),
-                  _buildDifficultyOption(
-                    title: 'Ultra',
-                    subtitle: '7 colors • For masters',
-                    icon: Icons.whatshot,
-                    accentColor: const Color(0xFFE74C3C), // Deep red/crimson
-                    onTap: () => _startZen('ultra'),
-                  ),
-                  // Garden button removed — garden viewable in zen mode only
-                  SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildDifficultyOption({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required Color accentColor,
-    required VoidCallback onTap,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: GameColors.background.withValues(alpha: 0.4),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: accentColor.withValues(alpha: 0.4),
-              width: 2,
-            ),
-          ),
-          child: Row(
-            children: [
-              Icon(icon, color: accentColor, size: 24),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        color: accentColor,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        color: GameColors.textMuted,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.arrow_forward_ios,
-                size: 14,
-                color: accentColor.withValues(alpha: 0.6),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 
 }
