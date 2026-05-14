@@ -5,6 +5,7 @@ import '../utils/constants.dart';
 import '../services/haptic_service.dart';
 import '../services/audio_service.dart';
 import '../services/achievement_service.dart';
+import 'warehouse_decorations.dart';
 
 class CompletionOverlay extends StatefulWidget {
   final int moves;
@@ -236,23 +237,53 @@ class _CompletionOverlayState extends State<CompletionOverlay>
                   builder: (context, child) {
                     return Transform.scale(
                       scale: _scaleAnimation.value,
-                      child: Container(
-                        padding: const EdgeInsets.all(32),
-                        margin: const EdgeInsets.symmetric(horizontal: 32),
-                        decoration: BoxDecoration(
-                          color: GameColors.surface,
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: GameColors.accent.withValues(alpha: 0.3),
-                              blurRadius: 24,
-                              spreadRadius: 4,
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 32),
+                          decoration: BoxDecoration(
+                            color: GameColors.surface,
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: [
+                              BoxShadow(
+                                color: GameColors.accent.withValues(alpha: 0.3),
+                                blurRadius: 24,
+                                spreadRadius: 4,
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Top hazard band — instantly stamps the "shipping
+                              // receipt" feel onto every level-complete moment.
+                              const HazardStripe(height: 8, stripeWidth: 14),
+                              // "SHIPMENT RECEIPT" header strip.
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 6,
+                                ),
+                                color: const Color(0xFF1A1F26)
+                                    .withValues(alpha: 0.55),
+                                child: const Center(
+                                  child: Text(
+                                    'SHIPMENT RECEIPT · CLEARED',
+                                    style: TextStyle(
+                                      color: Color(0xFF4CAF50),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 2.4,
+                                      fontFamily: 'Courier',
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(28),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
                             // Top: Stars
                             _buildStarRating(),
                             // Record badges (compact inline)
@@ -356,7 +387,13 @@ class _CompletionOverlayState extends State<CompletionOverlay>
                                 ),
                               ),
                             ),
-                          ],
+                                  ],
+                                ),
+                              ),
+                              // Bottom hazard band — closes the receipt.
+                              const HazardStripe(height: 6, stripeWidth: 12),
+                            ],
+                          ),
                         ),
                       ),
                     );
