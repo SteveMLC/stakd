@@ -3,6 +3,7 @@ import '../models/layer_model.dart';
 import '../services/storage_service.dart';
 import '../utils/constants.dart';
 import '../utils/theme_colors.dart';
+import 'warehouse_decorations.dart';
 
 /// Displays a single colored layer
 class LayerWidget extends StatelessWidget {
@@ -117,6 +118,33 @@ class LayerWidget extends StatelessWidget {
               ),
             ),
           ),
+          // Warehouse crate detail — corrugated cardboard fluting + paper grain.
+          if (!isLocked && !isFrozen)
+            Positioned.fill(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(ThemeColors.blockBorderRadius),
+                child: CustomPaint(
+                  painter: CorrugatedCardboardPainter(
+                    seed: layer.colorIndex * 7 + 13,
+                  ),
+                ),
+              ),
+            ),
+          // Warehouse crate detail — yellow hazard-tape strip across the top edge.
+          if (!isLocked && !isFrozen)
+            Positioned(
+              left: 4,
+              right: 4,
+              top: 4,
+              height: 5,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(2),
+                child: const HazardStripe(
+                  height: 5,
+                  stripeWidth: 6,
+                ),
+              ),
+            ),
           // Warehouse crate detail — center horizontal tape strip
           if (!isLocked && !isFrozen)
             Positioned(
@@ -126,9 +154,20 @@ class LayerWidget extends StatelessWidget {
               height: 4,
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.22),
+                  color: Colors.black.withValues(alpha: 0.30),
                   borderRadius: BorderRadius.circular(1),
                 ),
+              ),
+            ),
+          // Warehouse crate detail — shipping stamp text (FRAGILE / HEAVY / etc).
+          if (!isLocked && !isFrozen)
+            Positioned(
+              left: 8,
+              right: 8,
+              top: 12,
+              bottom: 8,
+              child: CustomPaint(
+                painter: ShippingStampPainter(colorIndex: layer.colorIndex),
               ),
             ),
           // Warehouse crate detail — vertical edge planks (left + right)

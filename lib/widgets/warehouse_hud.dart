@@ -6,6 +6,7 @@ import '../services/income_multiplier_service.dart';
 import '../services/machinery_service.dart';
 import '../services/warehouse_economy_service.dart';
 import '../utils/constants.dart';
+import 'warehouse_decorations.dart';
 
 /// Lightweight HUD showing cash + warehouse level + XP progress.
 /// Drop on the top of any screen that wants the player's meta-state in view.
@@ -33,28 +34,40 @@ class WarehouseHud extends StatelessWidget {
 
     return Padding(
       padding: padding,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: GameColors.surface.withValues(alpha: 0.85),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: GameColors.accent.withValues(alpha: 0.25),
-            width: 1,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          decoration: BoxDecoration(
+            color: GameColors.surface.withValues(alpha: 0.92),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: GameColors.accent.withValues(alpha: 0.35),
+              width: 1,
+            ),
           ),
-        ),
-        child: Row(
-          children: [
-            _CashChip(amount: economy.cash),
-            const SizedBox(width: 10),
-            _MultiplierPill(multiplier: mul),
-            const SizedBox(width: 12),
-            Expanded(child: _LevelBar(economy: economy)),
-            if (showTierBadge) ...[
-              const SizedBox(width: 10),
-              _TierBadge(info: tiers.selectedTierInfo),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Top hazard band — instantly signals "industrial".
+              const HazardStripe(height: 4, stripeWidth: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                child: Row(
+                  children: [
+                    _CashChip(amount: economy.cash),
+                    const SizedBox(width: 10),
+                    _MultiplierPill(multiplier: mul),
+                    const SizedBox(width: 12),
+                    Expanded(child: _LevelBar(economy: economy)),
+                    if (showTierBadge) ...[
+                      const SizedBox(width: 10),
+                      _TierBadge(info: tiers.selectedTierInfo),
+                    ],
+                  ],
+                ),
+              ),
             ],
-          ],
+          ),
         ),
       ),
     );

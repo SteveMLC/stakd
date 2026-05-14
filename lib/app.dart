@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'screens/home_screen.dart';
+import 'screens/splash_screen.dart';
 import 'services/audio_service.dart';
 import 'services/theme_service.dart';
 import 'utils/constants.dart';
@@ -124,7 +124,7 @@ class _WarehouseSortAppState extends State<WarehouseSortApp> with WidgetsBinding
             ),
             iconTheme: IconThemeData(color: theme.textColor, size: 24),
           ),
-          home: const HomeScreen(),
+          home: const WarehouseSplashScreen(),
         );
       },
     );

@@ -79,10 +79,10 @@ void main() {
   testWidgets('home screen renders with warehouse identity', (tester) async {
     await _bootServices();
     await tester.pumpWidget(_pumpedApp());
-    // Home screen has infinite animations (star field, logo bounce) so
-    // pumpAndSettle never returns. Pump a fixed window instead — long
-    // enough for services to init + first paint to complete.
-    for (var i = 0; i < 12; i++) {
+    // Splash plays a forklift drive-in animation for ~2.4s before
+    // pushReplacing the home screen. Pump past that AND past home's
+    // own infinite logo bounce. Total window: 4s.
+    for (var i = 0; i < 16; i++) {
       await tester.pump(const Duration(milliseconds: 250));
     }
 
@@ -152,10 +152,10 @@ void main() {
   testWidgets('PLAY navigates to Contract Select with 6 cards', (tester) async {
     await _bootServices();
     await tester.pumpWidget(_pumpedApp());
-    // Home screen has infinite animations (star field, logo bounce) so
-    // pumpAndSettle never returns. Pump a fixed window instead — long
-    // enough for services to init + first paint to complete.
-    for (var i = 0; i < 12; i++) {
+    // Splash plays a forklift drive-in animation for ~2.4s before
+    // pushReplacing the home screen. Pump past that AND past home's
+    // own infinite logo bounce. Total window: 4s.
+    for (var i = 0; i < 16; i++) {
       await tester.pump(const Duration(milliseconds: 250));
     }
 
