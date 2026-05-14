@@ -170,7 +170,7 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Challenge Complete'),
+        title: const Text('Contract Complete'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -250,7 +250,7 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Daily Challenge'),
+        title: const Text('Daily Contract'),
         actions: [
           IconButton(
             icon: Icon(_showCalendar ? Icons.grid_4x4 : Icons.calendar_month),
@@ -292,7 +292,7 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Daily Challenge #${_challenge!.getDayNumber()}',
+                'Daily Contract #${_challenge!.getDayNumber()}',
                 style: const TextStyle(
                   fontSize: 14,
                   color: GameColors.textMuted,

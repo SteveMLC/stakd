@@ -13,8 +13,8 @@ import '../widgets/game_button.dart';
 import '../widgets/daily_streak_badge.dart';
 import '../widgets/daily_rewards_popup.dart';
 import '../widgets/warehouse_hud.dart';
+import 'contract_select_screen.dart';
 import 'daily_challenge_screen.dart';
-import 'level_select_screen.dart';
 import 'settings_screen.dart';
 import 'leaderboard_screen.dart';
 import '../utils/route_transitions.dart';
@@ -591,7 +591,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _openLevelSelect(BuildContext context) {
-    Navigator.of(context).push(fadeSlideRoute(const LevelSelectScreen()));
+    Navigator.of(context).push(fadeSlideRoute(const ContractSelectScreen()));
   }
 
   void _openThemeStore(BuildContext context) {

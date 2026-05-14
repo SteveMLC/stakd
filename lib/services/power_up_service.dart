@@ -15,39 +15,39 @@ extension PowerUpTypeExtension on PowerUpType {
   String get icon {
     switch (this) {
       case PowerUpType.colorBomb:
-        return '💣';
+        return '🧨';
       case PowerUpType.shuffle:
-        return '🔀';
+        return '🚚';
       case PowerUpType.magnet:
-        return '🧲';
+        return '🏗️';
       case PowerUpType.hint:
-        return '💡';
+        return '👷';
     }
   }
 
   String get name {
     switch (this) {
       case PowerUpType.colorBomb:
-        return 'Color Bomb';
+        return 'Dynamite Crate';
       case PowerUpType.shuffle:
-        return 'Shuffle';
+        return 'Re-Route Shipment';
       case PowerUpType.magnet:
-        return 'Magnet';
+        return 'Bay Crane';
       case PowerUpType.hint:
-        return 'Hint';
+        return "Foreman's Advice";
     }
   }
 
   String get description {
     switch (this) {
       case PowerUpType.colorBomb:
-        return 'Remove all blocks of one color';
+        return 'Blow up every crate of one color';
       case PowerUpType.shuffle:
-        return 'Shuffle the board into a new solvable state';
+        return 'Reroute every loose crate into new bays';
       case PowerUpType.magnet:
-        return 'Auto-complete a stack missing 1 block';
+        return 'Auto-ship a bay missing one crate';
       case PowerUpType.hint:
-        return 'Show the next optimal move';
+        return 'Reveal the next best move';
     }
   }
 }

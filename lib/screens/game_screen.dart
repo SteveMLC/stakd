@@ -22,6 +22,7 @@ import '../widgets/game_board.dart';
 import '../widgets/game_button.dart';
 import '../widgets/completion_overlay.dart';
 import '../widgets/hint_overlay.dart';
+import '../widgets/jam_recovery_modal.dart';
 import '../widgets/multi_grab_hint_overlay.dart';
 import '../widgets/tutorial_overlay.dart';
 import '../widgets/power_up_bar.dart';
@@ -229,6 +230,48 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
   }
 
   bool _showingCompletion = false; // SNAPPY FIX: Prevent duplicate menus
+  bool _showingJamModal = false; // Re-armed when the jam clears.
+
+  /// Watch for dock-jam state after every move (GDD §2.2). The detector
+  /// lives on GameState.isJammed; this surfaces the recovery modal exactly
+  /// once per jammed snapshot — re-arming when the player escapes.
+  void _maybeShowJamModal(GameState gameState) {
+    // Re-arm once the jam clears so the next jam fires fresh.
+    if (!gameState.isJammed) {
+      if (_showingJamModal) _showingJamModal = false;
+      return;
+    }
+    if (gameState.isComplete) return; // Win path takes precedence.
+    if (_showingCompletion) return;
+    if (_showingJamModal) return;
+    if (_showTutorial) return; // Don't preempt tutorial.
+
+    _showingJamModal = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) {
+        _showingJamModal = false;
+        return;
+      }
+      final action = await JamRecoveryModal.show(context);
+      if (!mounted) return;
+      switch (action) {
+        case JamRecoveryAction.restart:
+          _loadLevel();
+          break;
+        case JamRecoveryAction.skip:
+          _nextLevel();
+          break;
+        case JamRecoveryAction.watchAd:
+        case JamRecoveryAction.undo:
+        case JamRecoveryAction.dismissed:
+          // Modal already mutated game state (or no-op'd). The next
+          // notifyListeners pass will re-evaluate isJammed and either
+          // re-fire the modal (if still jammed) or re-arm the flag.
+          _showingJamModal = false;
+          break;
+      }
+    });
+  }
 
   void _captureCompletionTime(GameState gameState) {
     // SNAPPY FIX: Multiple guards to prevent duplicate completion
@@ -1075,6 +1118,7 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
               _handleGameStateChange(gameState);
               _maybeShowMultiGrabHint(gameState);
               _captureCompletionTime(gameState);
+              _maybeShowJamModal(gameState);
 
               return Stack(
                 children: [

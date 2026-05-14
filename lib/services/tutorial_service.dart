@@ -33,31 +33,31 @@ class TutorialService extends ChangeNotifier {
   static const Map<TutorialStep, TutorialStepData> _stepData = {
     TutorialStep.selectStack: TutorialStepData(
       step: TutorialStep.selectStack,
-      message: 'Tap to select a stack',
+      message: 'Tap a bay to pick up its top crate',
       icon: Icons.touch_app,
       requiresInteraction: true,
     ),
     TutorialStep.moveLayer: TutorialStepData(
       step: TutorialStep.moveLayer,
-      message: 'Tap to move the layer',
+      message: 'Tap another bay to drop the crate',
       icon: Icons.swipe,
       requiresInteraction: true,
     ),
     TutorialStep.stackClear: TutorialStepData(
       step: TutorialStep.stackClear,
-      message: 'Match colors to clear! 🎉',
-      icon: Icons.stars,
+      message: 'Same color fills a bay — ship it.',
+      icon: Icons.local_shipping,
       requiresInteraction: false,
     ),
     TutorialStep.undo: TutorialStepData(
       step: TutorialStep.undo,
-      message: 'Made a mistake? Tap to undo',
+      message: 'Made a mistake? Tap undo.',
       icon: Icons.undo,
       requiresInteraction: true,
     ),
     TutorialStep.complete: TutorialStepData(
       step: TutorialStep.complete,
-      message: "You're ready! Have fun! 🎮",
+      message: "You're ready. Build the empire.",
       icon: Icons.celebration,
       requiresInteraction: false,
     ),
