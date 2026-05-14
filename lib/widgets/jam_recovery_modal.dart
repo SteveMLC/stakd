@@ -10,6 +10,7 @@ import '../services/currency_service.dart';
 import '../services/haptic_service.dart';
 import '../services/warehouse_economy_service.dart';
 import '../utils/constants.dart';
+import 'warehouse_decorations.dart';
 import 'game_button.dart';
 
 /// Action returned by [JamRecoveryModal.show]. The modal handles its own
@@ -175,9 +176,10 @@ class _JamRecoveryModalState extends State<JamRecoveryModal>
   }
 
   Widget _buildCard() {
-    return Container(
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
       margin: const EdgeInsets.symmetric(horizontal: 24),
-      padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
       constraints: const BoxConstraints(maxWidth: 360),
       decoration: BoxDecoration(
         color: GameColors.surface,
@@ -185,15 +187,26 @@ class _JamRecoveryModalState extends State<JamRecoveryModal>
         border: Border.all(color: _amber.withValues(alpha: 0.65), width: 2),
         boxShadow: [
           BoxShadow(
-            color: _amberDeep.withValues(alpha: 0.35),
-            blurRadius: 28,
-            spreadRadius: 4,
+            color: _amberDeep.withValues(alpha: 0.55),
+            blurRadius: 32,
+            spreadRadius: 6,
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.45),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Top hazard band — visual warning sign for the "jammed" beat.
+          const SizedBox(
+            height: 10,
+            child: HazardStripe(height: 10, stripeWidth: 14),
+          ),
+          const SizedBox(height: 18),
           Icon(Icons.report_problem_rounded, size: 44, color: _amber),
           const SizedBox(height: 10),
           const Text(
@@ -204,6 +217,13 @@ class _JamRecoveryModalState extends State<JamRecoveryModal>
               fontWeight: FontWeight.w900,
               letterSpacing: 2.0,
               color: _amber,
+              shadows: [
+                Shadow(
+                  color: Color(0x88000000),
+                  blurRadius: 4,
+                  offset: Offset(0, 2),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 6),
@@ -225,7 +245,13 @@ class _JamRecoveryModalState extends State<JamRecoveryModal>
           _btn(Icons.refresh, 'Restart Level', _onRestart),
           const SizedBox(height: 10),
           _btn(Icons.skip_next, 'Skip  100 \u{1FA99}', _onSkip),
+          const SizedBox(height: 18),
+          const SizedBox(
+            height: 8,
+            child: HazardStripe(height: 8, stripeWidth: 12),
+          ),
         ],
+      ),
       ),
     );
   }

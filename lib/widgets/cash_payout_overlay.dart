@@ -173,23 +173,36 @@ class _PayoutPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [GameColors.accent, Color(0xFFFFB300)],
+          colors: [
+            Color(0xFFFFEB7A),
+            GameColors.accent,
+            Color(0xFFE6A800),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.5),
+          width: 2,
+        ),
         boxShadow: [
           BoxShadow(
-            color: GameColors.accent.withValues(alpha: 0.55),
-            blurRadius: 24,
-            spreadRadius: 2,
+            color: GameColors.accent.withValues(alpha: 0.7),
+            blurRadius: 32,
+            spreadRadius: 4,
           ),
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.4),
-            blurRadius: 12,
+            color: Colors.white.withValues(alpha: 0.35),
+            blurRadius: 14,
+            spreadRadius: 1,
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.45),
+            blurRadius: 14,
             offset: const Offset(0, 6),
           ),
         ],
@@ -200,10 +213,17 @@ class _PayoutPill extends StatelessWidget {
           Text(
             '+\$$cash',
             style: const TextStyle(
-              fontSize: 36,
+              fontSize: 42,
               fontWeight: FontWeight.w900,
               color: Color(0xFF1A1F26),
-              letterSpacing: 1,
+              letterSpacing: 1.2,
+              shadows: [
+                Shadow(
+                  color: Color(0x44FFFFFF),
+                  blurRadius: 4,
+                  offset: Offset(0, 1),
+                ),
+              ],
             ),
           ),
           if (xp > 0)
@@ -212,10 +232,10 @@ class _PayoutPill extends StatelessWidget {
               child: Text(
                 '+$xp XP',
                 style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
                   color: Color(0xFF1A1F26),
-                  letterSpacing: 0.5,
+                  letterSpacing: 1.0,
                 ),
               ),
             ),

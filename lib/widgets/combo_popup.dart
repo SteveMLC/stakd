@@ -83,29 +83,49 @@ class _ComboPopupState extends State<ComboPopup>
           child: Transform.scale(
             scale: _scaleAnimation.value,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.7),
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFFFF6B35), // hot orange
+                    Color(0xFFFFC107), // accent gold
+                  ],
+                ),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: const Color(0xFFFFD700).withValues(alpha: 0.6),
+                  color: Colors.white.withValues(alpha: 0.55),
                   width: 1.5,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFFFD700).withValues(alpha: 0.3),
-                    blurRadius: 8,
-                    spreadRadius: 1,
+                    color: const Color(0xFFFF6B35).withValues(alpha: 0.55),
+                    blurRadius: 14,
+                    spreadRadius: 2,
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.45),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
               child: Text(
-                '🔥x${widget.comboMultiplier}',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFFFFD700),
+                'COMBO ×${widget.comboMultiplier}',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
                   height: 1.0,
+                  letterSpacing: 1.4,
+                  shadows: [
+                    Shadow(
+                      color: Color(0x99000000),
+                      blurRadius: 3,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
                 ),
               ),
             ),
