@@ -16,13 +16,41 @@ class AdService {
   int _levelsSinceLastAd = 0;
   bool _initialized = false;
 
-  // Test ad unit IDs (replace with real ones for production)
-  static const String _bannerAdUnitId =
-      'ca-app-pub-3940256099942544/6300978111'; // Test ID
-  static const String _interstitialAdUnitId =
-      'ca-app-pub-3940256099942544/1033173712'; // Test ID
-  static const String _rewardedAdUnitId =
-      'ca-app-pub-3940256099942544/5224354917'; // Test ID
+  // ─── AdMob unit IDs ──────────────────────────────────────────────
+  // Production swap surface: pass these via --dart-define on the
+  // release build. Falls back to Google test IDs so dev / TestFlight
+  // / internal-track builds still serve ads.
+  //
+  //   flutter build apk --release \
+  //       --dart-define=WS_ADMOB_BANNER=ca-app-pub-xxx/yyy \
+  //       --dart-define=WS_ADMOB_INTERSTITIAL=ca-app-pub-xxx/zzz \
+  //       --dart-define=WS_ADMOB_REWARDED=ca-app-pub-xxx/www
+  //
+  // Also remember to swap the per-platform App ID:
+  //   - android/app/src/main/AndroidManifest.xml meta-data
+  //     "com.google.android.gms.ads.APPLICATION_ID"
+  //   - ios/Runner/Info.plist key GADApplicationIdentifier
+  static const String _bannerTestId = 'ca-app-pub-3940256099942544/6300978111';
+  static const String _interstitialTestId = 'ca-app-pub-3940256099942544/1033173712';
+  static const String _rewardedTestId = 'ca-app-pub-3940256099942544/5224354917';
+
+  static const String _bannerAdUnitId = String.fromEnvironment(
+    'WS_ADMOB_BANNER',
+    defaultValue: _bannerTestId,
+  );
+  static const String _interstitialAdUnitId = String.fromEnvironment(
+    'WS_ADMOB_INTERSTITIAL',
+    defaultValue: _interstitialTestId,
+  );
+  static const String _rewardedAdUnitId = String.fromEnvironment(
+    'WS_ADMOB_REWARDED',
+    defaultValue: _rewardedTestId,
+  );
+
+  static bool get isUsingTestIds =>
+      _bannerAdUnitId == _bannerTestId &&
+      _interstitialAdUnitId == _interstitialTestId &&
+      _rewardedAdUnitId == _rewardedTestId;
 
   /// Initialize the ad service
   Future<void> init() async {

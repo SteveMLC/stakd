@@ -6,6 +6,7 @@ import '../utils/constants.dart';
 import '../services/daily_challenge_service.dart';
 import '../services/daily_rewards_service.dart';
 import '../services/currency_service.dart';
+import '../services/storage_service.dart';
 import '../widgets/game_button.dart';
 import '../widgets/daily_streak_badge.dart';
 import '../widgets/daily_rewards_popup.dart';
@@ -101,18 +102,23 @@ class _HomeScreenState extends State<HomeScreen>
       _coinBalance = coins;
     });
 
-    // Show popup automatically if reward is available and not shown today
-    if (canClaim) {
+    // Show the popup automatically only AFTER the player has cleared at
+    // least one level. First-launch UX should let the player see PLAY,
+    // not be ambushed by a rewards modal. Once cleared, daily popups
+    // fire once per day on home screen entry like before.
+    final storage = StorageService();
+    final cleared = storage.getLevelStars(1) > 0 ||
+        storage.getLevelStars(2) > 0 ||
+        storage.getLevelStars(3) > 0;
+    if (canClaim && cleared) {
       final prefs = await SharedPreferences.getInstance();
       final today = DateTime.now().toIso8601String().split('T')[0]; // YYYY-MM-DD
       final lastShown = prefs.getString('daily_rewards_last_shown');
-      
       if (lastShown != today) {
         await prefs.setString('daily_rewards_last_shown', today);
         await Future.delayed(const Duration(milliseconds: 500));
         if (mounted) {
           await DailyRewardsPopup.show(context);
-          // Refresh after popup closes
           await _refreshAfterRewards();
         }
       }

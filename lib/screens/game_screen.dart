@@ -22,6 +22,7 @@ import '../widgets/game_board.dart';
 import '../widgets/game_button.dart';
 import '../widgets/completion_overlay.dart';
 import '../widgets/hint_overlay.dart';
+import '../widgets/cash_payout_overlay.dart';
 import '../widgets/jam_recovery_modal.dart';
 import '../widgets/multi_grab_hint_overlay.dart';
 import '../widgets/warehouse_hud.dart';
@@ -340,6 +341,16 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
         _coinsEarned = coinsEarned;
         _isNewStarRecord = isNewRecord;
       });
+      // Cash-flies-to-wallet animation (warehouse meta payout). Includes
+      // optional level-up banner when awardReward returned a new level.
+      if (mounted) {
+        CashPayoutOverlay.show(
+          context,
+          cash: cashEarned + (completedContract?.cashBonus ?? 0),
+          xp: xpEarned,
+          newWarehouseLevel: levelUp,
+        );
+      }
       // Play win sound
       AudioService().playWin();
 

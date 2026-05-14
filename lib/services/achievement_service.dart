@@ -840,6 +840,22 @@ class AchievementService extends ChangeNotifier {
     final def = _allAchievements.firstWhere((d) => d.id == id);
     _recentlyUnlocked.add(def);
 
+    // Queue a toast for AchievementToastMixin to display. AchievementDef
+    // (services-side) is bridged into the legacy Achievement (models-side)
+    // shape so the existing toast widget renders it without changes.
+    _pendingToasts.add(
+      Achievement(
+        id: def.id,
+        title: def.name,
+        description: def.description,
+        ppReward: def.xpReward,
+        rarity: AchievementRarity.common,
+        category: AchievementCategory.gameplay,
+        isUnlocked: true,
+        unlockedAt: now,
+      ),
+    );
+
     notifyListeners();
   }
 
