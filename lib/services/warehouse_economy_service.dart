@@ -169,10 +169,17 @@ class WarehouseEconomyService extends ChangeNotifier {
   }
 
   /// Reset to L1 / 0 cash / 0 XP. Reserved for testing + future Prestige.
+  /// Also clears the welcome-grant flag and re-arms `_initialized` so a
+  /// subsequent `init()` re-applies the one-time grant (important for
+  /// test isolation across multiple `setUp()` calls).
   Future<void> reset() async {
     _cash = 0;
     _totalXp = 0;
-    await _persist();
+    _initialized = false;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kCashKey);
+    await prefs.remove(_kXpKey);
+    await prefs.remove(_kWelcomeGrantKey);
     notifyListeners();
   }
 
