@@ -763,9 +763,12 @@ class _GameBoardState extends State<GameBoard>
 
     final bursts = <ParticleBurstData>[];
 
-    // Scale particle count and lifetime based on chain level
-    final particleCount = 24 + (chainLevel - 1) * 12; // 24, 36, 48, 60...
-    final lifetime = Duration(milliseconds: 600 + (chainLevel - 1) * 100);
+    // Scale particle count and lifetime based on chain level. The
+    // single clear now feels like a real warehouse "PALLET STAMPED!"
+    // beat — 40 particles for ~1.0s — and chains crank to 80+ with
+    // a 1.5s+ life so a 3-chain looks like a confetti drop.
+    final particleCount = 40 + (chainLevel - 1) * 24; // 40, 64, 88, 112
+    final lifetime = Duration(milliseconds: 1000 + (chainLevel - 1) * 250);
 
     for (final stackIndex in clearedIndices) {
       final stackKey = _stackKeys[stackIndex];

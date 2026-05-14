@@ -5,6 +5,7 @@ import '../services/currency_service.dart';
 import '../services/haptic_service.dart';
 import '../utils/constants.dart';
 import 'particles/confetti_overlay.dart';
+import 'warehouse_decorations.dart';
 
 /// Daily rewards calendar popup widget
 class DailyRewardsPopup extends StatefulWidget {
@@ -157,25 +158,41 @@ class _DailyRewardsPopupState extends State<DailyRewardsPopup>
               color: GameColors.surface,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: GameColors.accent.withValues(alpha: 0.3),
+                color: GameColors.accent.withValues(alpha: 0.55),
                 width: 2,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: GameColors.accent.withValues(alpha: 0.2),
-                  blurRadius: 20,
-                  spreadRadius: 2,
+                  color: GameColors.accent.withValues(alpha: 0.35),
+                  blurRadius: 30,
+                  spreadRadius: 4,
+                ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.45),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
                 ),
               ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Hazard band header — same warehouse vocabulary as
+                // the home placard so this popup feels like part of
+                // the same dock-clerk window, not a generic modal.
+                const SizedBox(
+                  height: 8,
+                  child: HazardStripe(height: 8, stripeWidth: 14),
+                ),
                 _buildHeader(),
                 _buildCoinBalance(),
                 _buildRewardGrid(),
                 _buildClaimButton(),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
+                const SizedBox(
+                  height: 6,
+                  child: HazardStripe(height: 6, stripeWidth: 12),
+                ),
               ],
             ),
           ),
