@@ -16,6 +16,7 @@ import '../utils/theme_colors.dart';
 // import '../engine/input_handler.dart';
 import 'particles/particle_burst.dart';
 import 'board/board_grid.dart';
+import 'layer_widget.dart';
 import 'particles/confetti_overlay.dart';
 import 'combo_popup.dart';
 import 'color_flash_overlay.dart';
@@ -1451,90 +1452,64 @@ class _StackWidgetState extends State<_StackWidget>
       children: layers.asMap().entries.toList().reversed.map<Widget>((entry) {
         final index = entry.key;
         final layer = entry.value;
-        final gradientColors = ThemeColors.getGradient(layer.colorIndex);
+        final isTop = index == layers.length - 1;
 
-        // Check if this layer is part of the grab zone (top N layers)
+        // Check if this layer is part of the grab zone (top N layers
+        // while multi-grab mode is active).
         final isInGrabZone =
             isMultiGrabActive && index >= layers.length - topGroupSize;
 
-        // Visual indicator for layers being grabbed
-        final grabZoneDecoration = BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: gradientColors,
-          ),
-          borderRadius: BorderRadius.circular(4),
-          border: isInGrabZone
-              ? Border.all(
-                  color: Colors.white.withValues(
-                    alpha: 0.6 + multiGrabPulse * 0.4,
-                  ),
-                  width: 2,
-                )
-              : null,
-          boxShadow: isInGrabZone
-              ? [
-                  BoxShadow(
-                    color: Colors.white.withValues(
-                      alpha: 0.3 + multiGrabPulse * 0.2,
-                    ),
-                    blurRadius: 4,
-                    spreadRadius: 1,
-                  ),
-                ]
-              : null,
+        // The actual crate visual — cardboard texture, hazard top edge,
+        // shipping-stamp watermark, plus all the modifier overlays
+        // (locked/frozen/colorblind pattern). Centralised in LayerWidget
+        // so the home placard, completion overlay, and game board all
+        // share one set of crate primitives.
+        Widget crate = LayerWidget(
+          layer: layer,
+          isTop: isTop,
+          height: GameSizes.layerHeight,
         );
 
-        return Transform.translate(
-          offset: isInGrabZone ? Offset(0, -2.0 * multiGrabPulse) : Offset.zero,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            width: double.infinity,
-            height: GameSizes.layerHeight,
-            margin: const EdgeInsets.only(bottom: 2),
-            decoration: grabZoneDecoration,
-            child: Stack(
-              children: [
-                Positioned(
-                  top: 2,
-                  left: 4,
-                  right: 4,
-                  height: 3,
+        // Multi-grab highlight: pulse + glow ring overlay on the
+        // top-N layers when the player long-presses to multi-select.
+        if (isInGrabZone) {
+          crate = Stack(
+            children: [
+              crate,
+              Positioned.fill(
+                child: IgnorePointer(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.22),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  bottom: 1,
-                  left: 3,
-                  right: 3,
-                  height: 2,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.16),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                // Colorblind pattern overlay
-                if (GameColors.isUltraMode ||
-                    StorageService().getColorblindMode())
-                  Positioned.fill(
-                    child: ClipRRect(
                       borderRadius: BorderRadius.circular(4),
-                      child: CustomPaint(
-                        painter: _ColorblindPatternPainter(
-                          patternIndex: layer.colorIndex,
+                      border: Border.all(
+                        color: Colors.white.withValues(
+                          alpha: 0.6 + multiGrabPulse * 0.4,
                         ),
+                        width: 2,
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.white.withValues(
+                            alpha: 0.3 + multiGrabPulse * 0.2,
+                          ),
+                          blurRadius: 4,
+                          spreadRadius: 1,
+                        ),
+                      ],
                     ),
                   ),
-              ],
-            ),
+                ),
+              ),
+            ],
+          );
+        }
+
+        return Transform.translate(
+          offset:
+              isInGrabZone ? Offset(0, -2.0 * multiGrabPulse) : Offset.zero,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 2),
+            child: crate,
           ),
         );
       }).toList(),
@@ -2188,6 +2163,7 @@ class _DragOverlay extends StatelessWidget {
 }
 
 /// Colorblind pattern painter for game board blocks
+// ignore: unused_element
 class _ColorblindPatternPainter extends CustomPainter {
   final int patternIndex;
 

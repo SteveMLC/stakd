@@ -20,6 +20,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:warehouse_sort/app.dart';
 import 'package:warehouse_sort/data/local_regional_levels.dart';
 import 'package:warehouse_sort/models/game_state.dart';
+import 'package:warehouse_sort/widgets/game_board.dart';
+import 'package:warehouse_sort/widgets/layer_widget.dart';
 import 'package:warehouse_sort/services/audio_service.dart';
 import 'package:warehouse_sort/services/business_tier_service.dart';
 import 'package:warehouse_sort/services/contract_service.dart';
@@ -270,5 +272,127 @@ void main() {
       contract.isContractUnlocked(ContractService.contracts[1]),
       isTrue,
     );
+  });
+
+  testWidgets('gameplay walk: home → Contracts → L1 board renders crates',
+      (tester) async {
+    await _bootServices();
+    await tester.pumpWidget(_pumpedApp());
+    for (var i = 0; i < 16; i++) {
+      await tester.pump(const Duration(milliseconds: 250));
+    }
+
+    // Dismiss daily rewards popup if present.
+    final claim = find.textContaining('CLAIM');
+    if (claim.evaluate().isNotEmpty) {
+      await tester.tap(claim.first, warnIfMissed: false);
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 250));
+      }
+    }
+
+    // PLAY → Contract Select.
+    await tester.tap(find.text('PLAY'), warnIfMissed: false);
+    for (var i = 0; i < 16; i++) {
+      await tester.pump(const Duration(milliseconds: 250));
+    }
+    expect(find.text('CONTRACTS'), findsOneWidget);
+
+    // PLAY NEXT on Local Contract 1 → Game Screen for level 1.
+    await tester.tap(find.text('PLAY NEXT').first, warnIfMissed: false);
+    for (var i = 0; i < 24; i++) {
+      await tester.pump(const Duration(milliseconds: 250));
+    }
+
+    // GameBoard must mount on the game screen.
+    expect(
+      find.byType(GameBoard),
+      findsOneWidget,
+      reason: 'Game board widget must mount when a level is opened',
+    );
+
+    // Crates render as LayerWidget instances — verify at least the
+    // L1 seed's worth (3 colors × ~2 each = 6+ crates).
+    final crateFinder = find.byType(LayerWidget);
+    expect(
+      crateFinder.evaluate().length,
+      greaterThanOrEqualTo(4),
+      reason:
+          'L1 must render multiple crates so the player has something to sort',
+    );
+
+    // GameState should be initialised with a non-trivial level + stacks
+    // (par > 0, multiple bays, currentLevel = 1).
+    final boardCtx = tester.element(find.byType(GameBoard));
+    final gameState = Provider.of<GameState>(boardCtx, listen: false);
+    expect(gameState.currentLevel, 1);
+    expect(gameState.stacks.length, greaterThanOrEqualTo(4),
+        reason: 'L1 seed defines >=4 bays');
+    expect(gameState.par, greaterThan(0),
+        reason: 'Level must have a non-zero move par');
+    expect(gameState.isComplete, isFalse,
+        reason: 'Fresh-loaded level must not already be complete');
+
+    // The board must also have at least one bay with crates the player
+    // can actually act on (non-empty source).
+    final nonEmpty =
+        gameState.stacks.where((s) => !s.isEmpty).toList(growable: false);
+    expect(nonEmpty.length, greaterThanOrEqualTo(2),
+        reason: 'L1 must have at least 2 non-empty bays to sort between');
+  });
+
+  testWidgets('gameplay walk: a stack tap registers via GameState',
+      (tester) async {
+    await _bootServices();
+    await tester.pumpWidget(_pumpedApp());
+    for (var i = 0; i < 16; i++) {
+      await tester.pump(const Duration(milliseconds: 250));
+    }
+    final claim = find.textContaining('CLAIM');
+    if (claim.evaluate().isNotEmpty) {
+      await tester.tap(claim.first, warnIfMissed: false);
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 250));
+      }
+    }
+    await tester.tap(find.text('PLAY'), warnIfMissed: false);
+    for (var i = 0; i < 16; i++) {
+      await tester.pump(const Duration(milliseconds: 250));
+    }
+    await tester.tap(find.text('PLAY NEXT').first, warnIfMissed: false);
+    for (var i = 0; i < 24; i++) {
+      await tester.pump(const Duration(milliseconds: 250));
+    }
+
+    final boardCtx = tester.element(find.byType(GameBoard));
+    final gameState = Provider.of<GameState>(boardCtx, listen: false);
+    // Drive a move programmatically — tap a non-empty bay, then tap
+    // another bay that can accept it. We don't care if the move is
+    // valid; we care that the state machine acknowledges the tap.
+    final firstNonEmpty =
+        gameState.stacks.indexWhere((s) => !s.isEmpty);
+    expect(firstNonEmpty, greaterThanOrEqualTo(0));
+
+    final preTapMoves = gameState.moveCount;
+    gameState.onStackTap(firstNonEmpty);
+    expect(
+      gameState.selectedStackIndex,
+      firstNonEmpty,
+      reason: 'Tapping a non-empty bay must select it',
+    );
+
+    // Try moving to an empty bay (always a valid destination).
+    final firstEmpty = gameState.stacks.indexWhere((s) => s.isEmpty);
+    if (firstEmpty >= 0) {
+      gameState.onStackTap(firstEmpty);
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 250));
+      }
+      expect(
+        gameState.moveCount,
+        greaterThan(preTapMoves),
+        reason: 'Moving a layer to an empty bay must increment moveCount',
+      );
+    }
   });
 }

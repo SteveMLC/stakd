@@ -345,48 +345,53 @@ class LevelGenerator {
     return (level, par);
   }
 
+  /// Generate a shuffled, always-solvable starting state.
+  ///
+  /// Reverse-walk approach: start from the SOLVED state, apply N
+  /// random *forward* moves (each one a legal move from the current
+  /// position). The resulting state is guaranteed solvable because
+  /// every game move is reversible. This sidesteps the expensive
+  /// BFS solvability check that previously hung the L1 launch path
+  /// (100K-state cap × 50 attempts × 10 difficulty-tier attempts =
+  /// up to 50M state visits per `generateSolvableLevel(1)` call).
+  ///
+  /// We then run a couple of cheap filters (no fully-solved tubes,
+  /// not too many same-color adjacencies) so the level doesn't read
+  /// as trivially-stacked at the very top.
   List<List<int>> _generateShuffledSolvableState(
     LevelParams params,
     Random random, {
-    int maxAttempts = 50,
-    int maxSolvableStates = 100000,
+    int maxAttempts = 10,
+    // Kept for API compatibility — no longer used now that we
+    // skip the BFS solvability check entirely.
+    int maxSolvableStates = 2000,
   }) {
-    final blocks = <int>[];
-    for (int color = 0; color < params.colors; color++) {
-      for (int i = 0; i < params.depth; i++) {
-        blocks.add(color);
-      }
-    }
+    final solved = _createSolvedState(
+      params.colors,
+      params.emptySlots,
+      params.depth,
+    );
 
     for (int attempt = 0; attempt < maxAttempts; attempt++) {
-      final shuffled = List<int>.from(blocks);
-      _fisherYatesShuffle(shuffled, random);
-
-      final tubes = <List<int>>[];
-      int index = 0;
-      for (int t = 0; t < params.colors; t++) {
-        final tube = <int>[];
-        for (int i = 0; i < params.depth; i++) {
-          tube.add(shuffled[index++]);
-        }
-        tubes.add(tube);
-      }
-      for (int i = 0; i < params.emptySlots; i++) {
-        tubes.add([]);
-      }
+      // Vary the shuffle depth across attempts so we get differently-
+      // hard layouts. params.shuffleMoves is the floor; each retry
+      // adds more shuffle moves for a harder configuration.
+      final shuffleMoves = params.shuffleMoves + attempt * 5;
+      final tubes = _shuffleState(solved, params.depth, shuffleMoves, random);
 
       if (_hasSolvedTube(tubes, params.depth)) continue;
       if (_sameColorAdjacencyRatio(tubes) > 0.35) continue;
-      if (!_isSolvableState(tubes, params.depth, maxSolvableStates)) continue;
 
       return tubes;
     }
 
-    // Fallback: shuffle from solved state (always solvable)
-    final solved = _createSolvedState(params.colors, params.emptySlots, params.depth);
-    return _shuffleState(solved, params.depth, 200, random);
+    // Last-resort fallback: a plain shuffle with the params' default
+    // shuffleMoves. This will rarely fire — only if every attempt above
+    // produced a degenerate (e.g. fully-solved tube) configuration.
+    return _shuffleState(solved, params.depth, params.shuffleMoves, random);
   }
 
+  // ignore: unused_element
   void _fisherYatesShuffle(List<int> list, Random random) {
     for (int i = list.length - 1; i > 0; i--) {
       final j = random.nextInt(i + 1);
@@ -429,10 +434,13 @@ class LevelGenerator {
     return true;
   }
 
+  // Kept (unused) for reference — was the BFS-based solvability check.
+  // We now skip this entirely and use the always-solvable reverse-walk
+  // path in `_generateShuffledSolvableState`. Marked private + ignored
+  // so the analyzer doesn't complain.
+  // ignore: unused_element
   bool _isSolvableState(List<List<int>> tubes, int depth, int maxStates) {
-    // Try greedy heuristic first (fast path)
     if (_greedySolve(tubes, depth)) return true;
-    // Fall back to BFS with higher limit
     return _bfsSolvableState(tubes, depth, maxStates);
   }
 

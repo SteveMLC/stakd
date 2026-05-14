@@ -97,31 +97,33 @@ class _TutorialOverlayState extends State<TutorialOverlay>
   }
 
   Widget _buildTooltip(TutorialStepData stepData, GlobalKey targetKey) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final renderBox =
-            targetKey.currentContext?.findRenderObject() as RenderBox?;
-        if (renderBox == null) {
-          return _buildCenterMessage(stepData);
-        }
+    // Computes the tooltip's screen-relative position from a target key,
+    // then returns a Positioned. The caller assumes a Stack ancestor —
+    // wrapping the Positioned in a LayoutBuilder breaks ParentData
+    // routing (Positioned needs a Stack as its DIRECT parent in the
+    // RenderObject hierarchy). Use MediaQuery.of(context).size for the
+    // viewport metric instead.
+    final renderBox =
+        targetKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null) {
+      return _buildCenterMessage(stepData);
+    }
 
-        final targetPosition = renderBox.localToGlobal(Offset.zero);
-        final targetSize = renderBox.size;
+    final targetPosition = renderBox.localToGlobal(Offset.zero);
+    final targetSize = renderBox.size;
+    final screenHeight = MediaQuery.of(context).size.height;
 
-        // Position tooltip above or below target
-        final isBottomHalf = targetPosition.dy > constraints.maxHeight / 2;
-        final tooltipY = isBottomHalf
-            ? targetPosition.dy -
-                  120 // Above
-            : targetPosition.dy + targetSize.height + 20; // Below
+    // Position tooltip above or below target
+    final isBottomHalf = targetPosition.dy > screenHeight / 2;
+    final tooltipY = isBottomHalf
+        ? targetPosition.dy - 120 // Above
+        : targetPosition.dy + targetSize.height + 20; // Below
 
-        return Positioned(
-          left: 0,
-          right: 0,
-          top: tooltipY,
-          child: _buildTooltipContent(stepData, isBottomHalf),
-        );
-      },
+    return Positioned(
+      left: 0,
+      right: 0,
+      top: tooltipY,
+      child: _buildTooltipContent(stepData, isBottomHalf),
     );
   }
 

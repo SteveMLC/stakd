@@ -523,6 +523,7 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
     Navigator.of(context).pop();
   }
 
+  // ignore: unused_element
   void _retriggerTutorial() {
     setState(() {
       _showTutorial = true;
@@ -1337,104 +1338,83 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
 
   Widget _buildTopBar(GameState gameState) {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
       child: Row(
         children: [
           // Back button
           GameIconButton(icon: Icons.arrow_back, onPressed: _goHome),
-          const Spacer(),
+          const SizedBox(width: 8),
 
-          // Level indicator
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: GameColors.surface,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              'Level $_currentLevel',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-          ),
-          const Spacer(),
-
-          // Move counter with par
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: GameColors.surface,
-                  borderRadius: BorderRadius.circular(20),
-                  border: gameState.par != null
-                      ? Border.all(
-                          color: gameState.isUnderPar
-                              ? Colors.green.withValues(alpha: 0.6)
-                              : gameState.moveCount > (gameState.par! + 5)
-                              ? Colors.red.withValues(alpha: 0.4)
-                              : Colors.transparent,
-                          width: 2,
-                        )
-                      : null,
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.touch_app, size: 18),
-                    const SizedBox(width: 4),
-                    Text(
-                      gameState.par != null
-                          ? '${gameState.moveCount}/${gameState.par}'
-                          : '${gameState.moveCount}',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: gameState.par != null && gameState.isUnderPar
-                            ? Colors.green
-                            : null,
-                      ),
-                    ),
-                  ],
-                ),
+          // Level indicator — flexible so it shrinks on narrow screens.
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: GameColors.surface,
+                borderRadius: BorderRadius.circular(16),
               ),
-              const SizedBox(width: 12),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '${gameState.completedStackCount}/${gameState.totalStacks}',
-                    style: TextStyle(fontSize: 14, color: GameColors.textMuted),
-                  ),
-                  const SizedBox(width: 4),
-                  Icon(
-                    Icons.check_circle,
-                    size: 16,
-                    color: GameColors.palette[2].withValues(alpha: 0.7),
-                  ),
-                ],
+              child: Text(
+                'Lv $_currentLevel',
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
               ),
-            ],
-          ),
-          const SizedBox(width: 12),
-
-          // Tutorial help button
-          GameIconButton(
-            icon: Icons.help_outline,
-            onPressed: _retriggerTutorial,
+            ),
           ),
           const SizedBox(width: 8),
 
-          // Hint button
+          // Move counter with par — flex-shrink to fit.
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 8,
+              ),
+              decoration: BoxDecoration(
+                color: GameColors.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: gameState.par != null
+                    ? Border.all(
+                        color: gameState.isUnderPar
+                            ? Colors.green.withValues(alpha: 0.6)
+                            : gameState.moveCount > (gameState.par! + 5)
+                            ? Colors.red.withValues(alpha: 0.4)
+                            : Colors.transparent,
+                        width: 2,
+                      )
+                    : null,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.touch_app, size: 16),
+                  const SizedBox(width: 3),
+                  Text(
+                    gameState.par != null
+                        ? '${gameState.moveCount}/${gameState.par}'
+                        : '${gameState.moveCount}',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: gameState.par != null && gameState.isUnderPar
+                          ? Colors.green
+                          : null,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+
+          // Hint button (most-used during play — keep visible).
           GameIconButton(
             icon: Icons.lightbulb_outline,
             badge: '$_hintsRemainingThisPuzzle',
             isDisabled: _hintsRemainingThisPuzzle <= 0,
             onPressed: _hintsRemainingThisPuzzle > 0 ? _showHint : null,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
 
           // Settings button
           GameIconButton(icon: Icons.settings, onPressed: _goToSettings),
