@@ -55,7 +55,6 @@ class GameState extends ChangeNotifier {
   List<int> _recentlyCleared = [];
   AnimatingLayer? _animatingLayer;
   int? _par; // Minimum moves to solve (null if unknown)
-  bool _isZenMode = false;
 
   // Combo tracking (consecutive correct moves — placing on matching color)
   int _comboCount = 0;
@@ -133,7 +132,6 @@ class GameState extends ChangeNotifier {
   bool get isMultiGrabMode => _isMultiGrabMode;
   List<Layer>? get multiGrabLayers => _multiGrabLayers;
   int get multiGrabCount => _multiGrabLayers?.length ?? 0;
-  bool get isZenMode => _isZenMode;
   int get completedStackCount => _stacks.where((s) => s.isComplete).length;
   int get totalStacks => _stacks.length;
   bool get hasUnstakedLayers => _unstakedLayers.isNotEmpty;
@@ -158,35 +156,10 @@ class GameState extends ChangeNotifier {
     _par = par;
     _isMultiGrabMode = false;
     _multiGrabLayers = null;
-    _isZenMode = false;
     _unstackSlotIndex = null;
     _unstakedLayers = [];
     _addTubeUsed = false;
     _resetPowerUpTracking();
-    notifyListeners();
-  }
-
-  void initZenGame(List<GameStack> stacks) {
-    _stacks = stacks;
-    _currentLevel = 0;
-    _selectedStackIndex = -1;
-    _moveCount = 0;
-    _undosRemaining = GameConfig.maxUndos;
-    _isComplete = false;
-    _moveHistory = [];
-    _recentlyCleared = [];
-    _comboCount = 0;
-    _maxCombo = 0;
-    _currentChainLevel = 0;
-    _maxChainLevel = 0;
-    _totalChains = 0;
-    _par = null;
-    _isMultiGrabMode = false;
-    _multiGrabLayers = null;
-    _isZenMode = true;
-    _unstackSlotIndex = null;
-    _unstakedLayers = [];
-    _addTubeUsed = false;
     notifyListeners();
   }
 
