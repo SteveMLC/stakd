@@ -92,7 +92,10 @@ class _ForkliftCard extends StatelessWidget {
         cosmetics.checkPurchase(info.skin, economy.cash, economy.warehouseLevel);
     final actionable = _isOwned || precheck == CosmeticPurchaseResult.success;
 
-    return Container(
+    // Equipped cards get a slow accent breath so the player sees
+    // their picked skin "running" on the shelf. Other actionable
+    // cards just glow steadily; locked ones go fully muted.
+    final card = Container(
       decoration: BoxDecoration(
         color: GameColors.surface.withValues(alpha: actionable ? 0.92 : 0.55),
         borderRadius: BorderRadius.circular(16),
@@ -101,7 +104,7 @@ class _ForkliftCard extends StatelessWidget {
           width: 1.5,
         ),
         boxShadow: actionable
-            ? [BoxShadow(color: _accent.withValues(alpha: 0.18), blurRadius: 12, offset: const Offset(0, 4))]
+            ? [BoxShadow(color: _accent.withValues(alpha: 0.20), blurRadius: 14, offset: const Offset(0, 4))]
             : null,
       ),
       child: Padding(
@@ -110,7 +113,7 @@ class _ForkliftCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              _SkinIcon(color: _accent, dimmed: !actionable),
+              _SkinIcon(color: _accent, dimmed: !actionable, equipped: _isEquipped),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -142,6 +145,12 @@ class _ForkliftCard extends StatelessWidget {
         ),
       ),
     );
+
+    // Wrap equipped cards in a slow breathing glow effect.
+    if (_isEquipped) {
+      return _BreathingGlow(color: _accent, child: card);
+    }
+    return card;
   }
 
   Widget _buildCta(BuildContext context, CosmeticPurchaseResult precheck) {
@@ -244,7 +253,12 @@ class _ForkliftCard extends StatelessWidget {
 class _SkinIcon extends StatelessWidget {
   final Color color;
   final bool dimmed;
-  const _SkinIcon({required this.color, required this.dimmed});
+  final bool equipped;
+  const _SkinIcon({
+    required this.color,
+    required this.dimmed,
+    this.equipped = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -253,11 +267,84 @@ class _SkinIcon extends StatelessWidget {
       width: 48,
       height: 48,
       decoration: BoxDecoration(
-        color: tint.withValues(alpha: 0.15),
+        gradient: RadialGradient(
+          colors: [
+            tint.withValues(alpha: equipped ? 0.35 : 0.15),
+            tint.withValues(alpha: 0.05),
+          ],
+        ),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: tint.withValues(alpha: 0.55), width: 1.2),
+        boxShadow: equipped
+            ? [
+                BoxShadow(
+                  color: tint.withValues(alpha: 0.45),
+                  blurRadius: 10,
+                  spreadRadius: 1,
+                ),
+              ]
+            : null,
       ),
       child: Icon(Icons.local_shipping, size: 26, color: tint),
+    );
+  }
+}
+
+/// Wraps any child in a slow breathing glow on the supplied accent
+/// colour. Used to make "owned/equipped" shop cards feel alive
+/// without animating their content.
+class _BreathingGlow extends StatefulWidget {
+  final Color color;
+  final Widget child;
+  const _BreathingGlow({required this.color, required this.child});
+
+  @override
+  State<_BreathingGlow> createState() => _BreathingGlowState();
+}
+
+class _BreathingGlowState extends State<_BreathingGlow>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2400),
+  )..repeat(reverse: true);
+
+  @override
+  void deactivate() {
+    _ctrl.stop();
+    super.deactivate();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, child) {
+        final t = _ctrl.value;
+        // Cosine-eased 0..1 for smooth glow.
+        final brightness = 0.5 - 0.5 * (t - 0.5).abs() * 2;
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: widget.color
+                    .withValues(alpha: 0.15 + brightness * 0.25),
+                blurRadius: 18 + brightness * 8,
+                spreadRadius: brightness * 2,
+              ),
+            ],
+          ),
+          child: child,
+        );
+      },
+      child: widget.child,
     );
   }
 }

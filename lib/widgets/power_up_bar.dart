@@ -144,32 +144,61 @@ class _PowerUpButtonState extends State<_PowerUpButton>
                 : null,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              width: 60,
-              height: 60,
+              width: 64,
+              height: 64,
               decoration: BoxDecoration(
+                // Brushed-steel gradient matches the rest of the
+                // industrial UI vocabulary. Active state pops the
+                // accent; disabled fades to surface.
+                gradient: isDisabled
+                    ? null
+                    : LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: widget.isActive
+                            ? [
+                                GameColors.accent.withValues(alpha: 0.55),
+                                GameColors.accent.withValues(alpha: 0.25),
+                              ]
+                            : const [
+                                Color(0xFF3A4250),
+                                Color(0xFF252B36),
+                                Color(0xFF1A1F26),
+                              ],
+                      ),
                 color: isDisabled
                     ? GameColors.surface.withValues(alpha: 0.5)
-                    : widget.isActive
-                        ? GameColors.accent.withValues(alpha: 0.3)
-                        : GameColors.surface,
+                    : null,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: widget.isActive
                       ? GameColors.accent
                       : isDisabled
-                          ? Colors.transparent
-                          : GameColors.textMuted.withValues(alpha: 0.3),
-                  width: widget.isActive ? 2 : 1,
+                          ? GameColors.empty
+                          : GameColors.accent.withValues(alpha: 0.40),
+                  width: widget.isActive ? 2 : 1.2,
                 ),
                 boxShadow: widget.isActive
                     ? [
                         BoxShadow(
-                          color: GameColors.accent.withValues(alpha: 0.4),
-                          blurRadius: 12,
+                          color: GameColors.accent.withValues(alpha: 0.5),
+                          blurRadius: 14,
                           spreadRadius: 2,
                         ),
                       ]
-                    : null,
+                    : isDisabled
+                        ? null
+                        : [
+                            BoxShadow(
+                              color: GameColors.accent.withValues(alpha: 0.20),
+                              blurRadius: 8,
+                            ),
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.35),
+                              blurRadius: 6,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
               ),
               child: Stack(
                 clipBehavior: Clip.none,
@@ -187,7 +216,8 @@ class _PowerUpButtonState extends State<_PowerUpButton>
                     ),
                   ),
 
-                  // Count badge
+                  // Count badge — red ammo chip when stocked, muted
+                  // when zero so the player knows when to refill.
                   Positioned(
                     right: -4,
                     top: -4,
@@ -196,25 +226,47 @@ class _PowerUpButtonState extends State<_PowerUpButton>
                         horizontal: 6,
                         vertical: 2,
                       ),
+                      constraints: const BoxConstraints(
+                        minWidth: 20,
+                        minHeight: 18,
+                      ),
                       decoration: BoxDecoration(
+                        gradient: isDisabled
+                            ? null
+                            : const LinearGradient(
+                                colors: [
+                                  Color(0xFFE53935),
+                                  Color(0xFFC62828),
+                                ],
+                              ),
                         color: isDisabled
-                            ? GameColors.textMuted
-                            : GameColors.accent,
+                            ? GameColors.textMuted.withValues(alpha: 0.6)
+                            : null,
                         borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.45),
+                          width: 1,
+                        ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.3),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
+                            color: (isDisabled
+                                    ? Colors.black
+                                    : const Color(0xFFE53935))
+                                .withValues(alpha: 0.45),
+                            blurRadius: 5,
+                            offset: const Offset(0, 1),
                           ),
                         ],
                       ),
-                      child: Text(
-                        '${widget.count}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                      child: Center(
+                        child: Text(
+                          '${widget.count}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                            height: 1.1,
+                          ),
                         ),
                       ),
                     ),

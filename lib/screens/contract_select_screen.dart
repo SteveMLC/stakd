@@ -108,8 +108,11 @@ class _ContractCard extends StatelessWidget {
     final unlocked = state == _LockState.unlocked;
     final completed = contracts.isContractCompleted(definition);
     final tierLabel = definition.tier == BusinessTier.local ? 'Local' : 'Regional';
+    // The "next contract to play" — the first unlocked-but-not-cleared
+    // one — gets the active pulse so the player knows where to head.
+    final isActiveNext = unlocked && !completed;
 
-    return ClipRRect(
+    final card = ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: Container(
         decoration: BoxDecoration(
@@ -226,6 +229,13 @@ class _ContractCard extends StatelessWidget {
         ),
       ),
     );
+
+    // The next-playable contract breathes its tier-accent so the
+    // player's eye locks onto it as the "go here" card.
+    if (isActiveNext) {
+      return _ActiveContractPulse(color: _accent, child: card);
+    }
+    return card;
   }
 
   Widget _buildStarsRow() {
@@ -346,6 +356,64 @@ class _ContractCard extends StatelessWidget {
       buf.write(s[i]);
     }
     return buf.toString();
+  }
+}
+
+/// Slow breathing glow used on the "next playable" contract card —
+/// pulses the tier-accent halo so the player's eye anchors on the
+/// card they're meant to tap next.
+class _ActiveContractPulse extends StatefulWidget {
+  final Color color;
+  final Widget child;
+  const _ActiveContractPulse({required this.color, required this.child});
+
+  @override
+  State<_ActiveContractPulse> createState() => _ActiveContractPulseState();
+}
+
+class _ActiveContractPulseState extends State<_ActiveContractPulse>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2200),
+  )..repeat(reverse: true);
+
+  @override
+  void deactivate() {
+    _ctrl.stop();
+    super.deactivate();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, child) {
+        final t = _ctrl.value;
+        final brightness = 0.5 - 0.5 * (t - 0.5).abs() * 2;
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: widget.color
+                    .withValues(alpha: 0.18 + brightness * 0.30),
+                blurRadius: 20 + brightness * 10,
+                spreadRadius: brightness * 3,
+              ),
+            ],
+          ),
+          child: child,
+        );
+      },
+      child: widget.child,
+    );
   }
 }
 

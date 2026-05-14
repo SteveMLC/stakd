@@ -189,12 +189,17 @@ class _GameButtonState extends State<GameButton>
   }
 }
 
-/// Icon-only game button
+/// Icon-only game button — a riveted steel toggle plate. Used for
+/// back arrows, hint/help, settings, etc. Now matches the warehouse
+/// vocabulary: brushed-steel gradient, accent-coloured icon, badge
+/// chip pulses if present.
 class GameIconButton extends StatefulWidget {
   final IconData icon;
   final VoidCallback? onPressed;
   final String? badge;
   final bool isDisabled;
+  /// Override the icon tint — e.g. green for "OK", red for danger.
+  final Color? iconColor;
 
   const GameIconButton({
     super.key,
@@ -202,6 +207,7 @@ class GameIconButton extends StatefulWidget {
     this.onPressed,
     this.badge,
     this.isDisabled = false,
+    this.iconColor,
   });
 
   @override
@@ -234,6 +240,9 @@ class _GameIconButtonState extends State<GameIconButton>
 
   @override
   Widget build(BuildContext context) {
+    final iconTint = widget.isDisabled
+        ? GameColors.textMuted
+        : (widget.iconColor ?? GameColors.accent);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: (_) => _controller.forward(),
@@ -246,6 +255,7 @@ class _GameIconButtonState extends State<GameIconButton>
           return Transform.scale(
             scale: _scaleAnimation.value,
             child: Stack(
+              clipBehavior: Clip.none,
               children: [
                 Container(
                   width: 48,
@@ -253,53 +263,84 @@ class _GameIconButtonState extends State<GameIconButton>
                   decoration: BoxDecoration(
                     gradient: widget.isDisabled
                         ? null
-                        : LinearGradient(
+                        : const LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                             colors: [
-                              GameColors.surface.withValues(alpha: 0.95),
-                              GameColors.background.withValues(alpha: 0.9),
+                              Color(0xFF3A4250),
+                              Color(0xFF252B36),
+                              Color(0xFF1A1F26),
                             ],
                           ),
                     color: widget.isDisabled ? GameColors.surface : null,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                       color: widget.isDisabled
                           ? GameColors.empty
-                          : GameColors.accent.withValues(alpha: 0.5),
+                          : iconTint.withValues(alpha: 0.45),
+                      width: 1.2,
                     ),
                     boxShadow: widget.isDisabled
                         ? null
                         : [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.2),
+                              color: iconTint.withValues(alpha: 0.20),
+                              blurRadius: 8,
+                            ),
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.35),
                               blurRadius: 6,
-                              offset: const Offset(0, 2),
+                              offset: const Offset(0, 3),
                             ),
                           ],
                   ),
                   child: Icon(
                     widget.icon,
-                    color: widget.isDisabled
-                        ? GameColors.textMuted
-                        : GameColors.text,
+                    color: iconTint,
+                    size: 22,
                   ),
                 ),
+                if (widget.badge != null) const _BadgePulseSpacer(),
                 if (widget.badge != null)
                   Positioned(
                     top: -4,
                     right: -4,
                     child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: GameColors.accent,
-                        shape: BoxShape.circle,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 5, vertical: 2),
+                      constraints: const BoxConstraints(
+                        minWidth: 18,
+                        minHeight: 18,
                       ),
-                      child: Text(
-                        widget.badge!,
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [
+                            Color(0xFFE53935),
+                            Color(0xFFC62828),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.45),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFE53935)
+                                .withValues(alpha: 0.5),
+                            blurRadius: 6,
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          widget.badge!,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            height: 1.1,
+                          ),
                         ),
                       ),
                     ),
@@ -311,4 +352,12 @@ class _GameIconButtonState extends State<GameIconButton>
       ),
     );
   }
+}
+
+/// Zero-sized helper: just makes the badge stack overflow visible by
+/// telling the Stack to not clip. Cleaner than passing clipBehavior up.
+class _BadgePulseSpacer extends StatelessWidget {
+  const _BadgePulseSpacer();
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }

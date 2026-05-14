@@ -3,6 +3,7 @@ import '../models/leaderboard_entry.dart';
 import '../services/leaderboard_service.dart';
 import '../utils/constants.dart';
 import '../widgets/game_button.dart';
+import '../widgets/warehouse_decorations.dart';
 import '../widgets/name_entry_dialog.dart';
 
 /// Global leaderboards screen with tabbed categories
@@ -139,14 +140,12 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
             icon: Icons.arrow_back,
             onPressed: () => Navigator.of(context).pop(),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           const Expanded(
-            child: Text(
-              'Leaderboards',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
+            child: MetalNameplate(
+              text: 'LEADERBOARDS',
+              icon: Icons.leaderboard,
+              fontSize: 14,
             ),
           ),
           IconButton(

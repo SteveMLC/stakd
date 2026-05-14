@@ -153,7 +153,7 @@ class _MachineryCard extends StatelessWidget {
         machinery.checkPurchase(info.id, economy.cash, economy.warehouseLevel);
     final actionable = _isOwned || precheck == MachineryPurchaseResult.success;
 
-    return Container(
+    final card = Container(
       decoration: BoxDecoration(
         color: GameColors.surface.withValues(alpha: actionable ? 0.92 : 0.55),
         borderRadius: BorderRadius.circular(16),
@@ -234,6 +234,13 @@ class _MachineryCard extends StatelessWidget {
         ),
       ),
     );
+
+    // Owned machines breathe their accent — the player should *see*
+    // the income engine running on their shelf.
+    if (_isOwned) {
+      return _BreathingGlow(color: info.accent, child: card);
+    }
+    return card;
   }
 
   Widget _buildCta(BuildContext context, MachineryPurchaseResult precheck) {
@@ -320,6 +327,64 @@ class _MachineryCard extends StatelessWidget {
       buf.write(s[i]);
     }
     return buf.toString();
+  }
+}
+
+/// Slow breathing glow shell for "owned" / "active" shop cards. Same
+/// pattern as the forklift shop's variant — copied here to keep the
+/// shop screens self-contained.
+class _BreathingGlow extends StatefulWidget {
+  final Color color;
+  final Widget child;
+  const _BreathingGlow({required this.color, required this.child});
+
+  @override
+  State<_BreathingGlow> createState() => _BreathingGlowState();
+}
+
+class _BreathingGlowState extends State<_BreathingGlow>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2400),
+  )..repeat(reverse: true);
+
+  @override
+  void deactivate() {
+    _ctrl.stop();
+    super.deactivate();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, child) {
+        final t = _ctrl.value;
+        final brightness = 0.5 - 0.5 * (t - 0.5).abs() * 2;
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: widget.color
+                    .withValues(alpha: 0.15 + brightness * 0.25),
+                blurRadius: 18 + brightness * 8,
+                spreadRadius: brightness * 2,
+              ),
+            ],
+          ),
+          child: child,
+        );
+      },
+      child: widget.child,
+    );
   }
 }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/achievement_service.dart';
 import '../utils/constants.dart';
+import '../widgets/warehouse_decorations.dart';
 
 class AchievementsScreen extends StatefulWidget {
   const AchievementsScreen({super.key});
@@ -138,13 +139,10 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
           icon: Icon(Icons.arrow_back, color: GameColors.text),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          'Achievements',
-          style: TextStyle(
-            color: GameColors.text,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+        title: const MetalNameplate(
+          text: 'ACHIEVEMENTS',
+          icon: Icons.emoji_events,
+          fontSize: 14,
         ),
         actions: [
           Padding(

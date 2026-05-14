@@ -4,6 +4,7 @@ import '../services/haptic_service.dart';
 import '../services/storage_service.dart';
 import '../utils/constants.dart';
 import '../widgets/game_button.dart';
+import '../widgets/warehouse_decorations.dart';
 
 /// Settings screen
 class SettingsScreen extends StatefulWidget {
@@ -115,10 +116,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       icon: Icons.arrow_back,
                       onPressed: () => Navigator.of(context).pop(),
                     ),
-                    const SizedBox(width: 16),
-                    Text(
-                      'Settings',
-                      style: Theme.of(context).textTheme.titleLarge,
+                    const SizedBox(width: 12),
+                    const MetalNameplate(
+                      text: 'SETTINGS',
+                      icon: Icons.settings,
+                      fontSize: 15,
                     ),
                   ],
                 ),
