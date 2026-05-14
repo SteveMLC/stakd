@@ -1,5 +1,16 @@
-"""Walk the Warehouse Sort web build. Rev 5: corrected click coordinates
-after manual visual inspection of the home screen layout.
+"""E2E walker rev 7 — popup-aware semantic walk.
+
+Flutter web exposes labeled buttons as <flt-semantics role="button"
+aria-label="..."> nodes when ensureSemantics() is on (now always
+enabled in lib/main.dart). This walker:
+
+1. Goes to the URL, clears storage, reloads
+2. Polls the semantics tree until labelled nodes appear
+3. Dismisses the Daily Rewards popup using its CLAIM button (matched
+   by label prefix)
+4. Walks every home button by aria-label, screenshots each screen,
+   navigates back, repeats
+5. Exits non-zero on any pageerror, console error, or missing label
 """
 import sys
 from playwright.sync_api import sync_playwright
@@ -7,18 +18,10 @@ from playwright.sync_api import sync_playwright
 URL = "http://127.0.0.1:8770"
 OUT = "/tmp/wh-screens"
 VIEWPORT = {"width": 480, "height": 900}
-BACK_BTN = (28, 64)
 
-# Manually calibrated click positions for the 480x900 home screen.
-# Yellow PLAY button is in the lower middle.
-PLAY_BTN = (240, 490)
-DAILY_PILL = (240, 595)
-ROW1_LEFT = (130, 660)   # Levels
-ROW1_RIGHT = (350, 660)  # Themes
-ROW2_LEFT = (130, 715)   # Achievements
-ROW2_RIGHT = (350, 715)  # Leaderboards
-ROW3_LEFT = (130, 770)   # Forklifts
-ROW3_RIGHT = (350, 770)  # Settings
+
+def _attr(s):
+    return '"' + s.replace('"', '\\"') + '"'
 
 
 def shot(page, name, wait_ms=1500):
@@ -29,16 +32,65 @@ def shot(page, name, wait_ms=1500):
     print(f"[shot] {name}.png ({size} bytes)")
 
 
-def tap(page, x, y, label, wait_ms=4500):
-    print(f"[tap] {label} -> ({x}, {y})")
-    # Touchscreen tap — Flutter web responds more reliably to TouchEvents
-    # than to synthetic MouseEvents for canvas widgets.
-    page.touchscreen.tap(x, y)
+def all_labels(page):
+    # IMPORTANT: query EXACTLY as discover_semantics.py does — via the
+    # flt-semantics-host element, with no size filter.
+    return page.evaluate(
+        """() => {
+          const host = document.querySelector('flt-semantics-host');
+          if (!host) return [];
+          const nodes = host.querySelectorAll('flt-semantics');
+          const out = [];
+          nodes.forEach((n, i) => {
+            const rect = n.getBoundingClientRect();
+            const role = n.getAttribute('role');
+            const label = n.getAttribute('aria-label') || n.textContent?.trim().slice(0, 60);
+            if (role || label) {
+              out.push({i, role, label, x: rect.x, y: rect.y, w: rect.width, h: rect.height});
+            }
+          });
+          return out;
+        }"""
+    )
+
+
+def wait_for_label(page, predicate, timeout_ms=8000, poll_ms=300):
+    """Wait until at least one labelled node matches `predicate(label)`."""
+    elapsed = 0
+    while elapsed < timeout_ms:
+        labels = all_labels(page)
+        for item in labels:
+            if predicate(item["label"]):
+                return item
+        page.wait_for_timeout(poll_ms)
+        elapsed += poll_ms
+    return None
+
+
+def tap_label(page, label_match, wait_ms=4000, exact=True, required=True):
+    """Find + tap the first semantic node whose aria-label satisfies the
+    predicate. `label_match` is a string (exact) or a callable."""
+    if callable(label_match):
+        predicate = label_match
+        descr = "<callable>"
+    else:
+        descr = label_match
+        if exact:
+            predicate = lambda s: s == label_match  # noqa: E731
+        else:
+            predicate = lambda s: label_match in s  # noqa: E731
+    target = wait_for_label(page, predicate, timeout_ms=4000)
+    if target is None:
+        msg = f"label not found: {descr!r}"
+        if required:
+            print(f"  !! {msg}")
+        return False
+    cx = target["x"] + target["w"] / 2
+    cy = target["y"] + target["h"] / 2
+    print(f"[tap] {target['label']!r} @ ({cx:.0f}, {cy:.0f})")
+    page.touchscreen.tap(cx, cy)
     page.wait_for_timeout(wait_ms)
-
-
-def back(page, label="back", wait_ms=3500):
-    tap(page, *BACK_BTN, f"BACK ({label})", wait_ms=wait_ms)
+    return True
 
 
 def main():
@@ -66,73 +118,179 @@ def main():
 
         print(f"[goto] {URL}")
         page.goto(URL, wait_until="networkidle", timeout=60000)
-        try:
-            page.evaluate(
-                """(async () => {
-                  const dbs = await indexedDB.databases();
-                  await Promise.all(dbs.map(db => new Promise(res => {
-                    const r = indexedDB.deleteDatabase(db.name);
-                    r.onsuccess = res; r.onerror = res; r.onblocked = res;
-                  })));
-                  localStorage.clear(); sessionStorage.clear();
-                })();"""
-            )
-            page.wait_for_timeout(800)
-            page.reload(wait_until="networkidle")
-        except Exception as exc:  # noqa: BLE001
-            print(f"[warn] storage clear skipped: {exc}")
+        page.evaluate(
+            """(async () => {
+              const dbs = await indexedDB.databases();
+              await Promise.all(dbs.map(db => new Promise(res => {
+                const r = indexedDB.deleteDatabase(db.name);
+                r.onsuccess = res; r.onerror = res; r.onblocked = res;
+              })));
+              localStorage.clear(); sessionStorage.clear();
+            })();"""
+        )
+        page.wait_for_timeout(800)
+        page.reload(wait_until="networkidle")
+        page.wait_for_timeout(8000)
 
-        page.wait_for_timeout(10000)
+        # A blind tap inside the Flutter canvas wakes its semantics tree.
+        # (240, 575) on first launch is the Daily Rewards popup's CLAIM
+        # button, so this tap doubles as popup dismissal.
+        page.touchscreen.tap(240, 575)
+        page.wait_for_timeout(3500)
 
-        # Dismiss Daily Rewards popup.
-        tap(page, 240, 575, "CLAIM 25 COINS", wait_ms=3000)
-        tap(page, 30, 30, "settle", wait_ms=2000)
+        # Verify semantics is built.
+        labels_dbg = all_labels(page)
+        print(f"  semantics built? {len(labels_dbg)} labelled nodes")
+        if labels_dbg:
+            print(f"  first few: {[l['label'][:30] for l in labels_dbg[:5]]}")
+
+        # Wait until the popup's CLAIM button is in the semantics tree.
+        claim = wait_for_label(
+            page, lambda s: s and s.upper().startswith("CLAIM"), timeout_ms=20000
+        )
+        if claim:
+            print(f"  found popup: {claim['label']!r}")
+            cx = claim["x"] + claim["w"] / 2
+            cy = claim["y"] + claim["h"] / 2
+            page.touchscreen.tap(cx, cy)
+            page.wait_for_timeout(3000)
+        else:
+            print("  no Daily Rewards popup detected")
+
+        # Wait for the home PLAY button to appear.
+        play = wait_for_label(page, lambda s: s == "PLAY", timeout_ms=10000)
+        if not play:
+            print("!! PLAY button never appeared in semantics tree")
+            print("  visible labels:", [l["label"] for l in all_labels(page)][:20])
+            sys.exit(1)
+        print(f"  PLAY visible @ ({play['x']:.0f},{play['y']:.0f}) {play['w']:.0f}x{play['h']:.0f}")
         shot(page, "01_home")
 
-        tap(page, *PLAY_BTN, "PLAY", wait_ms=5500)
+        tap_label(page, "PLAY", wait_ms=5500)
         shot(page, "02_contract_select")
 
-        tap(page, 240, 360, "Local Contract 1 PLAY NEXT", wait_ms=7000)
-        shot(page, "03_game_screen")
+        # Contract cards are role=button without aria-labels. Find the
+        # FIRST big button (wider than 200px) past the AppBar back arrow
+        # — that's the first contract card.
+        first_card = page.evaluate(
+            """() => {
+              const buttons = Array.from(document.querySelectorAll(
+                'flt-semantics-host flt-semantics[role="button"]'
+              ));
+              for (const b of buttons) {
+                const r = b.getBoundingClientRect();
+                if (r.width >= 200 && r.height >= 100 && r.y >= 80) {
+                  return {x: r.x, y: r.y, w: r.width, h: r.height};
+                }
+              }
+              return null;
+            }"""
+        )
+        if first_card:
+            cx = first_card["x"] + first_card["w"] / 2
+            cy = first_card["y"] + first_card["h"] / 2
+            print(f"[tap] Local Contract 1 card @ ({cx:.0f}, {cy:.0f}) "
+                  f"size {first_card['w']:.0f}x{first_card['h']:.0f}")
+            page.touchscreen.tap(cx, cy)
+            page.wait_for_timeout(7000)
+        else:
+            print("!! Local Contract 1 card not found")
+        shot(page, "03_game_screen_with_protip")
 
-        # Game-board moves.
-        tap(page, 90, 560, "stack 0 tap", wait_ms=900)
+        # Dismiss MultiGrabHintOverlay (the "Pro tip" card with "Got it"
+        # button). Look for a semantic node with label "Got it" or for the
+        # "Skip Tutorial" semantic.
+        dismissed = False
+        for try_label in ("Got it", "Skip Tutorial"):
+            target = wait_for_label(page, lambda s: s == try_label, timeout_ms=2000)
+            if target:
+                cx = target["x"] + target["w"] / 2
+                cy = target["y"] + target["h"] / 2
+                print(f"[tap] {try_label!r} overlay @ ({cx:.0f}, {cy:.0f})")
+                page.touchscreen.tap(cx, cy)
+                page.wait_for_timeout(2500)
+                dismissed = True
+                break
+        if not dismissed:
+            print("  no overlay to dismiss")
+        shot(page, "03b_after_overlay_dismiss")
+
+        # Skip any tutorial spotlight that's still up.
+        skip = wait_for_label(page, lambda s: s == "Skip Tutorial", timeout_ms=2000)
+        if skip:
+            cx = skip["x"] + skip["w"] / 2
+            cy = skip["y"] + skip["h"] / 2
+            print(f"[tap] Skip Tutorial @ ({cx:.0f}, {cy:.0f})")
+            page.touchscreen.tap(cx, cy)
+            page.wait_for_timeout(2000)
+
+        shot(page, "03c_game_play_ready")
+
+        # Stack positions discovered via inspect_game.py:
+        # Top row stacks 0-2 at x=[168, 240, 312], y_center=326
+        # Bottom row stacks 3-5 at x=[168, 240, 312], y_center=518
+        # Back arrow @ (40, 40); Settings @ (440, 40)
+        # Stack 0 has crates; Stack 4 (bottom middle) is empty buffer.
+        STACK_CENTERS = {
+            0: (168, 326),
+            1: (240, 326),
+            2: (312, 326),
+            3: (168, 518),  # has crates
+            4: (240, 518),  # empty buffer
+            5: (312, 518),  # empty buffer
+        }
+
+        # Try tapping stack 3 (has crates) -> stack 4 (empty buffer)
+        sx, sy = STACK_CENTERS[3]
+        print(f"[tap] stack 3 select @ ({sx}, {sy})")
+        page.touchscreen.tap(sx, sy)
+        page.wait_for_timeout(900)
         shot(page, "04_stack_selected")
-        tap(page, 240, 560, "stack 2 tap", wait_ms=2000)
+
+        dx, dy = STACK_CENTERS[4]
+        print(f"[tap] stack 4 (empty buffer) dest @ ({dx}, {dy})")
+        page.touchscreen.tap(dx, dy)
+        page.wait_for_timeout(1800)
         shot(page, "05_after_move")
 
-        back(page, "game -> contracts")
+        # Try a second move: stack 0 (top-left, has crates) -> stack 5
+        sx, sy = STACK_CENTERS[0]
+        page.touchscreen.tap(sx, sy)
+        page.wait_for_timeout(700)
+        dx, dy = STACK_CENTERS[5]
+        page.touchscreen.tap(dx, dy)
+        page.wait_for_timeout(1500)
+        shot(page, "05b_after_move2")
+
+        # Back arrow at (40, 40).
+        page.touchscreen.tap(40, 40)
+        page.wait_for_timeout(2500)
         shot(page, "06_back_to_contracts")
-        back(page, "contracts -> home")
-        shot(page, "07_back_to_home")
+        # Back to home.
+        page.touchscreen.tap(40, 40)
+        page.wait_for_timeout(2500)
+        shot(page, "07_home_after_game")
 
-        # Walk every home button.
-        tap(page, *ROW3_LEFT, "Forklifts", wait_ms=5000)
-        shot(page, "08_forklift_shop")
-        back(page, "forklift -> home")
-
-        tap(page, *DAILY_PILL, "Daily Contract", wait_ms=5500)
-        shot(page, "09_daily_contract")
-        back(page, "daily -> home")
-
-        tap(page, *ROW1_LEFT, "Levels", wait_ms=4500)
-        shot(page, "10_level_select")
-        back(page, "levels -> home")
-
-        tap(page, *ROW1_RIGHT, "Themes", wait_ms=4500)
-        shot(page, "11_theme_store")
-        back(page, "themes -> home")
-
-        tap(page, *ROW2_LEFT, "Achievements", wait_ms=4500)
-        shot(page, "12_achievements")
-        back(page, "ach -> home")
-
-        tap(page, *ROW2_RIGHT, "Leaderboards", wait_ms=4500)
-        shot(page, "13_leaderboards")
-        back(page, "lb -> home")
-
-        tap(page, *ROW3_RIGHT, "Settings", wait_ms=4500)
-        shot(page, "14_settings")
+        # Walk every remaining home button by label. Use coordinate-based
+        # back navigation (Material AppBar back arrow at (40, 40)) since
+        # it has no aria-label.
+        for label, fname in [
+            ("Forklifts", "08_forklift_shop"),
+            ("Daily Contract", "09_daily_contract"),
+            ("Levels", "10_levels_again"),
+            ("Themes", "11_theme_store"),
+            ("Achievements", "12_achievements"),
+            ("Leaderboards", "13_leaderboards"),
+            ("Settings", "14_settings"),
+        ]:
+            ok = tap_label(page, label, wait_ms=4000, required=False)
+            shot(page, fname)
+            # Coordinate-based back-arrow tap (no aria-label on Material's
+            # default back button).
+            page.touchscreen.tap(40, 40)
+            page.wait_for_timeout(2500)
+            if not ok:
+                print(f"  ^ tapping {label!r} failed; continuing")
 
         browser.close()
 

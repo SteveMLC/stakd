@@ -26,9 +26,10 @@ import 'app.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Force semantics tree on web in debug mode so end-to-end tooling can
-  // inspect widgets via the accessibility tree. No-op in release builds.
-  if (kIsWeb && kDebugMode) {
+  // Force semantics tree on web so headless test harnesses (playwright,
+  // chromedriver) can query buttons by accessibility label rather than
+  // pixel coordinates. Costs a small bundle-size bump (~tens of KB).
+  if (kIsWeb) {
     SemanticsBinding.instance.ensureSemantics();
   }
 
