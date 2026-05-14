@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/achievement.dart';
+import 'income_multiplier_service.dart';
 
 /// Extended achievement categories for the new system
 enum AchievementCategoryExt {
@@ -855,6 +858,11 @@ class AchievementService extends ChangeNotifier {
         unlockedAt: now,
       ),
     );
+
+    // Growth-loop: certain achievement IDs grant a permanent +0.25×
+    // income bump. Fire-and-forget — the multiplier service is itself
+    // idempotent and persists across launches.
+    unawaited(IncomeMultiplierService().recordAchievementBump(id));
 
     notifyListeners();
   }

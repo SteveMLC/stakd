@@ -15,6 +15,7 @@ import '../services/currency_service.dart';
 import '../services/warehouse_economy_service.dart';
 import '../services/business_tier_service.dart';
 import '../services/contract_service.dart';
+import '../services/income_multiplier_service.dart';
 import '../data/local_regional_levels.dart';
 import '../utils/constants.dart';
 import '../utils/route_transitions.dart';
@@ -306,14 +307,21 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
       // Warehouse meta-loop reward (v0.3 §3 economy):
       //   cash = seed.baseCashReward × tier multiplier × star multiplier
       //   xp   = cash ÷ 2
-      // Levels past 30 (procedural) use a fallback base of 50 + 25*(N-30).
+      // Levels past 30 (procedural) extend smoothly from the L30 seed's
+      // base (~$970) at +$100 per level — uncapped, so endless mode
+      // earnings grow forever. Combined with the GROWTH-LOOP multiplier
+      // (contract clears, tier purchases, achievement bumps, WH levels
+      // past Lv5), late-game shipments pay 50× a fresh L1 clear.
       final seed = _seedForWarehouseLevel(_currentLevel);
       final tier = seed?.tier ?? BusinessTier.regional;
       final tierMul = BusinessTierService().multiplierFor(tier);
       final starMul = ShipmentRewardCalculator.starMultiplier(stars);
+      final whLevel = WarehouseEconomyService().warehouseLevel;
+      final incomeMul =
+          IncomeMultiplierService().computeMultiplier(warehouseLevel: whLevel);
       final baseCash =
-          seed?.baseCashReward ?? (50 + 25 * (_currentLevel - 30).clamp(0, 99));
-      final cashEarned = (baseCash * tierMul * starMul).floor();
+          seed?.baseCashReward ?? (970 + 100 * (_currentLevel - 30));
+      final cashEarned = (baseCash * tierMul * starMul * incomeMul).floor();
       final xpEarned = (cashEarned / 2).floor();
       final levelUp = await WarehouseEconomyService().awardReward(
         ShipmentReward(cash: cashEarned, xp: xpEarned),

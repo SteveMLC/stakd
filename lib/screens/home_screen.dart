@@ -10,6 +10,7 @@ import '../services/storage_service.dart';
 import '../widgets/game_button.dart';
 import '../widgets/daily_streak_badge.dart';
 import '../widgets/daily_rewards_popup.dart';
+import '../widgets/next_milestone_banner.dart';
 import '../widgets/warehouse_hud.dart';
 import 'contract_select_screen.dart';
 import 'daily_challenge_screen.dart';
@@ -191,6 +192,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
                 const SizedBox(height: 14),
                 const WarehouseHud(),
+                const NextMilestoneBanner(),
                 const Spacer(flex: 2),
                 _buildPlayButton(),
                 const SizedBox(height: 24),

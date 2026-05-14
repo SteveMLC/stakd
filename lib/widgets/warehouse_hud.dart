@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../services/business_tier_service.dart';
+import '../services/income_multiplier_service.dart';
 import '../services/warehouse_economy_service.dart';
 import '../utils/constants.dart';
 
@@ -21,6 +22,10 @@ class WarehouseHud extends StatelessWidget {
   Widget build(BuildContext context) {
     final economy = context.watch<WarehouseEconomyService>();
     final tiers = context.watch<BusinessTierService>();
+    final incomeMul = context.watch<IncomeMultiplierService>();
+    final mul = incomeMul.computeMultiplier(
+      warehouseLevel: economy.warehouseLevel,
+    );
 
     return Padding(
       padding: padding,
@@ -37,14 +42,56 @@ class WarehouseHud extends StatelessWidget {
         child: Row(
           children: [
             _CashChip(amount: economy.cash),
-            const SizedBox(width: 14),
+            const SizedBox(width: 10),
+            _MultiplierPill(multiplier: mul),
+            const SizedBox(width: 12),
             Expanded(child: _LevelBar(economy: economy)),
             if (showTierBadge) ...[
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               _TierBadge(info: tiers.selectedTierInfo),
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _MultiplierPill extends StatelessWidget {
+  final double multiplier;
+  const _MultiplierPill({required this.multiplier});
+
+  @override
+  Widget build(BuildContext context) {
+    // Only show the pill once the player has earned anything above base.
+    if (multiplier <= 1.001) return const SizedBox.shrink();
+    final color = multiplier >= 3.0
+        ? const Color(0xFFFF6B35) // hot — flames-y red-orange
+        : multiplier >= 2.0
+            ? const Color(0xFFFFC107) // mid — safety yellow
+            : const Color(0xFF4CAF50); // starting — green growth
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.20),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.55), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.trending_up, size: 13, color: color),
+          const SizedBox(width: 3),
+          Text(
+            '×${multiplier.toStringAsFixed(multiplier >= 10 ? 0 : 1)}',
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
       ),
     );
   }
