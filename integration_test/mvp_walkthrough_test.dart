@@ -100,6 +100,53 @@ void main() {
     expect(find.textContaining('Local'), findsWidgets);
     // Forklifts button on home row 3.
     expect(find.text('Forklifts'), findsOneWidget);
+    // Machinery button (Phase 6 — replaces disabled Themes slot).
+    expect(find.text('Machinery'), findsOneWidget);
+  });
+
+  testWidgets('Machinery button opens the equipment shop', (tester) async {
+    await _bootServices();
+    await tester.pumpWidget(_pumpedApp());
+    for (var i = 0; i < 12; i++) {
+      await tester.pump(const Duration(milliseconds: 250));
+    }
+
+    // Dismiss the Daily Rewards popup if it auto-fired (it shouldn't on
+    // a brand-new install, but be defensive).
+    final claim = find.textContaining('CLAIM');
+    if (claim.evaluate().isNotEmpty) {
+      await tester.tap(claim.first, warnIfMissed: false);
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 250));
+      }
+    }
+
+    // Tap Machinery and wait for the shop to render.
+    await tester.tap(find.text('Machinery'), warnIfMissed: false);
+    for (var i = 0; i < 16; i++) {
+      await tester.pump(const Duration(milliseconds: 250));
+    }
+
+    // Shop header.
+    expect(find.text('Machinery'), findsWidgets);
+    // Empty-state banner: no machines owned yet.
+    expect(
+      find.textContaining('No machinery yet'),
+      findsOneWidget,
+      reason: 'Fresh install banner should prompt the first Pallet Jack',
+    );
+    // First catalog item must be visible (cheapest, lowest gate).
+    expect(find.textContaining('Pallet Jack'), findsWidgets);
+    // 6 items in v1 catalog — assert data-level wiring.
+    expect(MachineryService.catalog.length, 6);
+    // Each catalog item carries a positive income bonus.
+    for (final m in MachineryService.catalog) {
+      expect(m.incomeBonus, greaterThan(0));
+    }
+    // Sum of all bonuses = +2.50× (= maxMachineryBonus cap).
+    final sum = MachineryService.catalog
+        .fold<double>(0, (acc, m) => acc + m.incomeBonus);
+    expect(sum, closeTo(2.50, 0.001));
   });
 
   testWidgets('PLAY navigates to Contract Select with 6 cards', (tester) async {
