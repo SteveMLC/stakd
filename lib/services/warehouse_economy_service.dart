@@ -86,6 +86,10 @@ class WarehouseEconomyService extends ChangeNotifier {
 
   static const String _kCashKey = 'wh_economy_cash_v1';
   static const String _kXpKey = 'wh_economy_total_xp_v1';
+  static const String _kWelcomeGrantKey = 'wh_economy_welcome_grant_v1';
+
+  /// One-time grant for fresh installs so the HUD doesn't open with $0.
+  static const int welcomeCashGrant = 200;
 
   int _cash = 0;
   int _totalXp = 0;
@@ -121,6 +125,14 @@ class WarehouseEconomyService extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     _cash = prefs.getInt(_kCashKey) ?? 0;
     _totalXp = prefs.getInt(_kXpKey) ?? 0;
+
+    // First-launch welcome grant — once per install.
+    if (!(prefs.getBool(_kWelcomeGrantKey) ?? false)) {
+      _cash += welcomeCashGrant;
+      await prefs.setInt(_kCashKey, _cash);
+      await prefs.setBool(_kWelcomeGrantKey, true);
+    }
+
     _initialized = true;
     notifyListeners();
   }
