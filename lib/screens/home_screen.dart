@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/constants.dart';
+import '../services/audio_service.dart';
 import '../services/daily_challenge_service.dart';
 import '../services/daily_rewards_service.dart';
 import '../services/currency_service.dart';
@@ -214,6 +215,7 @@ class _HomeScreenState extends State<HomeScreen>
                           icon: Icons.assignment_outlined,
                           isPrimary: false,
                           isSmall: true,
+                          iconColor: const Color(0xFF4FC3F7), // sky blue
                           onPressed: () => _openLevelSelect(context),
                         ),
                       ),
@@ -224,6 +226,7 @@ class _HomeScreenState extends State<HomeScreen>
                           icon: Icons.precision_manufacturing,
                           isPrimary: false,
                           isSmall: true,
+                          iconColor: const Color(0xFFE91E63), // hot pink
                           onPressed: () => _openMachineryShop(context),
                         ),
                       ),
@@ -242,6 +245,7 @@ class _HomeScreenState extends State<HomeScreen>
                           icon: Icons.emoji_events,
                           isPrimary: false,
                           isSmall: true,
+                          iconColor: const Color(0xFFFFD24A), // trophy gold
                           onPressed: () => _openAchievements(context),
                         ),
                       ),
@@ -252,6 +256,7 @@ class _HomeScreenState extends State<HomeScreen>
                           icon: Icons.leaderboard,
                           isPrimary: false,
                           isSmall: true,
+                          iconColor: const Color(0xFF66BB6A), // green
                           onPressed: () => _openLeaderboards(context),
                         ),
                       ),
@@ -270,6 +275,7 @@ class _HomeScreenState extends State<HomeScreen>
                           icon: Icons.local_shipping,
                           isPrimary: false,
                           isSmall: true,
+                          iconColor: const Color(0xFFFFA726), // forklift orange
                           onPressed: () => _openForkliftShop(context),
                         ),
                       ),
@@ -280,6 +286,7 @@ class _HomeScreenState extends State<HomeScreen>
                           icon: Icons.settings,
                           isPrimary: false,
                           isSmall: true,
+                          iconColor: const Color(0xFFB0BEC5), // muted steel
                           onPressed: () => _openSettings(context),
                         ),
                       ),
@@ -453,9 +460,14 @@ class _HomeScreenState extends State<HomeScreen>
             width: double.infinity,
             child: GameButton(
               text: _isDailyCompleted ? 'Daily Complete' : 'Daily Contract',
-              icon: Icons.calendar_today,
+              icon: _isDailyCompleted
+                  ? Icons.check_circle
+                  : Icons.calendar_today,
               isPrimary: false,
               isSmall: true,
+              iconColor: _isDailyCompleted
+                  ? const Color(0xFF4CAF50) // green when complete
+                  : const Color(0xFFFFC107), // accent yellow daily reminder
               onPressed: () => _openDailyChallenge(context),
             ),
           ),
@@ -653,31 +665,7 @@ class _WarehousePlacard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF4CAF50).withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                            color:
-                                const Color(0xFF4CAF50).withValues(alpha: 0.6),
-                            width: 1,
-                          ),
-                        ),
-                        child: Text(
-                          'CLEARED FOR DISPATCH',
-                          style: TextStyle(
-                            color: const Color(0xFF4CAF50),
-                            fontSize: 9,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 1.4,
-                            fontFamily: 'Courier',
-                          ),
-                        ),
-                      ),
+                      const _DispatchStatusPill(),
                       const SizedBox(width: 8),
                       const StencilForklift(width: 38, height: 22),
                     ],
@@ -770,6 +758,7 @@ class _JuicyPlayButtonState extends State<_JuicyPlayButton>
       onTapUp: (_) {
         _press.reverse();
         HapticFeedback.mediumImpact();
+        AudioService().playTap();
         widget.onTap();
       },
       onTapCancel: () => _press.reverse(),
@@ -869,6 +858,98 @@ class _JuicyPlayButtonState extends State<_JuicyPlayButton>
           );
         },
       ),
+    );
+  }
+}
+
+/// The green "CLEARED FOR DISPATCH" pill — pulses a faint LED dot on
+/// the left + breathes the border so the placard reads as a "system
+/// online" indicator instead of a static stamp. Lifecycle-safe (stops
+/// in deactivate so it doesn't fire during navigation tear-down).
+class _DispatchStatusPill extends StatefulWidget {
+  const _DispatchStatusPill();
+
+  @override
+  State<_DispatchStatusPill> createState() => _DispatchStatusPillState();
+}
+
+class _DispatchStatusPillState extends State<_DispatchStatusPill>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1600),
+  )..repeat(reverse: true);
+
+  @override
+  void deactivate() {
+    _ctrl.stop();
+    super.deactivate();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const green = Color(0xFF4CAF50);
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, _) {
+        // 0..1 → 0.5..1.0 brightness via sine.
+        final t = _ctrl.value;
+        final pulse = 0.5 + 0.5 * math.sin(t * math.pi);
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: green.withValues(alpha: 0.18),
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(
+              color: green.withValues(alpha: 0.4 + pulse * 0.4),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: green.withValues(alpha: pulse * 0.30),
+                blurRadius: 6,
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // LED dot — brightest when pulse is at 1.
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: green.withValues(alpha: 0.6 + pulse * 0.4),
+                  boxShadow: [
+                    BoxShadow(
+                      color: green.withValues(alpha: pulse * 0.6),
+                      blurRadius: 4,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              const Text(
+                'CLEARED FOR DISPATCH',
+                style: TextStyle(
+                  color: green,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.4,
+                  fontFamily: 'Courier',
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

@@ -11,6 +11,10 @@ class GameButton extends StatefulWidget {
   final bool isDisabled;
   final Color? backgroundColor;
   final Color? borderColor;
+  /// Optional tint for the icon — pass a per-category color (e.g. blue
+  /// for Contracts, pink for Machinery) so the home grid reads as a
+  /// menu of distinct destinations rather than identical pills.
+  final Color? iconColor;
 
   const GameButton({
     super.key,
@@ -22,6 +26,7 @@ class GameButton extends StatefulWidget {
     this.isDisabled = false,
     this.backgroundColor,
     this.borderColor,
+    this.iconColor,
   });
 
   @override
@@ -145,9 +150,10 @@ class _GameButtonState extends State<GameButton>
                       size: iconSize,
                       color: widget.isDisabled
                           ? GameColors.textMuted
-                          : (widget.isPrimary
-                              ? GameColors.text
-                              : GameColors.accent),
+                          : (widget.iconColor ??
+                              (widget.isPrimary
+                                  ? GameColors.text
+                                  : GameColors.accent)),
                     ),
                     SizedBox(width: widget.isSmall ? 6 : 8),
                   ],
