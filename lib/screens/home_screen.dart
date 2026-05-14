@@ -297,6 +297,7 @@ class _HomeScreenState extends State<HomeScreen>
             children: [
               // Coin balance
               GestureDetector(
+                behavior: HitTestBehavior.opaque,
                 onTap: _openDailyRewards,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -342,6 +343,7 @@ class _HomeScreenState extends State<HomeScreen>
 
               // Daily rewards button
               GestureDetector(
+                behavior: HitTestBehavior.opaque,
                 onTap: _openDailyRewards,
                 child: Stack(
                   clipBehavior: Clip.none,
@@ -422,7 +424,7 @@ class _HomeScreenState extends State<HomeScreen>
           SizedBox(
             width: double.infinity,
             child: GameButton(
-              text: _isDailyCompleted ? 'Daily Complete ✓' : 'Daily Challenge',
+              text: _isDailyCompleted ? 'Daily Complete' : 'Daily Contract',
               icon: Icons.calendar_today,
               isPrimary: false,
               isSmall: true,
@@ -440,6 +442,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildPlayButton() {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () => _openLevelSelect(context),
       child: Container(
         width: double.infinity,
@@ -586,12 +589,14 @@ class _HomeScreenState extends State<HomeScreen>
                 ],
               ).createShader(bounds),
               child: const Text(
-                'SORTBLOOM',
+                'WAREHOUSE\nSORT',
+                textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 56,
+                  fontSize: 44,
                   fontWeight: FontWeight.bold,
+                  height: 1.0,
                   color: GameColors.text,
-                  letterSpacing: 8,
+                  letterSpacing: 6,
                 ),
               ),
             ),

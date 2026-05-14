@@ -68,10 +68,11 @@ class GameColors {
   static const Color backgroundMid = Color(0xFF161B22);
   static const Color backgroundLight = Color(0xFF21262D);
 
-  static const Color background = Color(0xFF0F1622);
-  static const Color surface = Color(0xFF141C2A);
-  static const Color accent = Color(0xFFFF6B81);
-  static const Color zen = Color(0xFF2FB9B3);
+  // Warehouse Sort palette (GDD §6: warm gray + steel + safety yellow).
+  static const Color background = Color(0xFF1A1F26);
+  static const Color surface = Color(0xFF252B36);
+  static const Color accent = Color(0xFFFFC107); // safety yellow
+  static const Color zen = Color(0xFF2FB9B3); // legacy add-tube accent
   static const Color text = Color(0xFFEEEEEE);
   static const Color textMuted = Color(0xFF8B95A1);
   static const Color empty = Color(0xFF1C2433);

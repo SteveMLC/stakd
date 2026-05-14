@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "sortbloom-web",
+      "name": "warehouse-sort-web",
       "runtimeExecutable": "flutter",
       "runtimeArgs": [
         "run",
@@ -17,7 +17,7 @@
       "port": 8765
     },
     {
-      "name": "sortbloom-web-debug",
+      "name": "warehouse-sort-web-debug",
       "runtimeExecutable": "flutter",
       "runtimeArgs": [
         "run",

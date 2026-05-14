@@ -1,11 +1,11 @@
 {
-    "name": "stakd",
-    "short_name": "stakd",
+    "name": "Warehouse Sort",
+    "short_name": "Warehouse Sort",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#1A1F26",
+    "theme_color": "#FFC107",
+    "description": "Sort the crates. Ship the orders. Build the empire.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

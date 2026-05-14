@@ -95,12 +95,19 @@ class GameState extends ChangeNotifier {
   /// True when every non-empty, non-completed bay has a movable top that has
   /// no legal destination. The game is over (dock-jam) but the level isn't
   /// solved — caller should surface the jam-recovery modal.
+  ///
+  /// Returns false in the winning state (every non-empty bay is single-color
+  /// complete) even when `_isComplete` hasn't been flipped yet — this avoids
+  /// a spurious jam fire when a level is initGame'd into a pre-solved layout.
   bool get isJammed {
     if (_isComplete) return false;
     if (_animatingLayer != null) return false;
+    var hasIncompleteWork = false;
     for (var i = 0; i < _stacks.length; i++) {
       final src = _stacks[i];
-      if (src.isEmpty || src.isComplete) continue;
+      if (src.isEmpty) continue;
+      if (src.isComplete) continue;
+      hasIncompleteWork = true;
       final top = src.topLayer;
       if (top == null) continue;
       if (top.isFrozen) continue; // frozen tops can't be moved this turn
@@ -110,7 +117,7 @@ class GameState extends ChangeNotifier {
         if (_stacks[j].canAccept(top)) return false;
       }
     }
-    return true;
+    return hasIncompleteWork;
   }
 
   /// Calculate stars earned for this level completion
