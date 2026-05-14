@@ -117,6 +117,47 @@ class LayerWidget extends StatelessWidget {
               ),
             ),
           ),
+          // Warehouse crate detail — center horizontal tape strip
+          if (!isLocked && !isFrozen)
+            Positioned(
+              left: 6,
+              right: 6,
+              top: height / 2 - 2,
+              height: 4,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.22),
+                  borderRadius: BorderRadius.circular(1),
+                ),
+              ),
+            ),
+          // Warehouse crate detail — vertical edge planks (left + right)
+          if (!isLocked && !isFrozen) ...[
+            Positioned(
+              left: 4,
+              top: 4,
+              bottom: 4,
+              width: 2,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(1),
+                ),
+              ),
+            ),
+            Positioned(
+              right: 4,
+              top: 4,
+              bottom: 4,
+              width: 2,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(1),
+                ),
+              ),
+            ),
+          ],
           // Locked block frost overlay
           if (isLocked)
             Container(

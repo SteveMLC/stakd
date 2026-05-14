@@ -615,37 +615,10 @@ class AnimatedBackground extends StatefulWidget {
   State<AnimatedBackground> createState() => _AnimatedBackgroundState();
 }
 
-class _AnimatedBackgroundState extends State<AnimatedBackground>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final List<_Star> _stars;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 20),
-    )..repeat();
-
-    final random = Random();
-    _stars = List.generate(
-      15,
-      (index) => _Star(
-        x: random.nextDouble(),
-        y: random.nextDouble(),
-        size: random.nextDouble() * 2 + 1,
-        speed: random.nextDouble() * 0.02 + 0.01,
-        opacity: random.nextDouble() * 0.3 + 0.1,
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+class _AnimatedBackgroundState extends State<AnimatedBackground> {
+  // No more animations — warehouse background is a static dock grid +
+  // safety stripes, which reads as "warehouse" much better than the old
+  // SortBloom drifting star field.
 
   @override
   Widget build(BuildContext context) {
@@ -664,16 +637,10 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
             ),
           ),
         ),
-        // RepaintBoundary isolates star field repaints from menu buttons
-        RepaintBoundary(
-          child: AnimatedBuilder(
-            animation: _controller,
-            builder: (context, _) {
-              return CustomPaint(
-                painter: _StarFieldPainter(_stars, _controller.value),
-                size: Size.infinite,
-              );
-            },
+        const RepaintBoundary(
+          child: CustomPaint(
+            painter: _WarehouseDockPainter(),
+            size: Size.infinite,
           ),
         ),
         widget.child,
@@ -682,42 +649,47 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
   }
 }
 
-class _Star {
-  final double x;
-  final double y;
-  final double size;
-  final double speed;
-  final double opacity;
-
-  const _Star({
-    required this.x,
-    required this.y,
-    required this.size,
-    required this.speed,
-    required this.opacity,
-  });
-}
-
-class _StarFieldPainter extends CustomPainter {
-  final List<_Star> stars;
-  final double progress;
-
-  const _StarFieldPainter(this.stars, this.progress);
+/// Paints a subtle warehouse "dock floor" pattern: a grid of dark
+/// rectangles + faint yellow safety stripes near the top and bottom
+/// edges. Static — no animation cost.
+class _WarehouseDockPainter extends CustomPainter {
+  const _WarehouseDockPainter();
 
   @override
   void paint(Canvas canvas, Size size) {
-    for (final star in stars) {
-      final dy = (star.y + progress * star.speed) % 1.0;
-      final offset = Offset(star.x * size.width, dy * size.height);
-      final paint = Paint()
-        ..color = GameColors.text.withValues(alpha: star.opacity)
-        ..style = PaintingStyle.fill;
-      canvas.drawCircle(offset, star.size, paint);
+    // Grid lines (faint warm gray on top of bg gradient).
+    final gridPaint = Paint()
+      ..color = const Color(0xFFFFFFFF).withValues(alpha: 0.025)
+      ..strokeWidth = 1;
+    const spacing = 48.0;
+    for (var x = 0.0; x < size.width; x += spacing) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
     }
+    for (var y = 0.0; y < size.height; y += spacing) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+    }
+
+    // Yellow safety hatching at very top + very bottom edges.
+    final hatchPaint = Paint()
+      ..color = const Color(0xFFFFC107).withValues(alpha: 0.06)
+      ..style = PaintingStyle.fill;
+    const hatchHeight = 8.0;
+    const hatchStripe = 16.0;
+    void hatchBand(double y) {
+      for (var x = -hatchHeight; x < size.width; x += hatchStripe) {
+        final path = Path()
+          ..moveTo(x, y)
+          ..lineTo(x + hatchHeight, y)
+          ..lineTo(x + hatchHeight + hatchHeight, y + hatchHeight)
+          ..lineTo(x + hatchHeight, y + hatchHeight)
+          ..close();
+        canvas.drawPath(path, hatchPaint);
+      }
+    }
+    hatchBand(0);
+    hatchBand(size.height - hatchHeight);
   }
 
   @override
-  bool shouldRepaint(covariant _StarFieldPainter oldDelegate) {
-    return oldDelegate.progress != progress || oldDelegate.stars != stars;
-  }
+  bool shouldRepaint(covariant _WarehouseDockPainter oldDelegate) => false;
 }
