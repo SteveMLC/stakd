@@ -270,15 +270,9 @@ class _Pill extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: color.withValues(alpha: 0.6), width: 1),
       ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: GameColors.text,
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.6,
-        ),
-      ),
+      child: Text(label, style: const TextStyle(
+        color: GameColors.text, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.6,
+      )),
     );
   }
 }
@@ -293,23 +287,14 @@ class _EquippedBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: GameColors.successGlow.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: GameColors.successGlow.withValues(alpha: 0.6),
-          width: 1,
-        ),
+        border: Border.all(color: GameColors.successGlow.withValues(alpha: 0.6), width: 1),
       ),
       child: const Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(Icons.check_circle, size: 11, color: GameColors.successGlow),
         SizedBox(width: 3),
-        Text(
-          'EQUIPPED',
-          style: TextStyle(
-            color: GameColors.successGlow,
-            fontSize: 10,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.6,
-          ),
-        ),
+        Text('EQUIPPED', style: TextStyle(
+          color: GameColors.successGlow, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.6,
+        )),
       ]),
     );
   }

@@ -20,6 +20,7 @@ import 'leaderboard_screen.dart';
 import '../utils/route_transitions.dart';
 import 'theme_store_screen.dart';
 import 'achievements_screen.dart';
+import 'forklift_shop_screen.dart';
 
 /// Main menu screen
 class HomeScreen extends StatefulWidget {
@@ -254,6 +255,16 @@ class _HomeScreenState extends State<HomeScreen>
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
+                      Expanded(
+                        child: GameButton(
+                          text: 'Forklifts',
+                          icon: Icons.local_shipping,
+                          isPrimary: false,
+                          isSmall: true,
+                          onPressed: () => _openForkliftShop(context),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: GameButton(
                           text: 'Settings',
@@ -598,6 +609,10 @@ class _HomeScreenState extends State<HomeScreen>
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const ThemeStoreScreen()));
+  }
+
+  void _openForkliftShop(BuildContext context) {
+    Navigator.of(context).push(fadeSlideRoute(const ForkliftShopScreen()));
   }
 
   void _openSettings(BuildContext context) {

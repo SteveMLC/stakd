@@ -8,3 +8,4 @@ export 'daily_challenge_screen.dart';
 export 'leaderboard_screen.dart';
 export 'theme_store_screen.dart';
 export 'achievements_screen.dart';
+export 'forklift_shop_screen.dart';
