@@ -1216,14 +1216,17 @@ class _StackWidgetState extends State<_StackWidget>
               ? _multiGrabPulseAnimation.value
               : 0.0;
 
-          // Enhanced lift effect for multi-grab
+          // Enhanced lift effect for multi-grab. Selected single-bay
+          // gets a slightly higher lift + more scale than before so the
+          // "I picked this crate up" beat reads as decisively as the
+          // multi-grab variant.
           final liftOffset = isMultiGrabActive
               ? -12.0 - (multiGrabPulse * 4)
-              : (widget.isSelected ? -25.0 : _bounceAnimation.value);
+              : (widget.isSelected ? -28.0 : _bounceAnimation.value);
 
           final scale = isMultiGrabActive
               ? 1.04 + (multiGrabPulse * 0.01)
-              : (widget.isSelected ? 1.02 : 1.0);
+              : (widget.isSelected ? 1.06 : 1.0);
 
           return Transform.translate(
             offset: Offset(0, liftOffset),
