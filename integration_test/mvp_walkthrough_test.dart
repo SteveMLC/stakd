@@ -26,6 +26,7 @@ import 'package:warehouse_sort/services/contract_service.dart';
 import 'package:warehouse_sort/services/cosmetic_service.dart';
 import 'package:warehouse_sort/services/currency_service.dart';
 import 'package:warehouse_sort/services/iap_service.dart';
+import 'package:warehouse_sort/services/income_multiplier_service.dart';
 import 'package:warehouse_sort/services/power_up_service.dart';
 import 'package:warehouse_sort/services/storage_service.dart';
 import 'package:warehouse_sort/services/theme_service.dart';
@@ -45,6 +46,8 @@ Future<void> _bootServices() async {
   await ContractService().init();
   await CosmeticService().reset();
   await CosmeticService().init();
+  await IncomeMultiplierService().reset();
+  await IncomeMultiplierService().init();
   // AudioService.init touches platform channels but no-ops on test runs.
   await AudioService().init();
 }
@@ -60,6 +63,7 @@ Widget _pumpedApp() {
       ChangeNotifierProvider.value(value: BusinessTierService()),
       ChangeNotifierProvider.value(value: ContractService()),
       ChangeNotifierProvider.value(value: CosmeticService()),
+      ChangeNotifierProvider.value(value: IncomeMultiplierService()),
     ],
     child: const WarehouseSortApp(),
   );

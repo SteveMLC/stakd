@@ -97,9 +97,26 @@ class _MultiplierPill extends StatelessWidget {
   }
 }
 
-class _CashChip extends StatelessWidget {
+class _CashChip extends StatefulWidget {
   final int amount;
   const _CashChip({required this.amount});
+
+  @override
+  State<_CashChip> createState() => _CashChipState();
+}
+
+class _CashChipState extends State<_CashChip> {
+  late int _displayed = widget.amount;
+  int _from = 0;
+
+  @override
+  void didUpdateWidget(covariant _CashChip oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.amount != widget.amount) {
+      _from = _displayed;
+      // _displayed updates inside the builder via the tween value.
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -108,13 +125,27 @@ class _CashChip extends StatelessWidget {
       children: [
         const Icon(Icons.attach_money, size: 18, color: Color(0xFFFFD24A)),
         const SizedBox(width: 2),
-        Text(
-          _format(amount),
-          style: const TextStyle(
-            color: GameColors.text,
-            fontWeight: FontWeight.w700,
-            fontSize: 16,
+        TweenAnimationBuilder<double>(
+          // Tween from previous value to new value; format as we go for
+          // a satisfying "numbers go UP" ticker.
+          tween: Tween<double>(
+            begin: _from.toDouble(),
+            end: widget.amount.toDouble(),
           ),
+          duration: const Duration(milliseconds: 650),
+          curve: Curves.easeOutCubic,
+          onEnd: () => _displayed = widget.amount,
+          builder: (context, value, _) {
+            final shown = value.round();
+            return Text(
+              _format(shown),
+              style: const TextStyle(
+                color: GameColors.text,
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
+              ),
+            );
+          },
         ),
       ],
     );
@@ -126,8 +157,12 @@ class _CashChip extends StatelessWidget {
       final k = n / 1000;
       return '${k.toStringAsFixed(k >= 100 ? 0 : 1)}k';
     }
-    final m = n / 1000000;
-    return '${m.toStringAsFixed(m >= 100 ? 0 : 1)}M';
+    if (n < 1000000000) {
+      final m = n / 1000000;
+      return '${m.toStringAsFixed(m >= 100 ? 0 : 1)}M';
+    }
+    final b = n / 1000000000;
+    return '${b.toStringAsFixed(b >= 100 ? 0 : 1)}B';
   }
 }
 
