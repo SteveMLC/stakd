@@ -12,6 +12,10 @@ import '../services/haptic_service.dart';
 import '../services/achievement_service.dart';
 import '../services/leaderboard_service.dart';
 import '../services/currency_service.dart';
+import '../services/warehouse_economy_service.dart';
+import '../services/business_tier_service.dart';
+import '../services/contract_service.dart';
+import '../data/local_regional_levels.dart';
 import '../utils/constants.dart';
 import '../utils/route_transitions.dart';
 import '../widgets/game_board.dart';
@@ -254,6 +258,38 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
       final coinsEarned = stars * 10;
       await CurrencyService().addCoins(coinsEarned);
 
+      // Warehouse meta-loop reward (v0.3 §3 economy):
+      //   cash = seed.baseCashReward × tier multiplier × star multiplier
+      //   xp   = cash ÷ 2
+      // Levels past 30 (procedural) use a fallback base of 50 + 25*(N-30).
+      final seed = _seedForWarehouseLevel(_currentLevel);
+      final tier = seed?.tier ?? BusinessTier.regional;
+      final tierMul = BusinessTierService().multiplierFor(tier);
+      final starMul = ShipmentRewardCalculator.starMultiplier(stars);
+      final baseCash =
+          seed?.baseCashReward ?? (50 + 25 * (_currentLevel - 30).clamp(0, 99));
+      final cashEarned = (baseCash * tierMul * starMul).floor();
+      final xpEarned = (cashEarned / 2).floor();
+      final levelUp = await WarehouseEconomyService().awardReward(
+        ShipmentReward(cash: cashEarned, xp: xpEarned),
+      );
+
+      // Contract progress: +50% of cumulative levels' base on completion.
+      final contractBonusBase = baseCash * 5;
+      final completedContract = await ContractService().recordLevelComplete(
+        _currentLevel,
+        stars,
+        cashBonusForContract:
+            ShipmentRewardCalculator.contractCompletionBonus(contractBonusBase),
+      );
+      if (completedContract != null && completedContract.cashBonus > 0) {
+        await WarehouseEconomyService().grantCash(completedContract.cashBonus);
+      }
+      debugPrint(
+        'Warehouse reward: +\$$cashEarned, +$xpEarned XP, '
+        'levelUp=$levelUp, contract=${completedContract?.contract.displayName}',
+      );
+
       setState(() {
         _completionDuration = DateTime.now().difference(startTime);
         _earnedStars = stars;
@@ -287,6 +323,15 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
         }
       });
     });
+  }
+
+  /// Look up a hand-tuned launch seed for this level. Returns null past L30
+  /// (procedural-generation territory).
+  WarehouseLevelSeed? _seedForWarehouseLevel(int level) {
+    for (final s in localRegionalLevelSeeds) {
+      if (s.level == level) return s;
+    }
+    return null;
   }
 
   void _onTutorialComplete() async {

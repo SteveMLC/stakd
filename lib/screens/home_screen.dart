@@ -12,6 +12,7 @@ import '../widgets/xp_progress_bar.dart';
 import '../widgets/game_button.dart';
 import '../widgets/daily_streak_badge.dart';
 import '../widgets/daily_rewards_popup.dart';
+import '../widgets/warehouse_hud.dart';
 import 'daily_challenge_screen.dart';
 import 'level_select_screen.dart';
 import 'settings_screen.dart';
@@ -177,14 +178,16 @@ class _HomeScreenState extends State<HomeScreen>
                 _buildTopBar(),
                 const SizedBox(height: 16),
                 _buildLogo(),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 Text(
-                  'Color Sort Puzzle',
+                  'Sort the crates. Build the empire.',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: GameColors.textMuted,
-                    letterSpacing: 2,
+                    letterSpacing: 1.5,
                   ),
                 ),
+                const SizedBox(height: 14),
+                const WarehouseHud(),
                 const Spacer(flex: 2),
                 _buildPlayButton(),
                 const SizedBox(height: 24),

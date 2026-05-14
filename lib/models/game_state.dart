@@ -93,6 +93,27 @@ class GameState extends ChangeNotifier {
   bool get isUnderPar => _par != null && _moveCount <= _par!;
   bool get isAtPar => _par != null && _moveCount == _par!;
 
+  /// True when every non-empty, non-completed bay has a movable top that has
+  /// no legal destination. The game is over (dock-jam) but the level isn't
+  /// solved — caller should surface the jam-recovery modal.
+  bool get isJammed {
+    if (_isComplete) return false;
+    if (_animatingLayer != null) return false;
+    for (var i = 0; i < _stacks.length; i++) {
+      final src = _stacks[i];
+      if (src.isEmpty || src.isComplete) continue;
+      final top = src.topLayer;
+      if (top == null) continue;
+      if (top.isFrozen) continue; // frozen tops can't be moved this turn
+      if (top.isLocked) continue; // locked layers also can't be moved
+      for (var j = 0; j < _stacks.length; j++) {
+        if (i == j) continue;
+        if (_stacks[j].canAccept(top)) return false;
+      }
+    }
+    return true;
+  }
+
   /// Calculate stars earned for this level completion
   /// ★ (1 star) = Complete the level
   /// ★★ (2 stars) = Complete at or under par moves

@@ -19,6 +19,7 @@ import 'services/stats_service.dart';
 import 'services/progression_service.dart';
 import 'services/warehouse_economy_service.dart';
 import 'services/business_tier_service.dart';
+import 'services/contract_service.dart';
 import 'app.dart';
 
 void main() async {
@@ -60,6 +61,7 @@ void main() async {
   await ProgressionService().init();
   await WarehouseEconomyService().init();
   await BusinessTierService().init();
+  await ContractService().init();
 
   // Initialize review service and increment session count
   final prefs = await SharedPreferences.getInstance();
@@ -78,6 +80,9 @@ void main() async {
         ChangeNotifierProvider.value(value: IapService()),
         ChangeNotifierProvider.value(value: ThemeService()),
         ChangeNotifierProvider.value(value: PowerUpService()),
+        ChangeNotifierProvider.value(value: WarehouseEconomyService()),
+        ChangeNotifierProvider.value(value: BusinessTierService()),
+        ChangeNotifierProvider.value(value: ContractService()),
       ],
       child: const WarehouseSortApp(),
     ),
