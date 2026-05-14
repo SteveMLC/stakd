@@ -29,7 +29,6 @@ class _WarehouseSplashScreenState extends State<WarehouseSplashScreen>
   void initState() {
     super.initState();
     _ctrl.forward();
-    // Auto-transition to home once the splash finishes.
     Future.delayed(const Duration(milliseconds: 2400), _goToHome);
   }
 
@@ -49,16 +48,14 @@ class _WarehouseSplashScreenState extends State<WarehouseSplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: GameColors.background,
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        // Tap to skip the splash — respect player time.
         onTap: _goToHome,
-        child: AnimatedBackground(
-          child: SafeArea(
-            child: AnimatedBuilder(
-              animation: _ctrl,
-              builder: (context, _) => _buildContent(context, _ctrl.value),
-            ),
+        child: SafeArea(
+          child: AnimatedBuilder(
+            animation: _ctrl,
+            builder: (context, _) => _buildContent(context, _ctrl.value),
           ),
         ),
       ),
@@ -66,14 +63,12 @@ class _WarehouseSplashScreenState extends State<WarehouseSplashScreen>
   }
 
   Widget _buildContent(BuildContext context, double t) {
-    // Animation phases:
-    //   0.00–0.30: forklift drives across screen
-    //   0.30–0.55: forklift halts; "WAREHOUSE" stamps in
-    //   0.55–0.80: "SORT" stamps in below
-    //   0.80–1.00: subtitle fades in
     final mq = MediaQuery.of(context).size;
 
-    // Eased "drive in" — accelerate, then stop hard.
+    // 0.00–0.30: forklift drives across screen
+    // 0.30–0.55: forklift halts; "WAREHOUSE" stamps in
+    // 0.55–0.80: "SORT" stamps in
+    // 0.80–1.00: subtitle fades in
     final driveT = Curves.easeOutCubic.transform(t.clamp(0.0, 0.30) / 0.30);
     final forkliftX = -160.0 + driveT * (mq.width * 0.5 + 80);
 
@@ -81,87 +76,80 @@ class _WarehouseSplashScreenState extends State<WarehouseSplashScreen>
     final sortStamp = _stampProgress(t, 0.55, 0.80);
     final subtitleFade = _stampProgress(t, 0.80, 1.0);
 
-    return Stack(
-      fit: StackFit.expand,
+    return Column(
       children: [
-        // Top + bottom hazard bands frame the screen like a loading dock.
-        const Positioned(
-          left: 0,
-          right: 0,
-          top: 0,
-          child: HazardStripe(height: 14),
-        ),
-        const Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
-          child: HazardStripe(height: 14),
-        ),
-        // Forklift driving across — positioned absolutely so the
-        // wordmark layout stays centered regardless of progress.
-        Positioned(
-          left: forkliftX,
-          bottom: 110,
-          child: const StencilForklift(width: 140, height: 92),
-        ),
-        // Dust trail behind the forklift while moving.
-        Positioned(
-          left: forkliftX - 30,
-          bottom: 110,
-          child: Opacity(
-            opacity: ((1.0 - driveT) * 0.5).clamp(0.0, 1.0),
-            child: _DustPuff(),
-          ),
-        ),
-        // Centered wordmark column.
-        Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+        const HazardStripe(height: 14),
+        Expanded(
+          child: Stack(
             children: [
-              _StampedText(
-                text: 'WAREHOUSE',
-                progress: warehouseStamp,
-                fontSize: 44,
-                rotationDeg: -1.5,
+              // Centered wordmark.
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _StampedText(
+                      text: 'WAREHOUSE',
+                      progress: warehouseStamp,
+                      fontSize: 44,
+                      rotationDeg: -1.5,
+                    ),
+                    const SizedBox(height: 4),
+                    _StampedText(
+                      text: 'SORT',
+                      progress: sortStamp,
+                      fontSize: 56,
+                      rotationDeg: 1.2,
+                      color: GameColors.accent,
+                    ),
+                    const SizedBox(height: 22),
+                    Opacity(
+                      opacity: subtitleFade,
+                      child: const _SubtitleStrip(),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 4),
-              _StampedText(
-                text: 'SORT',
-                progress: sortStamp,
-                fontSize: 56,
-                rotationDeg: 1.2,
-                color: GameColors.accent,
+              // Forklift driving across the dock.
+              Positioned(
+                left: forkliftX,
+                bottom: 80,
+                child: const StencilForklift(width: 140, height: 92),
               ),
-              const SizedBox(height: 22),
-              Opacity(
-                opacity: subtitleFade,
-                child: const _SubtitleStrip(),
+              // Dust trail behind the forklift while moving.
+              Positioned(
+                left: forkliftX - 30,
+                bottom: 80,
+                child: Opacity(
+                  opacity: ((1.0 - driveT) * 0.5).clamp(0.0, 1.0),
+                  child: _DustPuff(),
+                ),
+              ),
+              // "LOADING DOCK READY" tagline pulses softly.
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 20,
+                child: Opacity(
+                  opacity:
+                      (0.4 + 0.6 * (0.5 + 0.5 * math.sin(t * math.pi * 4)))
+                          .clamp(0.0, 1.0),
+                  child: const Text(
+                    'LOADING DOCK · READY',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: GameColors.textMuted,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 4,
+                      fontFamily: 'Courier',
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
         ),
-        // "LOADING DOCK READY" tagline pulses softly above bottom band.
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 36,
-          child: Opacity(
-            opacity:
-                (0.4 + 0.6 * (0.5 + 0.5 * math.sin(t * math.pi * 4)))
-                    .clamp(0.0, 1.0),
-            child: const Text(
-              'LOADING DOCK · READY',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: GameColors.textMuted,
-                fontSize: 11,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 4,
-                fontFamily: 'Courier',
-              ),
-            ),
-          ),
-        ),
+        const HazardStripe(height: 14),
       ],
     );
   }
@@ -246,7 +234,7 @@ class _SubtitleStrip extends StatelessWidget {
           width: 1,
         ),
       ),
-      child: Text(
+      child: const Text(
         'SORT THE CRATES · BUILD THE EMPIRE',
         style: TextStyle(
           color: GameColors.text,
@@ -264,6 +252,7 @@ class _DustPuff extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: List.generate(3, (i) {
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 1),

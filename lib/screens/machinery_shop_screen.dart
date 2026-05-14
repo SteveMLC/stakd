@@ -5,6 +5,7 @@ import '../services/machinery_service.dart';
 import '../services/warehouse_economy_service.dart';
 import '../utils/constants.dart';
 import '../widgets/game_button.dart';
+import '../widgets/warehouse_decorations.dart';
 import '../widgets/warehouse_hud.dart';
 import 'home_screen.dart' show AnimatedBackground;
 
@@ -28,13 +29,14 @@ class MachineryShopScreen extends StatelessWidget {
                   onPressed: () => Navigator.of(context).pop(),
                 ),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Machinery',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.2,
-                        ),
+                const Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: MetalNameplate(
+                      text: 'MACHINERY',
+                      icon: Icons.precision_manufacturing,
+                      fontSize: 15,
+                    ),
                   ),
                 ),
               ]),

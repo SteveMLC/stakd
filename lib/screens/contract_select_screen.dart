@@ -8,6 +8,7 @@ import '../services/warehouse_economy_service.dart';
 import '../utils/constants.dart';
 import '../utils/route_transitions.dart';
 import '../widgets/game_button.dart';
+import '../widgets/warehouse_decorations.dart';
 import '../widgets/warehouse_hud.dart';
 import 'game_screen.dart';
 import 'home_screen.dart' show AnimatedBackground;
@@ -29,12 +30,13 @@ class ContractSelectScreen extends StatelessWidget {
               child: Row(children: [
                 GameIconButton(icon: Icons.arrow_back, onPressed: () => Navigator.of(context).pop()),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Contracts',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
+                const Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: MetalNameplate(
+                      text: 'CONTRACTS',
+                      icon: Icons.assignment_outlined,
+                      fontSize: 15,
                     ),
                   ),
                 ),

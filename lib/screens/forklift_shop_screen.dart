@@ -5,6 +5,7 @@ import '../services/cosmetic_service.dart';
 import '../services/warehouse_economy_service.dart';
 import '../utils/constants.dart';
 import '../widgets/game_button.dart';
+import '../widgets/warehouse_decorations.dart';
 import '../widgets/warehouse_hud.dart';
 import 'home_screen.dart' show AnimatedBackground;
 
@@ -33,10 +34,15 @@ class ForkliftShopScreen extends StatelessWidget {
               child: Row(children: [
                 GameIconButton(icon: Icons.arrow_back, onPressed: () => Navigator.of(context).pop()),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: Text('Forklifts', style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold, letterSpacing: 1.2,
-                  )),
+                const Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: MetalNameplate(
+                      text: 'FORKLIFTS',
+                      icon: Icons.local_shipping,
+                      fontSize: 15,
+                    ),
+                  ),
                 ),
               ]),
             ),

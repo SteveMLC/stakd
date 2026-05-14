@@ -127,8 +127,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 250));
     }
 
-    // Shop header.
-    expect(find.text('Machinery'), findsWidgets);
+    // Shop header (rendered as a MetalNameplate with uppercase text).
+    expect(find.text('MACHINERY'), findsOneWidget);
     // Empty-state banner: no machines owned yet.
     expect(
       find.textContaining('No machinery yet'),
@@ -174,8 +174,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 250));
     }
 
-    // Contract Select header.
-    expect(find.text('Contracts'), findsOneWidget);
+    // Contract Select header (now rendered via MetalNameplate, uppercase).
+    expect(find.text('CONTRACTS'), findsOneWidget);
     // Verify the 6-contract catalog is wired (data-level assertion).
     expect(ContractService.contracts.length, 6);
     // The first 3 (Local Contract 1-3) are in the initial viewport — verify

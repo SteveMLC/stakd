@@ -77,14 +77,17 @@ class _GameButtonState extends State<GameButton>
     final baseColor = widget.backgroundColor ??
         (widget.isPrimary ? GameColors.accent : GameColors.surface);
     final outlineColor = widget.borderColor ?? GameColors.accent;
+    // Brushed-steel gradient on secondary buttons so they read as a
+    // riveted dock plate rather than a generic glass card.
     final gradientColors = widget.isPrimary
         ? [
             baseColor,
             baseColor.withValues(alpha: 0.8),
           ]
-        : [
-            GameColors.surface.withValues(alpha: 0.95),
-            GameColors.background.withValues(alpha: 0.9),
+        : const [
+            Color(0xFF3A4250),
+            Color(0xFF252B36),
+            Color(0xFF1A1F26),
           ];
 
     return GestureDetector(
@@ -142,18 +145,32 @@ class _GameButtonState extends State<GameButton>
                       size: iconSize,
                       color: widget.isDisabled
                           ? GameColors.textMuted
-                          : GameColors.text,
+                          : (widget.isPrimary
+                              ? GameColors.text
+                              : GameColors.accent),
                     ),
                     SizedBox(width: widget.isSmall ? 6 : 8),
                   ],
-                  Text(
-                    widget.text,
-                    style: TextStyle(
-                      fontSize: fontSize,
-                      fontWeight: FontWeight.w600,
-                      color: widget.isDisabled
-                          ? GameColors.textMuted
-                          : GameColors.text,
+                  // Flexible + FittedBox lets long words ("Leaderboards",
+                  // "Achievements") shrink to fit small buttons instead of
+                  // overflowing — Flutter's own yellow/black stripe debug
+                  // indicator is what we were seeing in the home grid.
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        widget.text,
+                        style: TextStyle(
+                          fontSize: fontSize,
+                          fontWeight: widget.isPrimary
+                              ? FontWeight.w700
+                              : FontWeight.w800,
+                          letterSpacing: widget.isPrimary ? 1.0 : 1.0,
+                          color: widget.isDisabled
+                              ? GameColors.textMuted
+                              : GameColors.text,
+                        ),
+                      ),
                     ),
                   ),
                 ],
