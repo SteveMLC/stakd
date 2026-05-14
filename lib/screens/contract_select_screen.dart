@@ -109,49 +109,119 @@ class _ContractCard extends StatelessWidget {
     final completed = contracts.isContractCompleted(definition);
     final tierLabel = definition.tier == BusinessTier.local ? 'Local' : 'Regional';
 
-    return Container(
-      decoration: BoxDecoration(
-        color: GameColors.surface.withValues(alpha: unlocked ? 0.92 : 0.55),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: unlocked ? _accent.withValues(alpha: 0.55) : GameColors.textMuted.withValues(alpha: 0.2),
-          width: 1.5,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        decoration: BoxDecoration(
+          color: GameColors.surface.withValues(alpha: unlocked ? 0.92 : 0.55),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: unlocked ? _accent.withValues(alpha: 0.55) : GameColors.textMuted.withValues(alpha: 0.2),
+            width: 1.5,
+          ),
+          boxShadow: unlocked
+              ? [BoxShadow(color: _accent.withValues(alpha: 0.18), blurRadius: 12, offset: const Offset(0, 4))]
+              : null,
         ),
-        boxShadow: unlocked
-            ? [BoxShadow(color: _accent.withValues(alpha: 0.18), blurRadius: 12, offset: const Offset(0, 4))]
-            : null,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(definition.displayName, style: const TextStyle(
-                    color: GameColors.text, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 0.5,
-                  )),
-                  const SizedBox(height: 2),
-                  Text('Lv ${definition.firstLevel}–${definition.lastLevel}', style: const TextStyle(
-                    color: GameColors.textMuted, fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.5,
-                  )),
-                ]),
+            // Hazard-tape header — only on unlocked contracts (locked
+            // ones get a muted divider line instead so they look like
+            // dispatched-but-not-yet-cleared manifests).
+            if (unlocked)
+              const HazardStripe(height: 5, stripeWidth: 10)
+            else
+              Container(
+                height: 5,
+                color: GameColors.textMuted.withValues(alpha: 0.18),
               ),
-              const SizedBox(width: 8),
-              _Pill(label: tierLabel, color: _accent),
-              if (completed) ...[const SizedBox(width: 6), const _CompletedBadge()],
-            ]),
-            const SizedBox(height: 6),
-            Text(definition.tagline, style: TextStyle(
-              color: GameColors.textMuted.withValues(alpha: unlocked ? 1.0 : 0.6),
-              fontSize: 13,
-              fontStyle: FontStyle.italic,
-            )),
-            const SizedBox(height: 12),
-            _buildStarsRow(),
-            const SizedBox(height: 12),
-            _buildCta(context, state, completed),
+            // Manifest stub row.
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              color: const Color(0xFF1A1F26).withValues(alpha: 0.55),
+              child: Row(
+                children: [
+                  Text(
+                    'CONTRACT NO.',
+                    style: TextStyle(
+                      color: GameColors.textMuted.withValues(alpha: 0.75),
+                      fontSize: 9,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.4,
+                      fontFamily: 'Courier',
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'WH-${(definition.contractIndex + 1).toString().padLeft(3, '0')}',
+                    style: TextStyle(
+                      color: unlocked ? GameColors.text : GameColors.textMuted,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.6,
+                      fontFamily: 'Courier',
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    completed
+                        ? 'CLEARED'
+                        : unlocked
+                            ? 'ACTIVE'
+                            : state == _LockState.needsRegionalTier
+                                ? 'REGIONAL ONLY'
+                                : 'AWAITING',
+                    style: TextStyle(
+                      color: completed
+                          ? const Color(0xFF4CAF50)
+                          : unlocked
+                              ? GameColors.accent
+                              : GameColors.textMuted,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.4,
+                      fontFamily: 'Courier',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(definition.displayName, style: const TextStyle(
+                          color: GameColors.text, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 0.5,
+                        )),
+                        const SizedBox(height: 2),
+                        Text('Lv ${definition.firstLevel}–${definition.lastLevel}', style: const TextStyle(
+                          color: GameColors.textMuted, fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.5,
+                        )),
+                      ]),
+                    ),
+                    const SizedBox(width: 8),
+                    _Pill(label: tierLabel, color: _accent),
+                    if (completed) ...[const SizedBox(width: 6), const _CompletedBadge()],
+                  ]),
+                  const SizedBox(height: 6),
+                  Text(definition.tagline, style: TextStyle(
+                    color: GameColors.textMuted.withValues(alpha: unlocked ? 1.0 : 0.6),
+                    fontSize: 13,
+                    fontStyle: FontStyle.italic,
+                  )),
+                  const SizedBox(height: 12),
+                  _buildStarsRow(),
+                  const SizedBox(height: 12),
+                  _buildCta(context, state, completed),
+                ],
+              ),
+            ),
           ],
         ),
       ),
