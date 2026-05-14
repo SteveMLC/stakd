@@ -5,6 +5,7 @@ import 'package:warehouse_sort/data/local_regional_levels.dart';
 import 'package:warehouse_sort/services/business_tier_service.dart';
 import 'package:warehouse_sort/services/contract_service.dart';
 import 'package:warehouse_sort/services/income_multiplier_service.dart';
+import 'package:warehouse_sort/services/machinery_service.dart';
 import 'package:warehouse_sort/services/warehouse_economy_service.dart';
 
 void main() {
@@ -19,6 +20,8 @@ void main() {
       await ContractService().init();
       await BusinessTierService().reset();
       await BusinessTierService().init();
+      await MachineryService().reset();
+      await MachineryService().init();
       await WarehouseEconomyService().reset();
       await WarehouseEconomyService().init();
     });
@@ -116,7 +119,7 @@ void main() {
       final svc = IncomeMultiplierService();
       await svc.recordAchievementBump('first_shipment');
       final parts = svc.breakdown(warehouseLevel: 10);
-      expect(parts.length, 5);
+      expect(parts.length, 6); // Base + contracts + tiers + ach + levels + machinery
       expect(parts[0].label, 'Base');
       expect(parts[0].bonus, 1.0);
       // 1 achievement bump = 0.25
@@ -125,6 +128,62 @@ void main() {
       // 5 levels past Lv5 = 0.25
       final lvlLine = parts.firstWhere((p) => p.label.contains('WH levels'));
       expect(lvlLine.bonus, closeTo(0.25, 0.001));
+      // No machinery owned by default
+      final machLine = parts.firstWhere((p) => p.label.contains('machinery'));
+      expect(machLine.bonus, 0.0);
+    });
+
+    test('owning machinery adds its income bonuses to the multiplier', () async {
+      final mach = MachineryService();
+      final econ = WarehouseEconomyService();
+      // Bring level + cash to where the first 3 machines are buyable.
+      await econ.grantCash(10000);
+      await econ.awardReward(
+        ShipmentReward(
+          cash: 0,
+          xp: WarehouseEconomyService.cumulativeXpForLevel(15) + 1,
+        ),
+      );
+      // Pallet Jack (+0.10) + Conveyor Belt (+0.20) + Hydraulic Lift (+0.30)
+      // = +0.60 from machinery alone.
+      expect(await mach.purchase(Machinery.palletJack),
+          MachineryPurchaseResult.success);
+      expect(await mach.purchase(Machinery.conveyorBelt),
+          MachineryPurchaseResult.success);
+      expect(await mach.purchase(Machinery.hydraulicLift),
+          MachineryPurchaseResult.success);
+
+      // Drop into breakdown — last row is machinery, bonus = 0.60
+      final parts = IncomeMultiplierService()
+          .breakdown(warehouseLevel: econ.warehouseLevel);
+      final machLine = parts.firstWhere((p) => p.label.contains('machinery'));
+      expect(machLine.bonus, closeTo(0.60, 0.001));
+      expect(machLine.label, contains('3 machinery'));
+    });
+
+    test('machinery bonus is capped at +2.50×', () async {
+      // Synthetic test: even if owning all 6 machines (sum = 2.50)
+      // or if a future catalog ever exceeded the cap, the multiplier
+      // service must not exceed maxMachineryBonus.
+      final mach = MachineryService();
+      final econ = WarehouseEconomyService();
+      // Fund + level-up past WH 40 so all 6 are buyable.
+      await econ.grantCash(500000);
+      await econ.awardReward(
+        ShipmentReward(
+          cash: 0,
+          xp: WarehouseEconomyService.cumulativeXpForLevel(40) + 1,
+        ),
+      );
+      for (final m in Machinery.values) {
+        expect(await mach.purchase(m), MachineryPurchaseResult.success);
+      }
+      expect(mach.totalIncomeBonus, closeTo(2.50, 0.001));
+      // Cap holds.
+      expect(
+        IncomeMultiplierService.maxMachineryBonus,
+        2.50,
+      );
     });
 
     test('reset clears persistent state', () async {

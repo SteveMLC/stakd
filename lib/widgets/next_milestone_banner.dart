@@ -5,6 +5,7 @@ import '../data/local_regional_levels.dart';
 import '../services/business_tier_service.dart';
 import '../services/contract_service.dart';
 import '../services/cosmetic_service.dart';
+import '../services/machinery_service.dart';
 import '../services/warehouse_economy_service.dart';
 import '../utils/constants.dart';
 
@@ -14,12 +15,12 @@ import '../utils/constants.dart';
 /// always sees a goal in arm's reach.
 ///
 /// Priority order (first match wins):
-///   1. Next Local Contract to clear (if any have stars < total)
-///   2. Frozen crates unlock at Warehouse Level 5 (until reached)
-///   3. Regional Hub purchase ($5,000 + Lv 10)
-///   4. First Forklift skin ($500 + Lv 15)
-///   5. Next un-completed contract overall
-///   6. Procedural play past L30 if everything in v1.0 is cleared
+///   1. Frozen crates unlock at Warehouse Level 5 (until reached)
+///   2. Regional Hub purchase ($5,000 + Lv 10)
+///   3. Next un-completed contract overall
+///   4. Cheapest reachable machinery (income bump)
+///   5. First Forklift skin ($500 + Lv 15)
+///   6. Endless mode banner past L30
 class NextMilestoneBanner extends StatelessWidget {
   const NextMilestoneBanner({super.key});
 
@@ -29,12 +30,14 @@ class NextMilestoneBanner extends StatelessWidget {
     final tiers = context.watch<BusinessTierService>();
     final contracts = context.watch<ContractService>();
     final cosmetics = context.watch<CosmeticService>();
+    final machinery = context.watch<MachineryService>();
 
     final m = _pickMilestone(
       economy: economy,
       tiers: tiers,
       contracts: contracts,
       cosmetics: cosmetics,
+      machinery: machinery,
     );
     if (m == null) return const SizedBox.shrink();
 
@@ -108,6 +111,7 @@ class NextMilestoneBanner extends StatelessWidget {
     required BusinessTierService tiers,
     required ContractService contracts,
     required CosmeticService cosmetics,
+    required MachineryService machinery,
   }) {
     final whLevel = economy.warehouseLevel;
 
@@ -153,7 +157,34 @@ class NextMilestoneBanner extends StatelessWidget {
       );
     }
 
-    // 4. First Forklift skin
+    // 4. Cheapest reachable machinery — the next income bump.
+    //    Only surface machines the player can actually unlock soon
+    //    (within 5 WH levels of current) so we don't dangle a $250K
+    //    Drone Fleet at a Lv 3 player.
+    final unownedMachine = MachineryService.catalog
+        .where((m) =>
+            !machinery.isOwned(m.id) &&
+            m.minWarehouseLevel <= whLevel + 5)
+        .toList()
+      ..sort((a, b) => a.cashCost.compareTo(b.cashCost));
+    if (unownedMachine.isNotEmpty) {
+      final next = unownedMachine.first;
+      final levelOk = whLevel >= next.minWarehouseLevel;
+      final cashOk = economy.cash >= next.cashCost;
+      return _Milestone(
+        title: '${next.displayName} (+${next.incomeBonus.toStringAsFixed(2)}× income)',
+        subtitle: levelOk && cashOk
+            ? 'You can install this now — tap Machinery'
+            : levelOk
+                ? '\$${economy.cash} / \$${next.cashCost}'
+                : 'Reach Lv ${next.minWarehouseLevel} first '
+                    '(at Lv $whLevel)',
+        icon: next.icon,
+        progress: '\$${next.cashCost}',
+      );
+    }
+
+    // 5. First Forklift skin
     final unowned = CosmeticService.catalog
         .where((f) => !cosmetics.isOwned(f.skin))
         .toList()
@@ -168,7 +199,7 @@ class NextMilestoneBanner extends StatelessWidget {
       );
     }
 
-    // 5. Procedural mode past L30
+    // 6. Procedural mode past L30
     if (nextSuggested > 30) {
       return _Milestone(
         title: 'Endless mode',

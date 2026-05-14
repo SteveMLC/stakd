@@ -19,6 +19,7 @@ import 'leaderboard_screen.dart';
 import '../utils/route_transitions.dart';
 import 'achievements_screen.dart';
 import 'forklift_shop_screen.dart';
+import 'machinery_shop_screen.dart';
 
 /// Main menu screen
 class HomeScreen extends StatefulWidget {
@@ -214,16 +215,12 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        // Themes are locked to the warehouse palette for v1.
-                        // Greyed-out button signals "later" without breaking
-                        // the 3x2 grid layout.
                         child: GameButton(
-                          text: 'Themes',
-                          icon: Icons.palette_outlined,
+                          text: 'Machinery',
+                          icon: Icons.precision_manufacturing,
                           isPrimary: false,
                           isSmall: true,
-                          isDisabled: true,
-                          onPressed: () {},
+                          onPressed: () => _openMachineryShop(context),
                         ),
                       ),
                     ],
@@ -596,6 +593,10 @@ class _HomeScreenState extends State<HomeScreen>
 
   void _openForkliftShop(BuildContext context) {
     Navigator.of(context).push(fadeSlideRoute(const ForkliftShopScreen()));
+  }
+
+  void _openMachineryShop(BuildContext context) {
+    Navigator.of(context).push(fadeSlideRoute(const MachineryShopScreen()));
   }
 
   void _openSettings(BuildContext context) {

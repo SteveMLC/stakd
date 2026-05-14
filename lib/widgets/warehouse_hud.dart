@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../services/business_tier_service.dart';
 import '../services/income_multiplier_service.dart';
+import '../services/machinery_service.dart';
 import '../services/warehouse_economy_service.dart';
 import '../utils/constants.dart';
 
@@ -23,6 +24,9 @@ class WarehouseHud extends StatelessWidget {
     final economy = context.watch<WarehouseEconomyService>();
     final tiers = context.watch<BusinessTierService>();
     final incomeMul = context.watch<IncomeMultiplierService>();
+    // Watch machinery so the multiplier pill repaints when a player buys
+    // a new machine — MachineryService is the 5th input into computeMultiplier.
+    context.watch<MachineryService>();
     final mul = incomeMul.computeMultiplier(
       warehouseLevel: economy.warehouseLevel,
     );

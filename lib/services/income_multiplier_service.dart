@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'business_tier_service.dart';
 import 'contract_service.dart';
+import 'machinery_service.dart';
 import '../data/local_regional_levels.dart';
 
 /// Aggregates *permanent* income multipliers earned across the game's
@@ -14,17 +15,18 @@ import '../data/local_regional_levels.dart';
 ///   - +0.50× per business tier purchased            — Local default 0
 ///   - +0.25× per "income bump" achievement unlocked — tracked here
 ///   - +0.05× per Warehouse Level past L5            — capped at +2.00×
+///   - + machinery `incomeBonus` sum                 — capped at +2.50×
 ///
 /// Final multiplier = 1.0 + sum of all bonuses. So a player who has cleared
-/// 5 contracts, owns Regional, has 4 income-bump achievements, and is at
-/// WH Lv 25 sits at:
-///   1.0 + (5 × 0.10) + (1 × 0.50) + (4 × 0.25) + (20 × 0.05)
-///   = 1.0 + 0.50 + 0.50 + 1.00 + 1.00 = 4.0× base earnings
+/// 5 contracts, owns Regional, has 4 income-bump achievements, is at
+/// WH Lv 25, and bought every machine sits at:
+///   1.0 + (5 × 0.10) + (1 × 0.50) + (4 × 0.25) + (20 × 0.05) + 2.50
+///   = 1.0 + 0.50 + 0.50 + 1.00 + 1.00 + 2.50 = 6.5× base earnings
 ///
 /// Combined with the per-tier multiplier (×1.0 Local / ×1.5 Regional) and
 /// the per-level star multiplier (×1/×1.5/×2), a 3★ clear in Regional with
-/// max bumps earns ≈12× the base cash a fresh-install Local clear gets.
-/// That's the "income increases over time, contracts get better" feel.
+/// every system maxed earns ≈20× the base cash a fresh-install Local clear
+/// gets. That's the "income increases over time, contracts get better" feel.
 class IncomeMultiplierService extends ChangeNotifier {
   static final IncomeMultiplierService _instance = IncomeMultiplierService._();
   factory IncomeMultiplierService() => _instance;
@@ -39,6 +41,7 @@ class IncomeMultiplierService extends ChangeNotifier {
   static const double perWarehouseLevelBonus = 0.05;
   static const int warehouseLevelBonusStartsAt = 5;
   static const double maxWarehouseLevelBonus = 2.00; // = WH Lv 45
+  static const double maxMachineryBonus = 2.50; // = all 6 machines owned
 
   /// Achievement IDs that grant a permanent income bump.
   /// Curated set: tied to milestones the player feels proud about.
@@ -103,7 +106,15 @@ class IncomeMultiplierService extends ChangeNotifier {
     final levelBonus =
         (levelsPastStart * perWarehouseLevelBonus).clamp(0.0, maxWarehouseLevelBonus);
 
-    return 1.0 + contractBonus + tierBonus + achievementBonus + levelBonus;
+    final machineryBonus =
+        MachineryService().totalIncomeBonus.clamp(0.0, maxMachineryBonus);
+
+    return 1.0 +
+        contractBonus +
+        tierBonus +
+        achievementBonus +
+        levelBonus +
+        machineryBonus;
   }
 
   /// Human-readable breakdown of the current multiplier — useful for
@@ -118,6 +129,7 @@ class IncomeMultiplierService extends ChangeNotifier {
         .clamp(0, BusinessTier.values.length);
     final levelsPastStart =
         (warehouseLevel - warehouseLevelBonusStartsAt).clamp(0, 999);
+    final machineryOwnedCount = MachineryService().owned.length;
     return [
       (label: 'Base', bonus: 1.0),
       (
@@ -137,6 +149,10 @@ class IncomeMultiplierService extends ChangeNotifier {
         label: '$levelsPastStart WH levels past Lv5',
         bonus:
             (levelsPastStart * perWarehouseLevelBonus).clamp(0.0, maxWarehouseLevelBonus),
+      ),
+      (
+        label: '$machineryOwnedCount machinery owned',
+        bonus: MachineryService().totalIncomeBonus.clamp(0.0, maxMachineryBonus),
       ),
     ];
   }

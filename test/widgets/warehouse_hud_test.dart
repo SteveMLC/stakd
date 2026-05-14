@@ -3,6 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:warehouse_sort/services/business_tier_service.dart';
+import 'package:warehouse_sort/services/contract_service.dart';
+import 'package:warehouse_sort/services/income_multiplier_service.dart';
+import 'package:warehouse_sort/services/machinery_service.dart';
 import 'package:warehouse_sort/services/warehouse_economy_service.dart';
 import 'package:warehouse_sort/widgets/warehouse_hud.dart';
 
@@ -13,6 +16,8 @@ Widget _wrap(Widget child) {
         providers: [
           ChangeNotifierProvider.value(value: WarehouseEconomyService()),
           ChangeNotifierProvider.value(value: BusinessTierService()),
+          ChangeNotifierProvider.value(value: IncomeMultiplierService()),
+          ChangeNotifierProvider.value(value: MachineryService()),
         ],
         child: child,
       ),
@@ -27,6 +32,13 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     await WarehouseEconomyService().reset();
     await BusinessTierService().reset();
+    await IncomeMultiplierService().reset();
+    await IncomeMultiplierService().init();
+    await MachineryService().reset();
+    await MachineryService().init();
+    // computeMultiplier reads ContractService too — make sure it's clean.
+    await ContractService().reset();
+    await ContractService().init();
   });
 
   testWidgets('renders cash + WH level + tier badge', (tester) async {
@@ -35,7 +47,9 @@ void main() {
     await economy.grantCash(1234);
 
     await tester.pumpWidget(_wrap(const WarehouseHud()));
-    await tester.pump();
+    // Cash chip uses a 650ms TweenAnimationBuilder; pump past it so the
+    // displayed value lands on the final amount.
+    await tester.pump(const Duration(seconds: 1));
 
     // Cash chip formats >=1000 as k:  '1.2k'
     expect(find.text('1.2k'), findsOneWidget);
@@ -49,7 +63,7 @@ void main() {
     await economy.grantCash(2500000);
 
     await tester.pumpWidget(_wrap(const WarehouseHud()));
-    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
     expect(find.text('2.5M'), findsOneWidget);
   });
 
