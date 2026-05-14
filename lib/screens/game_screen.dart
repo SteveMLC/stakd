@@ -1345,65 +1345,47 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
           GameIconButton(icon: Icons.arrow_back, onPressed: _goHome),
           const SizedBox(width: 8),
 
-          // Level indicator — flexible so it shrinks on narrow screens.
+          // Level indicator — branded waybill stub, accent border so
+          // it reads as "current contract" rather than a chip.
           Flexible(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: GameColors.surface,
                 borderRadius: BorderRadius.circular(16),
-              ),
-              child: Text(
-                'Lv $_currentLevel',
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-
-          // Move counter with par — flex-shrink to fit.
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 8,
-              ),
-              decoration: BoxDecoration(
-                color: GameColors.surface,
-                borderRadius: BorderRadius.circular(16),
-                border: gameState.par != null
-                    ? Border.all(
-                        color: gameState.isUnderPar
-                            ? Colors.green.withValues(alpha: 0.6)
-                            : gameState.moveCount > (gameState.par! + 5)
-                            ? Colors.red.withValues(alpha: 0.4)
-                            : Colors.transparent,
-                        width: 2,
-                      )
-                    : null,
+                border: Border.all(
+                  color: GameColors.accent.withValues(alpha: 0.45),
+                  width: 1.2,
+                ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.touch_app, size: 16),
-                  const SizedBox(width: 3),
+                  const Icon(
+                    Icons.assignment_outlined,
+                    size: 14,
+                    color: GameColors.accent,
+                  ),
+                  const SizedBox(width: 5),
                   Text(
-                    gameState.par != null
-                        ? '${gameState.moveCount}/${gameState.par}'
-                        : '${gameState.moveCount}',
+                    'Lv $_currentLevel',
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: gameState.par != null && gameState.isUnderPar
-                          ? Colors.green
-                          : null,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.4,
                     ),
                   ),
                 ],
               ),
             ),
+          ),
+          const SizedBox(width: 8),
+
+          // Move counter with par — colour-codes by performance:
+          // under par → green, near par → yellow, over par → red.
+          Flexible(
+            child: _MoveCounterChip(gameState: gameState),
           ),
           const SizedBox(width: 8),
 
@@ -1481,6 +1463,66 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
 }
 
 /// Add Tube power-up button
+/// Game-screen move/par pill with traffic-light colour coding:
+/// green when the player is under par, yellow as they approach it,
+/// red once they've overshot by ≥5. The colour transitions live in
+/// an AnimatedContainer so the change isn't a jarring snap.
+class _MoveCounterChip extends StatelessWidget {
+  final GameState gameState;
+  const _MoveCounterChip({required this.gameState});
+
+  @override
+  Widget build(BuildContext context) {
+    final par = gameState.par;
+    final moves = gameState.moveCount;
+    final hasParTarget = par != null;
+    final isUnder = hasParTarget && moves <= par;
+    final isOver = hasParTarget && moves > par + 4;
+    final accent = isUnder
+        ? const Color(0xFF4CAF50) // green
+        : isOver
+            ? const Color(0xFFE53935) // red
+            : const Color(0xFFFFC107); // yellow / accent
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: GameColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: accent.withValues(alpha: 0.55),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: isUnder || isOver ? 0.30 : 0.12),
+            blurRadius: 6,
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.touch_app, size: 14, color: accent),
+          const SizedBox(width: 4),
+          Text(
+            hasParTarget ? '$moves/$par' : '$moves',
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: accent,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _AddTubeButton extends StatelessWidget {
   final VoidCallback onTap;
 
