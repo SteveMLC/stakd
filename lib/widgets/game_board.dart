@@ -266,6 +266,15 @@ class _GameBoardState extends State<GameBoard>
                                           .gameState
                                           .stacks[actualIndex]
                                           .isEmpty;
+                                      // Snapshot whether an animation was
+                                      // already in flight so we can tell
+                                      // "this tap started a new animation"
+                                      // from "this tap was a no-op because
+                                      // an animation was already running."
+                                      final wasAnimatingBefore = widget
+                                              .gameState
+                                              .animatingLayer !=
+                                          null;
 
                                       widget.gameState.onStackTap(actualIndex);
 
@@ -280,8 +289,28 @@ class _GameBoardState extends State<GameBoard>
                                           previousSelectedStack < 0 &&
                                           selectedNow == actualIndex &&
                                           tappedStackHadCrates;
+                                      // Detect that an animated move just
+                                      // got queued (animatingLayer wasn't set
+                                      // before this tap, but is now). When
+                                      // true the slide whoosh should fire NOW
+                                      // — i.e. at the *start* of the animation
+                                      // — so the audio plays during travel
+                                      // instead of after the layer has
+                                      // already landed (Steve audit: "horrid
+                                      // sound when stacking" — slide at
+                                      // animation END felt like a bonus
+                                      // impact instead of a transit whoosh).
+                                      final moveJustQueued =
+                                          !wasAnimatingBefore &&
+                                          widget.gameState.animatingLayer !=
+                                              null;
                                       if (isFreshPickup) {
                                         AudioService().playCratePickup();
+                                      } else if (moveJustQueued) {
+                                        // Skip the generic onTap click and
+                                        // play the slide whoosh — it's the
+                                        // start of a move, not a UI tap.
+                                        widget.onMove?.call();
                                       } else {
                                         widget.onTap?.call();
                                       }
@@ -412,12 +441,15 @@ class _GameBoardState extends State<GameBoard>
                             _triggerLandingBurst(destIndex, layer.colorIndex);
 
                             widget.gameState.completeMove();
-                            widget.onMove?.call();
+                            // NOTE: slide whoosh now fires at animation START
+                            // from the tap handler above (not here at end),
+                            // so the audio narrative is correct: whoosh DURING
+                            // travel, thump AT landing. Was previously also
+                            // calling widget.onMove?.call() here which made
+                            // it fire at landing AND stomp on the thump.
+                            //
                             // Land impact — rides the dedicated impact channel
-                            // so it layers over the slide whoosh without
-                            // cutting it off. Pairs with the landing particle
-                            // burst above so the crate-thump punctuates the
-                            // moment the layer settles on the destination.
+                            // so it layers cleanly over the slide whoosh.
                             AudioService().playCrateThump();
                             // Light haptic on land — sells the impact without
                             // being too aggressive on every move. Heavier

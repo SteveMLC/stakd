@@ -29,7 +29,7 @@ because Mixkit doesn't expose loopable warehouse-ambient tracks.
 | `levelup.mp3` | [Mixkit — game-level-completed](https://mixkit.co/free-sound-effects/game-level-completed/) | Mixkit | Warehouse level up, tier promotion |
 | `powerup.mp3` | [Mixkit — quick-metal-transition-sweep](https://mixkit.co/free-sound-effects/quick-metal-transition-sweep/) | Mixkit | Power-up activation |
 | `klaxon.mp3` | [Mixkit — basketball-buzzer](https://mixkit.co/free-sound-effects/basketball-buzzer/) | Mixkit | Level fail / jam alert |
-| `crate_thump.mp3` | [Mixkit — hard-pop-click](https://mixkit.co/free-sound-effects/hard-pop-click/) | Mixkit | Crate landing impact |
+| `crate_thump.mp3` | **Synthesized** (`tools/synth_crate_thump.py`) | CC0 (own work) | Crate landing impact — Mixkit "hard-pop-click" sounded synth-electronic; replaced 2026-05-15 with a procedural cardboard-box-on-concrete (18ms click + 85+130Hz damped sine body + 350Hz mid thwap, 300ms total) so it reads as a warehouse thump, not a UI bleep. |
 | `crate_pickup.mp3` | [Mixkit — modern-click-box-check](https://mixkit.co/free-sound-effects/modern-click-box-check/) | Mixkit | Crate selected (NEW slot) |
 
 ### Star reveal chimes (NEW — staged completion sequence)
