@@ -611,6 +611,47 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
     if (maxCombo > 1) {
       leaderboardService.submitBestCombo(maxCombo);
     }
+
+    // 2026-05-15 (audit iter 2): `checkPuzzleComplete` was never
+    // wired into the puzzle-clear path, so achievements like
+    // `first_steps`, `perfectionist`, `under_par`, `no_mistakes`,
+    // `marathon_runner` (clear 1 / 10 / 100 / 1000 puzzles) were
+    // unreachable. Audit agent flagged: "After clearing 2 levels,
+    // unlockedCount is STILL 0." Now fires alongside the existing
+    // chain + star achievement checks.
+    final stars = gameState.calculateStars();
+    final parMoves = gameState.par ?? gameState.moveCount;
+    final timeElapsed = _completionDuration ??
+        (_levelStartTime != null
+            ? DateTime.now().difference(_levelStartTime!)
+            : Duration.zero);
+    final undosUsed =
+        (GameConfig.maxUndos - gameState.undosRemaining).clamp(0, 999);
+    final totalSolved = storage.getCompletedLevels().length;
+    // Difficulty band by level number — matches the bay-count curve
+    // used in `LevelParams.forLevel`. Early levels are 'easy', mid
+    // are 'medium', etc. Used by speed achievements that gate by
+    // level difficulty band.
+    String difficultyForLevel(int level) {
+      if (level <= 10) return 'easy';
+      if (level <= 25) return 'medium';
+      if (level <= 50) return 'hard';
+      return 'ultra';
+    }
+    AchievementService().checkPuzzleComplete(
+      difficulty: difficultyForLevel(_currentLevel),
+      stars: stars,
+      moves: moveCount,
+      parMoves: parMoves,
+      time: timeElapsed,
+      undosUsed: undosUsed,
+      streak: 0, // contract-level streak; daily streak is separate
+      totalSolved: totalSolved,
+      score: 0, // legacy field — not used by current ach catalog
+    );
+    // Star-tier rollup (any star achievements catalogued in the
+    // service's `checkStarAchievements` lane).
+    await AchievementService().checkStarAchievements();
   }
 
   void _nextLevel() async {
@@ -1132,10 +1173,21 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
       return;
     }
 
+    // 2026-05-15 (audit iter 2): unified hint funnel. The power-up
+    // bar's hint button now ALSO falls back to the IAP-purchased
+    // hint flow (`_showHint`) before raising the power-up purchase
+    // dialog. Previously the bottom-bar hint button (IAP flow) and
+    // the power-up bar hint button (PowerUpService flow) coexisted
+    // as two identical-looking lightbulbs — Steve's audit agent
+    // flagged the duplicate. Now there's exactly one hint
+    // affordance, and it tries power-up budget first, then IAP
+    // budget, then opens the appropriate purchase dialog.
     final powerUpService = _powerUpService;
     if (powerUpService == null ||
         !powerUpService.isAvailable(PowerUpType.hint)) {
-      _showPowerUpPurchaseDialog();
+      // No power-up hint available — fall through to the IAP
+      // hint flow (handles its own dialog + consumption).
+      _showHint();
       return;
     }
 
@@ -1345,21 +1397,17 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // 2026-05-15 (Steve audit): the previous 0.55 image
-            // opacity + 0.40 black scrim left the magenta/neon-blue
-            // district art blasting through the playfield. Crates
-            // had to compete with the background for attention. New
-            // mix: image at 0.30 + radial-gradient scrim that is
-            // darkest in the center (where the bays live) and only
-            // lets the district color bleed through near the edges
-            // as a soft atmospheric tint. Effective center
-            // brightness now ~0.30 × 0.20 = 0.06 (was 0.55 × 0.60
-            // = 0.33). Bay colors now dominate; district reads as
-            // a vibe, not a clash.
+            // District background — iter 2 of the Steve audit drop.
+            // Image opacity dropped from 0.30 → 0.18 and a vertically-
+            // banded scrim added so the middle-of-screen "shelf
+            // imagery strip" between top and bottom bay rows isn't
+            // a free-for-all (the audit agent specifically flagged
+            // that band at `agent_18_lv2.png`). District now reads
+            // as edge-of-frame atmosphere only.
             if (districtBgPath != null)
               Positioned.fill(
                 child: Opacity(
-                  opacity: 0.30,
+                  opacity: 0.18,
                   child: Image.asset(
                     districtBgPath,
                     fit: BoxFit.cover,
@@ -1374,12 +1422,34 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                   decoration: BoxDecoration(
                     gradient: RadialGradient(
                       center: Alignment.center,
-                      radius: 1.1,
+                      radius: 0.95,
                       colors: [
-                        Color(0xCC0D1117), // ~80% black at center
-                        Color(0x66000000), // ~40% black at edges
+                        Color(0xE60D1117), // ~90% black at center
+                        Color(0x80000000), // ~50% black at edges
                       ],
                       stops: [0.0, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+            // Extra dim band across the playfield's vertical center
+            // so the inter-row "shelf strip" between bay rows reads
+            // as part of the playfield, not part of the district.
+            if (districtBgPath != null)
+              const Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Color(0x00000000),
+                          Color(0x55000000), // ~33% black at vertical center
+                          Color(0x00000000),
+                        ],
+                        stops: [0.30, 0.50, 0.70],
+                      ),
                     ),
                   ),
                 ),
@@ -1822,16 +1892,16 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
     return Padding(
       padding: EdgeInsets.fromLTRB(
         16,
+        12,
         16,
-        16,
-        bottomPad > 0 ? bottomPad + 16 : 16,
+        bottomPad > 0 ? bottomPad + 12 : 12,
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // Restart button
           GameIconButton(icon: Icons.refresh, onPressed: _restartLevel),
-          const SizedBox(width: 16),
+          const SizedBox(width: 22),
 
           // Undo button (with key for tutorial)
           GameIconButton(
@@ -1843,14 +1913,13 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
             isDisabled: !gameState.canUndo,
             onPressed: gameState.canUndo ? _onUndo : _onUndoWithAd,
           ),
-          const SizedBox(width: 16),
-
-          // Hint button
-          GameIconButton(
-            icon: Icons.lightbulb_outline,
-            badge: '${iap.hintCount}',
-            onPressed: _showHint,
-          ),
+          // 2026-05-15 (audit iter 2): killed the third Icons.lightbulb_outline
+          // button from this row. The Foreman's Advice power-up at
+          // power_up_bar.dart:56-62 already exposes a hint affordance
+          // with the SAME icon + badge + onTap target. Showing both
+          // simultaneously made the bottom controls look like a 3-button
+          // sub-row disconnected from the 4-button power-up row above —
+          // restart/undo now read as the level-control pair they are.
         ],
       ),
     );

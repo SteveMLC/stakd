@@ -144,8 +144,8 @@ class _PowerUpButtonState extends State<_PowerUpButton>
                 : null,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              width: 64,
-              height: 64,
+              width: 68,
+              height: 80,
               decoration: BoxDecoration(
                 // Brushed-steel gradient matches the rest of the
                 // industrial UI vocabulary. Active state pops the
@@ -203,21 +203,43 @@ class _PowerUpButtonState extends State<_PowerUpButton>
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  // Icon — custom illustrated WebP from
-                  // `assets/icons_generated/webp/192/`. Faded when the
-                  // count is zero so the disabled state still reads.
-                  Center(
+                  // Icon + text label column — addresses Steve audit:
+                  // "Player can't tell color bomb from forklift from
+                  // shuffle from hint. Just icon + count badge."
+                  // Compact 9pt amber caps label nests under the icon
+                  // so the button is self-labelling without tooltip.
+                  Positioned.fill(
                     child: Padding(
-                      padding: const EdgeInsets.all(6),
-                      child: Opacity(
-                        opacity: isDisabled ? 0.32 : 1.0,
-                        child: Image.asset(
-                          widget.type.iconAsset,
-                          width: 44,
-                          height: 44,
-                          fit: BoxFit.contain,
-                          filterQuality: FilterQuality.medium,
-                        ),
+                      padding: const EdgeInsets.fromLTRB(4, 4, 4, 4),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          Opacity(
+                            opacity: isDisabled ? 0.32 : 1.0,
+                            child: Image.asset(
+                              widget.type.iconAsset,
+                              width: 42,
+                              height: 42,
+                              fit: BoxFit.contain,
+                              filterQuality: FilterQuality.medium,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            widget.type.shortLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.6,
+                              height: 1.0,
+                              color: isDisabled
+                                  ? GameColors.textMuted
+                                  : GameColors.accent.withValues(alpha: 0.92),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),

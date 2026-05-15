@@ -1602,16 +1602,16 @@ class _StackWidgetState extends State<_StackWidget>
                               ),
                             ),
                           ),
-                        // 2026-05-15 (Steve audit): the streak hint used
-                        // to float `top: -14` centered above the bay,
-                        // which read as a detached glitchy "2" pill in
-                        // the playfield screenshot. Anchored to the
-                        // top-right corner now so it nests against the
-                        // bay frame instead of hovering in space.
+                        // 2026-05-15 (audit iter 2): moved fully INSIDE
+                        // the bay frame at `top:2 right:2` so the badge
+                        // nests in the bay's top-right corner against
+                        // the topmost crate. Was `top:-8 right:-4` —
+                        // still poked outside the rim and audit agent
+                        // flagged it as "still floating glitch."
                         if (_shouldShowMultiGrabIndicator)
                           Positioned(
-                            top: -8,
-                            right: -4,
+                            top: 2,
+                            right: 2,
                             child: _MultiGrabIndicator(
                               count: widget.stack.topGroupSize,
                               animation: _multiGrabIndicatorAnimation,

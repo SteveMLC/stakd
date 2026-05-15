@@ -172,16 +172,27 @@ class LayerWidget extends StatelessWidget {
           // Kept Padding(2) so the procedural bevel + colored gradient
           // still bleed through at the layer edges, preserving the
           // block's silhouette + colour identity.
+          // 2026-05-15 (audit iter 2): top-crate decal was extending
+          // above the bay outline visually (Steve mistook the
+          // top-edge poke-out for a glitched "2" badge in his
+          // screenshot). Wrap in ClipRRect with the same radius as
+          // the layer geometry so the decal can't bleed past the
+          // procedural block silhouette.
           if (_showCrateFace)
             Positioned.fill(
               child: IgnorePointer(
-                child: Padding(
-                  padding: const EdgeInsets.all(1),
-                  child: Image.asset(
-                    topFaceAsset!,
-                    fit: BoxFit.cover,
-                    alignment: Alignment.center,
-                    filterQuality: FilterQuality.medium,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(
+                    ThemeColors.blockBorderRadius,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(1),
+                    child: Image.asset(
+                      topFaceAsset!,
+                      fit: BoxFit.cover,
+                      alignment: Alignment.center,
+                      filterQuality: FilterQuality.medium,
+                    ),
                   ),
                 ),
               ),

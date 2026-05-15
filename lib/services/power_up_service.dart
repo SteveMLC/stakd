@@ -59,6 +59,23 @@ extension PowerUpTypeExtension on PowerUpType {
     }
   }
 
+  /// Compact label rendered under the icon on the power-up bar so the
+  /// player can read what each button does at a glance instead of
+  /// memorising four illustrated WebPs. Keep ≤8 chars so the label
+  /// fits inside the 64dp button width without ellipsis.
+  String get shortLabel {
+    switch (this) {
+      case PowerUpType.colorBomb:
+        return 'BURST';
+      case PowerUpType.shuffle:
+        return 'RE-ROUTE';
+      case PowerUpType.magnet:
+        return 'CRANE';
+      case PowerUpType.hint:
+        return 'HINT';
+    }
+  }
+
   String get description {
     switch (this) {
       case PowerUpType.colorBomb:

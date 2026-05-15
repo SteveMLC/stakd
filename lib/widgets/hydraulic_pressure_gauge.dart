@@ -87,23 +87,14 @@ class _HydraulicPressureGaugeState extends State<HydraulicPressureGauge>
                       child: _GlassTube(pressure: pressure, isVenting: isVenting),
                     ),
                   ),
-                  // ----------------- Vertical label --------------
-                  Positioned(
-                    top: 22,
-                    child: RotatedBox(
-                      quarterTurns: 3,
-                      child: Text(
-                        'PRESSURE',
-                        style: TextStyle(
-                          fontFamily: 'Courier',
-                          fontSize: 8,
-                          fontWeight: FontWeight.w700,
-                          color: GameColors.textMuted.withValues(alpha: 0.7),
-                          letterSpacing: 1.4,
-                        ),
-                      ),
-                    ),
-                  ),
+                  // 2026-05-15 (audit iter 2): "PRESSURE" rotated
+                  // Courier label rendered as a 6px-wide smear of
+                  // pixels even at the bumped 32dp gauge width.
+                  // Dropped — the brushed-steel frame + needle +
+                  // color-coded fluid column read on their own as
+                  // a pressure gauge without needing the word. A
+                  // future iteration can replace this slot with a
+                  // small icon (e.g. mini gauge dial) if needed.
                   // ----------------- Vent active overlay ---------
                   if (isVenting)
                     Positioned.fill(
