@@ -219,29 +219,29 @@ class LayerWidget extends StatelessWidget {
               ),
             ),
           ],
-          // Topmost layer's "active-face" decal — small centered sticker
-          // on top of the existing procedural cardboard/tape/stamp/plank
-          // vocabulary. The decal is the PERSONALITY layer (matching
-          // color crate from `CrateAssets.assetForColorIndex`); the
-          // underlying procedural block is the GAMEPLAY layer (the
-          // uniform geometry that drives the puzzle reading).
+          // Topmost layer's "active-face" decal — illustrated color
+          // crate sticker on top of the existing procedural
+          // cardboard/tape/plank vocabulary. The decal is the
+          // PERSONALITY layer (FLUX-generated `crate_<color>_<cargo>`);
+          // the procedural block underneath is the GAMEPLAY layer
+          // (uniform geometry that drives the puzzle reading).
           //
-          // Industry-standard composition: keep the block geometry
-          // exactly as-is for gameplay parsing speed, drop a 38dp
-          // square art decal centered on top, leaving the colored
-          // gradient + bevel visible around the edges.
+          // 2026-05-15 iter 2: bumped size from 78%×88% to 96%×96% so
+          // the decal actually reads at the 60×40 layer dimensions.
+          // At smaller scales the cargo burst was too tiny to see.
+          // Kept Padding(2) so the procedural bevel + colored gradient
+          // still bleed through at the layer edges, preserving the
+          // block's silhouette + colour identity.
           if (_showCrateFace)
             Positioned.fill(
               child: IgnorePointer(
-                child: Center(
-                  child: SizedBox(
-                    width: width * 0.78,
-                    height: height * 0.88,
-                    child: Image.asset(
-                      topFaceAsset!,
-                      fit: BoxFit.contain,
-                      filterQuality: FilterQuality.medium,
-                    ),
+                child: Padding(
+                  padding: const EdgeInsets.all(1),
+                  child: Image.asset(
+                    topFaceAsset!,
+                    fit: BoxFit.cover,
+                    alignment: Alignment.center,
+                    filterQuality: FilterQuality.medium,
                   ),
                 ),
               ),

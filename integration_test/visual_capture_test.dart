@@ -30,6 +30,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:warehouse_sort/app.dart';
 import 'package:warehouse_sort/models/game_state.dart';
+import 'package:warehouse_sort/widgets/layer_widget.dart';
 import 'package:warehouse_sort/services/audio_service.dart';
 import 'package:warehouse_sort/services/business_tier_service.dart';
 import 'package:warehouse_sort/services/contract_service.dart';
@@ -95,23 +96,38 @@ Widget _pumpedApp() {
 }
 
 /// Hold the app at the current pumped state for `seconds` real-time
-/// seconds so a sidecar screenshot loop can capture the frame. Print
-/// a state marker before + after for the orchestrator to align frames.
+/// seconds so a sidecar screenshot loop can capture the frame. Prints
+/// a wall-clock-timestamped state marker before + after so the
+/// orchestrator can align frames precisely.
 Future<void> _holdForCapture(
   WidgetTester tester,
   String stateName, {
   int seconds = 3,
 }) async {
+  final tsBegin = DateTime.now().millisecondsSinceEpoch / 1000.0;
   // ignore: avoid_print
-  print('VISUAL_CAPTURE_STATE_BEGIN: $stateName');
+  print('VISUAL_CAPTURE_STATE_BEGIN ts=$tsBegin name=$stateName');
   // Keep pumping frames so animations continue + screenshot has fresh
   // content (otherwise we'd just see one frozen frame). 60 fps pumps.
   final frames = seconds * 60;
   for (var i = 0; i < frames; i++) {
     await tester.pump(const Duration(milliseconds: 16));
   }
+  final tsEnd = DateTime.now().millisecondsSinceEpoch / 1000.0;
   // ignore: avoid_print
-  print('VISUAL_CAPTURE_STATE_END: $stateName');
+  print('VISUAL_CAPTURE_STATE_END ts=$tsEnd name=$stateName');
+}
+
+/// Pump-with-timeout: replaces `pumpAndSettle` for screens with
+/// continuous animations (the game board's stack pulse + ambient
+/// forklift) which would otherwise hang the test forever. Pumps
+/// `seconds` real-time seconds then continues regardless of whether
+/// the frame is "dirty".
+Future<void> _pumpFor(WidgetTester tester, int seconds) async {
+  final frames = seconds * 60;
+  for (var i = 0; i < frames; i++) {
+    await tester.pump(const Duration(milliseconds: 16));
+  }
 }
 
 void main() {
@@ -135,12 +151,12 @@ void main() {
     final claim = find.textContaining('CLAIM');
     if (claim.evaluate().isNotEmpty) {
       await tester.tap(claim.first, warnIfMissed: false);
-      await tester.pumpAndSettle();
+      await _pumpFor(tester, 2);
     }
 
     // Tap PLAY → contracts.
     await tester.tap(find.text('PLAY'), warnIfMissed: false);
-    await tester.pumpAndSettle();
+    await _pumpFor(tester, 2);
 
     // ------------------ state 2: contracts screen ------------------
     await _holdForCapture(tester, 'contracts');
@@ -149,20 +165,63 @@ void main() {
     final playNext = find.text('PLAY NEXT');
     if (playNext.evaluate().isNotEmpty) {
       await tester.tap(playNext.first, warnIfMissed: false);
-      await tester.pumpAndSettle();
+      await _pumpFor(tester, 2);
     }
 
-    // ------------------ state 3: in-game (the goal — color crates
-    // + power-up bar + HUD + wrinkle pictogram all visible) -----
-    await _holdForCapture(tester, 'in_game', seconds: 6);
-
-    // Skip tutorial if present.
+    // Best-effort dismiss the "Skip Tutorial" master button — this
+    // skips the whole tutorial sequence if it's the first ever level.
     final skipTutorial = find.text('Skip Tutorial');
     if (skipTutorial.evaluate().isNotEmpty) {
       await tester.tap(skipTutorial, warnIfMissed: false);
-      await tester.pumpAndSettle();
-      await _holdForCapture(tester, 'in_game_after_tutorial', seconds: 4);
+      await _pumpFor(tester, 2);
     }
+
+    // Tutorial popups: Foreman's Tip ("Got it, boss"), multi-grab hint
+    // ("Tap a bay..."), etc. Try several dismissals in sequence.
+    for (final label in [
+      'Got it, boss',
+      'Got it',
+      'Continue',
+      'Okay',
+      'OK',
+    ]) {
+      final finder = find.text(label);
+      if (finder.evaluate().isNotEmpty) {
+        await tester.tap(finder.first, warnIfMissed: false);
+        await _pumpFor(tester, 1);
+      }
+    }
+
+    // Dismiss the multi-grab hint overlay ("Tap a bay to pick up its
+    // top crate"). The overlay is one big GestureDetector with onTap
+    // → dismiss, so tapping its visible text label fires the handler.
+    final tapBayHint = find.textContaining('Tap a bay');
+    if (tapBayHint.evaluate().isNotEmpty) {
+      await tester.tap(tapBayHint.first, warnIfMissed: false);
+      await _pumpFor(tester, 2);
+    }
+
+    // Some builds put the master "Skip Tutorial" pill at top-right
+    // which dismisses ALL tutorial steps. Try tapping it (idempotent).
+    final skipAgain = find.text('Skip Tutorial');
+    if (skipAgain.evaluate().isNotEmpty) {
+      await tester.tap(skipAgain.first, warnIfMissed: false);
+      await _pumpFor(tester, 2);
+    }
+
+    // ------------------ state 3: in-game (CLEAN — color crates +
+    // power-up bar + HUD + wrinkle pictogram all visible) -----
+    await _holdForCapture(tester, 'in_game', seconds: 5);
+
+    // Tap the same stack again to deselect (otherwise the selection
+    // glow could confuse the visual). Then capture a final "neutral"
+    // state for a clean reference frame.
+    final firstLayerAgain = find.byType(LayerWidget);
+    if (firstLayerAgain.evaluate().isNotEmpty) {
+      await tester.tap(firstLayerAgain.first, warnIfMissed: false);
+      await _pumpFor(tester, 2);
+    }
+    await _holdForCapture(tester, 'in_game_neutral', seconds: 4);
 
     // We don't assert anything — this is a capture-only test. The
     // mvp_walkthrough_test handles correctness assertions.

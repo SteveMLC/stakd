@@ -1,34 +1,33 @@
 #!/usr/bin/env bash
 #
-# Visual-capture orchestrator. Runs the integration test that walks
-# the app from boot → home → contracts → in-game, while a parallel 1Hz
-# loop screenshots the simulator. After the test exits, we tag each
-# captured frame with its closest state marker timestamp by scanning
-# the test log.
+# Visual-capture orchestrator (v2 — log-tail driven, no parallel loop).
+#
+# Runs the integration test that walks the app from boot → home →
+# contracts → in-game. As each VISUAL_CAPTURE_STATE_BEGIN marker
+# appears in the test stdout, immediately fires a single
+# `xcrun simctl io screenshot` for that state, then waits for the
+# matching END marker before moving on. No background screenshot
+# loop = no concurrent simctl thrash = sim doesn't freeze.
 #
 # Output:
 #   /tmp/wh_visual_capture/<timestamp>/
-#     ├── frames/0001.png  (raw 1Hz timeline)
-#     ├── frames/0002.png
-#     ├── ...
-#     ├── home.png          (state-tagged best frames)
+#     ├── home.png
 #     ├── contracts.png
 #     ├── in_game.png
 #     └── test.log
 #
 # Usage: bash tools/visual_capture.sh [SIM_UUID]
-#
-# Default SIM_UUID is the iPhone 17 used by the rest of the workflow.
 
-set -uo pipefail
+set -o pipefail  # NB: `set -u` (nounset) trips on empty bash arrays
+                 # when accessed via "${arr[@]}" — disabled intentionally.
 
 SIM_UUID="${1:-8C01668E-EF11-43A9-8448-E276C07C1919}"
 OUT_ROOT="/tmp/wh_visual_capture"
 RUN_DIR="${OUT_ROOT}/$(date +%Y%m%d-%H%M%S)"
-FRAMES_DIR="${RUN_DIR}/frames"
 LOG_PATH="${RUN_DIR}/test.log"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.."; pwd)"
 
-mkdir -p "${FRAMES_DIR}"
+mkdir -p "${RUN_DIR}"
 echo "[visual_capture] writing to ${RUN_DIR}"
 
 # Verify simulator is booted.
@@ -39,100 +38,66 @@ if ! xcrun simctl list devices booted | grep -q "${SIM_UUID}"; then
   sleep 5
 fi
 
-# Start the 1Hz screenshot loop.
-echo "[visual_capture] starting 1Hz screenshot loop..."
+# Start the integration test as a background process. Don't pipe to
+# tee — write to a file and tail it ourselves so a slow consumer
+# doesn't block the test.
+echo "[visual_capture] starting integration test..."
 (
-  i=0
-  while true; do
-    fname=$(printf "%04d" "${i}")
-    # Capture both the file AND the timestamp marker so we can align later.
-    ts=$(date +%s.%N)
-    xcrun simctl io "${SIM_UUID}" screenshot "${FRAMES_DIR}/${fname}.png" \
-      >/dev/null 2>&1 \
-      && echo "${ts} ${fname}.png" >> "${RUN_DIR}/frame_index.txt"
-    i=$((i + 1))
-    sleep 1
-  done
-) &
-LOOP_PID=$!
-echo "[visual_capture] screenshot loop pid=${LOOP_PID}"
-
-# Run the integration test, capturing all stdout/stderr (the state
-# markers we'll grep for live in this log).
-echo "[visual_capture] running integration test..."
-(
-  cd "$(dirname "${BASH_SOURCE[0]}")/.."
+  cd "${REPO_ROOT}"
   flutter test integration_test/visual_capture_test.dart \
     -d "${SIM_UUID}" --timeout=4x 2>&1
-) | tee "${LOG_PATH}"
+) > "${LOG_PATH}" &
+TEST_PID=$!
+echo "[visual_capture] test pid=${TEST_PID}"
 
-# Stop the loop.
-kill "${LOOP_PID}" 2>/dev/null || true
-wait "${LOOP_PID}" 2>/dev/null
+# Tail the log looking for state markers. When BEGIN appears, wait
+# 1.5s (let the pump catch up), screenshot once, mark seen.
+declare -a SEEN_STATES=()
+TIMEOUT_S=600
+DEADLINE=$(($(date +%s) + TIMEOUT_S))
 
-# Map state markers to frame timestamps. Each marker line has format:
-#   VISUAL_CAPTURE_STATE_BEGIN: home
-# But flutter test logs don't always include precise timestamps — we
-# approximate by counting the relative position of the BEGIN marker
-# in the test log and computing the matching frame timestamp using the
-# test start time + offset.
-echo "[visual_capture] tagging frames by state..."
-python3 - <<PY
-import re, os, time
-from pathlib import Path
+while kill -0 "${TEST_PID}" 2>/dev/null; do
+  if [ $(date +%s) -gt ${DEADLINE} ]; then
+    echo "[visual_capture] test exceeded ${TIMEOUT_S}s — killing"
+    kill -9 "${TEST_PID}" 2>/dev/null
+    break
+  fi
 
-run_dir = Path("${RUN_DIR}")
-log_path = run_dir / "test.log"
-frame_index_path = run_dir / "frame_index.txt"
+  # Scan log for new BEGIN markers.
+  if [ -f "${LOG_PATH}" ]; then
+    while IFS= read -r line; do
+      if [[ "${line}" =~ VISUAL_CAPTURE_STATE_BEGIN[[:space:]]+ts=[0-9.]+[[:space:]]+name=([A-Za-z0-9_]+) ]]; then
+        state="${BASH_REMATCH[1]}"
+        # Already captured?
+        already=0
+        for s in "${SEEN_STATES[@]}"; do
+          if [ "${s}" = "${state}" ]; then already=1; break; fi
+        done
+        if [ "${already}" -eq 0 ]; then
+          # Wait ~1.5s for the pump to render fresh frames, then snap.
+          sleep 1.5
+          echo "[visual_capture] capturing state: ${state}"
+          xcrun simctl io "${SIM_UUID}" screenshot \
+            "${RUN_DIR}/${state}.png" >/dev/null 2>&1 \
+            && echo "  → ${RUN_DIR}/${state}.png" \
+            || echo "  ✗ screenshot failed"
+          SEEN_STATES+=("${state}")
+        fi
+      fi
+    done < "${LOG_PATH}"
+  fi
 
-if not log_path.exists() or not frame_index_path.exists():
-    print("missing log or frame index — bailing")
-    raise SystemExit(0)
+  sleep 0.5
+done
 
-# Read frame timeline: each line is "<unix_ts> <filename>"
-frames = []
-for line in frame_index_path.read_text().strip().splitlines():
-    parts = line.split(None, 1)
-    if len(parts) == 2:
-        frames.append((float(parts[0]), parts[1]))
-if not frames:
-    print("no frames captured")
-    raise SystemExit(0)
+wait "${TEST_PID}" 2>/dev/null
+EXIT_CODE=$?
+echo "[visual_capture] test exit code: ${EXIT_CODE}"
 
-# Read log; estimate state-begin times as a fraction of test runtime.
-log_lines = log_path.read_text().splitlines()
-states = []  # (state_name, line_index)
-for i, line in enumerate(log_lines):
-    m = re.search(r"VISUAL_CAPTURE_STATE_BEGIN:\s*(\S+)", line)
-    if m:
-        states.append((m.group(1), i))
-
-if not states:
-    print("no state markers found in log; frames left untagged")
-    raise SystemExit(0)
-
-# Estimate timestamp per state: each state's relative log-line position
-# maps to a relative position in the frame timeline.
-test_start = frames[0][0]
-test_end = frames[-1][0]
-total_lines = max(len(log_lines), 1)
-
-for state_name, line_idx in states:
-    frac = line_idx / total_lines
-    target_ts = test_start + frac * (test_end - test_start)
-    # Find closest frame.
-    best = min(frames, key=lambda f: abs(f[0] - target_ts))
-    src = run_dir / "frames" / best[1]
-    dst = run_dir / f"{state_name}.png"
-    try:
-        import shutil
-        shutil.copyfile(src, dst)
-        print(f"  {state_name:30} ← {best[1]}")
-    except FileNotFoundError:
-        print(f"  {state_name:30} (frame missing)")
-
-print(f"\nTagged frames: {run_dir}")
-PY
-
-echo "[visual_capture] DONE. Output: ${RUN_DIR}"
-echo "[visual_capture] Inspect: open ${RUN_DIR}"
+# Summary
+echo ""
+echo "[visual_capture] DONE. Captured ${#SEEN_STATES[@]} state(s):"
+for s in "${SEEN_STATES[@]}"; do
+  echo "  - ${s}"
+done
+echo "[visual_capture] Output: ${RUN_DIR}"
