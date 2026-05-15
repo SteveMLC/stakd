@@ -156,75 +156,85 @@ class _CashChipState extends State<_CashChip> {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Gold dollar disc — matches the home coin chip styling so the
-        // currency vocabulary is consistent across the HUD and top
-        // bar. The flat Icons.attach_money felt like a placeholder.
-        Container(
-          width: 22,
-          height: 22,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: const RadialGradient(
-              colors: [
-                Color(0xFFFFEB7A),
-                Color(0xFFFFC107),
-                Color(0xFFB8860B),
+    // Wrap the chip in a `RivetedPlate` so the HUD reads as a riveted
+    // metal dashboard (per Lovart visual target 2026-05-15). The
+    // gold $ disc + ticker text sit on top of the dark plate body.
+    // Padding tightened a hair so the rivets don't crowd the text.
+    // RivetedPlate adds ~22dp horizontal padding + rivets to the chip.
+    // To keep the HUD row inside its width budget we tighten the
+    // interior: the gold disc shrinks 22 → 18dp and inner spacing
+    // tightens. Net width matches the prior pre-plate chip ±2dp.
+    return RivetedPlate(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Gold dollar disc — matches the home coin chip styling so the
+          // currency vocabulary is consistent across the HUD and top
+          // bar. The flat Icons.attach_money felt like a placeholder.
+          Container(
+            width: 18,
+            height: 18,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const RadialGradient(
+                colors: [
+                  Color(0xFFFFEB7A),
+                  Color(0xFFFFC107),
+                  Color(0xFFB8860B),
+                ],
+              ),
+              border: Border.all(color: const Color(0xFF8B6914), width: 1),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFFFD700).withValues(alpha: 0.45),
+                  blurRadius: 4,
+                ),
               ],
             ),
-            border: Border.all(color: const Color(0xFF8B6914), width: 1),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFFFFD700).withValues(alpha: 0.45),
-                blurRadius: 4,
-              ),
-            ],
-          ),
-          child: const Center(
-            child: Text(
-              '\$',
-              style: TextStyle(
-                color: Color(0xFF6B4F00),
-                fontWeight: FontWeight.w900,
-                fontSize: 13,
-                height: 1.1,
+            child: const Center(
+              child: Text(
+                '\$',
+                style: TextStyle(
+                  color: Color(0xFF6B4F00),
+                  fontWeight: FontWeight.w900,
+                  fontSize: 11,
+                  height: 1.1,
+                ),
               ),
             ),
           ),
-        ),
-        const SizedBox(width: 6),
-        TweenAnimationBuilder<double>(
-          // Tween from previous value to new value; format as we go for
-          // a satisfying "numbers go UP" ticker.
-          tween: Tween<double>(
-            begin: _from.toDouble(),
-            end: widget.amount.toDouble(),
+          const SizedBox(width: 5),
+          TweenAnimationBuilder<double>(
+            // Tween from previous value to new value; format as we go for
+            // a satisfying "numbers go UP" ticker.
+            tween: Tween<double>(
+              begin: _from.toDouble(),
+              end: widget.amount.toDouble(),
+            ),
+            duration: const Duration(milliseconds: 650),
+            curve: Curves.easeOutCubic,
+            onEnd: () => _displayed = widget.amount,
+            builder: (context, value, _) {
+              final shown = value.round();
+              // Route through the shared `formatCashCompact` helper —
+              // K/M/B/T/Qa/Qi/.../Qid suffix progression to 10^48, then
+              // scientific notation. Compact 1-decimal variant fits
+              // the HUD chip width across the whole infinite-scaling
+              // range.
+              return Text(
+                formatCashCompact(shown),
+                style: const TextStyle(
+                  color: GameColors.text,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                  letterSpacing: 0.5,
+                ),
+              );
+            },
           ),
-          duration: const Duration(milliseconds: 650),
-          curve: Curves.easeOutCubic,
-          onEnd: () => _displayed = widget.amount,
-          builder: (context, value, _) {
-            final shown = value.round();
-            // Route through the shared `formatCashCompact` helper —
-            // K/M/B/T/Qa/Qi/.../Qid suffix progression to 10^48, then
-            // scientific notation. Replaces the old custom _format
-            // that capped at billions with lowercase 'k'. Compact
-            // 1-decimal variant fits the HUD chip width across the
-            // whole infinite-scaling range.
-            return Text(
-              formatCashCompact(shown),
-              style: const TextStyle(
-                color: GameColors.text,
-                fontWeight: FontWeight.w800,
-                fontSize: 17,
-                letterSpacing: 0.5,
-              ),
-            );
-          },
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

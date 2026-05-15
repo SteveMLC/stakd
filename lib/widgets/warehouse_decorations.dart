@@ -482,3 +482,132 @@ extension on Paint {
       );
   }
 }
+
+/// Dark "riveted plate" frame — the canonical interactive-surface
+/// primitive from the Lovart visual target (2026-05-15). Wraps any
+/// child in a brushed-steel dark gradient body with 4 corner bolts
+/// + an optional accent border. Used on the HUD chips (Cash, WH Lv,
+/// XP), the Daily Contract pill, the menu pills, and the top-bar
+/// utility icons.
+///
+/// Reuses the existing `_ChainRivet`-style radial-gradient rivet
+/// pattern (`chain_text_popup.dart`) inlined here as `_PlateRivet`
+/// so the decorations file has no cross-widget dependency.
+class RivetedPlate extends StatelessWidget {
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final double borderRadius;
+  /// Optional accent color for the outer border. Pass `null` for a
+  /// muted neutral border (default), or `GameColors.accent` to make
+  /// the plate read as a "live" interactive target.
+  final Color? accentBorder;
+  /// Plate height — when set, the rivets re-position to corners of
+  /// the plate. When null, the plate sizes to the child.
+  final double? minHeight;
+
+  const RivetedPlate({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    this.borderRadius = 6,
+    this.accentBorder,
+    this.minHeight,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: padding,
+      constraints: minHeight != null
+          ? BoxConstraints(minHeight: minHeight!)
+          : null,
+      decoration: BoxDecoration(
+        // 3-stop dark brushed-steel gradient matching the cash chip
+        // body shown in Lovart's mockup: lighter top edge, mid-grey
+        // body, near-black bottom.
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFF3A4250),
+            Color(0xFF1F252E),
+            Color(0xFF14181E),
+          ],
+          stops: [0.0, 0.55, 1.0],
+        ),
+        borderRadius: BorderRadius.circular(borderRadius),
+        border: Border.all(
+          color: accentBorder?.withValues(alpha: 0.6) ??
+              const Color(0xFF000000).withValues(alpha: 0.6),
+          width: accentBorder != null ? 1.2 : 0.8,
+        ),
+        boxShadow: [
+          // Slight outer shadow for separation from the brushed-steel
+          // background the plate sits on.
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.45),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // Inner highlight — a thin lighter rectangle 1px inside the
+          // top + sides to imply embossed metal. Subtle but it's what
+          // makes the plate feel 3D instead of flat.
+          Positioned(
+            top: 0.5,
+            left: 0.5,
+            right: 0.5,
+            height: 1.0,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.08),
+                borderRadius:
+                    BorderRadius.vertical(top: Radius.circular(borderRadius)),
+              ),
+            ),
+          ),
+          // Child content sits on top of the plate.
+          child,
+          // 4 corner rivets — small radial-gradient circles with a
+          // highlight pip. Placed just inside the plate edge so they
+          // read as bolts driven into the plate's metal.
+          const Positioned(top: 3, left: 3, child: _PlateRivet()),
+          const Positioned(top: 3, right: 3, child: _PlateRivet()),
+          const Positioned(bottom: 3, left: 3, child: _PlateRivet()),
+          const Positioned(bottom: 3, right: 3, child: _PlateRivet()),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tiny ~5dp metal bolt — radial gradient with a highlight pip,
+/// dark border. Used by `RivetedPlate` for its 4 corner accents.
+class _PlateRivet extends StatelessWidget {
+  const _PlateRivet();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 5,
+      height: 5,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const RadialGradient(
+          colors: [Color(0xFF8A93A0), Color(0xFF2A2F38), Color(0xFF101418)],
+          center: Alignment(-0.4, -0.5),
+          radius: 1.3,
+          stops: [0.0, 0.55, 1.0],
+        ),
+        border: Border.all(
+          color: const Color(0xFF000000).withValues(alpha: 0.7),
+          width: 0.4,
+        ),
+      ),
+    );
+  }
+}
