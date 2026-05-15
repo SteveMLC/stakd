@@ -478,6 +478,53 @@ class AchievementService extends ChangeNotifier {
       isHidden: true,
     ),
 
+    // District + Reputation milestones (Phase C infinite-scaling
+    // architecture, 2026-05-15). Players cross these meta-loop
+    // boundaries and the system already celebrates with receipt
+    // beats + promotion ceremony — this gives them achievement
+    // credit too, so the achievements screen has entries for the
+    // new infinite-scaling milestones.
+    AchievementDef(
+      id: 'first_district_cleared',
+      name: 'Dispatch Foreman',
+      description: 'Clear all 5 levels of District 1 — Local Dock',
+      category: AchievementCategoryExt.warehouse,
+      xpReward: 400,
+      coinReward: 150,
+    ),
+    AchievementDef(
+      id: 'regional_district_cleared',
+      name: 'Regional Operator',
+      description: 'Clear a Regional-tier district (D4 Sea Port or later)',
+      category: AchievementCategoryExt.warehouse,
+      xpReward: 1000,
+      coinReward: 400,
+    ),
+    AchievementDef(
+      id: 'procedural_explorer',
+      name: 'Procedural Explorer',
+      description: 'Clear District 7 — the first procedural district',
+      category: AchievementCategoryExt.warehouse,
+      xpReward: 2500,
+      coinReward: 800,
+    ),
+    AchievementDef(
+      id: 'bronze_promotion',
+      name: 'Bronze Tier',
+      description: 'Earn 5 Reputation Points and reach Bronze tier',
+      category: AchievementCategoryExt.warehouse,
+      xpReward: 600,
+      coinReward: 200,
+    ),
+    AchievementDef(
+      id: 'legendary_promotion',
+      name: 'Legendary Tycoon',
+      description: 'Reach Legendary Reputation tier (225 RP)',
+      category: AchievementCategoryExt.warehouse,
+      xpReward: 10000,
+      coinReward: 3000,
+    ),
+
     // 🎨 VARIETY (5)
     AchievementDef(
       id: 'color_explorer',
@@ -942,6 +989,60 @@ class AchievementService extends ChangeNotifier {
     final newlyUnlocked = <AchievementDef>[];
     if (forkliftSkinsOwnedBeyondDefault >= 2 && ownsRegionalTier) {
       newlyUnlocked.addAll(_tryUnlock(['union_steward']));
+    }
+    return newlyUnlocked;
+  }
+
+  /// Call after a District has been cleared (i.e. the FINAL level of
+  /// the district was completed with stars on every level inside).
+  /// Fires up to three district-milestone achievements depending on
+  /// which district number just cleared:
+  ///
+  /// - `first_district_cleared` — when D1 clears
+  /// - `regional_district_cleared` — when any D4-D6 clears (regional
+  ///   tier hand-tuned)
+  /// - `procedural_explorer` — when D7 (first procedural district)
+  ///   clears
+  ///
+  /// [districtNumber] is the 1-indexed district that just cleared.
+  List<AchievementDef> checkDistrictMilestones({
+    required int districtNumber,
+  }) {
+    final newlyUnlocked = <AchievementDef>[];
+    if (districtNumber == 1) {
+      newlyUnlocked.addAll(_tryUnlock(['first_district_cleared']));
+    }
+    if (districtNumber >= 4 && districtNumber <= 6) {
+      newlyUnlocked.addAll(_tryUnlock(['regional_district_cleared']));
+    }
+    if (districtNumber == 7) {
+      newlyUnlocked.addAll(_tryUnlock(['procedural_explorer']));
+    }
+    return newlyUnlocked;
+  }
+
+  /// Call after `ReputationService.addReputation` returns true (a
+  /// tier promotion fired). Fires the appropriate tier-milestone
+  /// achievement based on the new tier level.
+  ///
+  /// - `bronze_promotion` — when the player crosses tier 1 (Bronze, RP 5)
+  /// - `legendary_promotion` — when the player crosses tier 9
+  ///   (Legendary, RP 225)
+  ///
+  /// Intermediate tiers (Silver, Gold, Platinum, Diamond, Master,
+  /// Apex, Mythic) and post-Legendary tier extensions don't have
+  /// dedicated achievements yet — those are tracked implicitly by the
+  /// player's `currentTierLevel`. Bronze + Legendary are the named
+  /// bookends so the early + late milestones both get celebrated.
+  List<AchievementDef> checkReputationTier({
+    required int newTierLevel,
+  }) {
+    final newlyUnlocked = <AchievementDef>[];
+    if (newTierLevel >= 1) {
+      newlyUnlocked.addAll(_tryUnlock(['bronze_promotion']));
+    }
+    if (newTierLevel >= 9) {
+      newlyUnlocked.addAll(_tryUnlock(['legendary_promotion']));
     }
     return newlyUnlocked;
   }

@@ -427,9 +427,22 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
             '— +$rpAwarded RP, promoted=$promoted, '
             'newTier=${ReputationService().displayName}',
           );
-          // Future: if `promoted` fire the PromotionCeremonyOverlay
-          // here. For now the inline RP badge on the SHIPMENT RECEIPT
-          // (rendered when `_rpAwarded > 0`) carries the moment.
+          // Achievement credit for the meta-loop milestones. The
+          // service's check methods are idempotent — calling them on
+          // every district clear is fine, they no-op when the
+          // achievement is already unlocked. Toast firing is handled
+          // by the existing achievement-toast overlay subscription.
+          AchievementService()
+              .checkDistrictMilestones(districtNumber: district.number);
+          if (promoted) {
+            AchievementService().checkReputationTier(
+              newTierLevel: ReputationService().currentTierLevel,
+            );
+          }
+          // The inline RP badge on the SHIPMENT RECEIPT + the
+          // PromotionCeremonyOverlay (when `promoted` is true) carry
+          // the in-flight celebration; the achievement toasts pop
+          // separately via the AchievementToastOverlay.
         }
       }
 

@@ -339,6 +339,101 @@ void main() {
     });
   });
 
+  group('AchievementService district + tier milestone checks', () {
+    late AchievementService svc;
+
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      svc = AchievementService();
+      // AchievementService is a singleton — mock prefs + init wipes
+      // in-memory unlocked-state for the fresh test scope.
+      await svc.init();
+    });
+
+    test('checkDistrictMilestones(1) fires first_district_cleared', () {
+      final result = svc.checkDistrictMilestones(districtNumber: 1);
+      expect(result.any((d) => d.id == 'first_district_cleared'), isTrue);
+      expect(svc.getState('first_district_cleared').unlocked, isTrue);
+    });
+
+    test('checkDistrictMilestones(1) is idempotent on second call', () {
+      svc.checkDistrictMilestones(districtNumber: 1);
+      final second = svc.checkDistrictMilestones(districtNumber: 1);
+      expect(second, isEmpty);
+    });
+
+    test('checkDistrictMilestones(2) does NOT fire first_district', () {
+      final result = svc.checkDistrictMilestones(districtNumber: 2);
+      expect(result, isEmpty);
+      expect(svc.getState('first_district_cleared').unlocked, isFalse);
+    });
+
+    test('checkDistrictMilestones(4) fires regional_district_cleared', () {
+      final result = svc.checkDistrictMilestones(districtNumber: 4);
+      expect(result.any((d) => d.id == 'regional_district_cleared'), isTrue);
+    });
+
+    test('checkDistrictMilestones(6) still fires regional_district_cleared',
+        () {
+      final result = svc.checkDistrictMilestones(districtNumber: 6);
+      expect(result.any((d) => d.id == 'regional_district_cleared'), isTrue);
+    });
+
+    test('checkDistrictMilestones(7) fires procedural_explorer', () {
+      final result = svc.checkDistrictMilestones(districtNumber: 7);
+      expect(result.any((d) => d.id == 'procedural_explorer'), isTrue);
+    });
+
+    test('checkDistrictMilestones(8) does NOT fire procedural_explorer', () {
+      final result = svc.checkDistrictMilestones(districtNumber: 8);
+      // Only D7 — the FIRST procedural — gets the explorer flag.
+      expect(result.any((d) => d.id == 'procedural_explorer'), isFalse);
+    });
+
+    test('checkReputationTier(1) fires bronze_promotion', () {
+      final result = svc.checkReputationTier(newTierLevel: 1);
+      expect(result.any((d) => d.id == 'bronze_promotion'), isTrue);
+    });
+
+    test('checkReputationTier(9) fires both bronze and legendary', () {
+      // Crossing tier 9 implies the player already passed tier 1; both
+      // achievements unlock atomically.
+      final result = svc.checkReputationTier(newTierLevel: 9);
+      expect(result.any((d) => d.id == 'bronze_promotion'), isTrue);
+      expect(result.any((d) => d.id == 'legendary_promotion'), isTrue);
+    });
+
+    test('checkReputationTier(8) does NOT fire legendary', () {
+      final result = svc.checkReputationTier(newTierLevel: 8);
+      expect(result.any((d) => d.id == 'bronze_promotion'), isTrue);
+      expect(result.any((d) => d.id == 'legendary_promotion'), isFalse);
+    });
+
+    test('all 5 new milestone achievements exist in catalog', () {
+      final ids = svc.allAchievements.map((d) => d.id).toSet();
+      expect(ids, contains('first_district_cleared'));
+      expect(ids, contains('regional_district_cleared'));
+      expect(ids, contains('procedural_explorer'));
+      expect(ids, contains('bronze_promotion'));
+      expect(ids, contains('legendary_promotion'));
+    });
+
+    test('milestone achievements use the warehouse category', () {
+      for (final id in [
+        'first_district_cleared',
+        'regional_district_cleared',
+        'procedural_explorer',
+        'bronze_promotion',
+        'legendary_promotion',
+      ]) {
+        final def =
+            svc.allAchievements.firstWhere((d) => d.id == id);
+        expect(def.category, AchievementCategoryExt.warehouse,
+            reason: '$id should be warehouse-categorized');
+      }
+    });
+  });
+
   group('AchievementCategoryExt (warehouse rename)', () {
     test('garden enum value has been renamed to warehouse', () {
       final names = AchievementCategoryExt.values.map((e) => e.name).toSet();
