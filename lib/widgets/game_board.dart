@@ -1611,8 +1611,7 @@ class _MultiGrabIndicator extends StatelessWidget {
       builder: (context, child) {
         final pulse = animation.value;
         return Tooltip(
-          message:
-              '🔥 Same-color streak! Stack matching colors for bonus points',
+          message: 'Same-color streak! Stack matching colors for bonus points',
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
@@ -1625,13 +1624,30 @@ class _MultiGrabIndicator extends StatelessWidget {
                 width: 1.5,
               ),
             ),
-            child: Text(
-              '🔥$count',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: Colors.white.withValues(alpha: 0.9),
-              ),
+            // 2026-05-15: `'🔥$count'` rendered the fire emoji as a
+            // broken `[?]` glyph on iOS sim (U+1F525 falls through
+            // when the bundled Apple Color Emoji set doesn't carry it
+            // — same class as the 🏆 / 🪙 fixes). Swap for a real
+            // Material flame icon + the count text in a Row so the
+            // streak badge actually reads.
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.local_fire_department,
+                  size: 14,
+                  color: const Color(0xFFFF6B35), // hot orange flame
+                ),
+                const SizedBox(width: 2),
+                Text(
+                  '$count',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white.withValues(alpha: 0.9),
+                  ),
+                ),
+              ],
             ),
           ),
         );
