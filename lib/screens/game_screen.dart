@@ -1320,6 +1320,15 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
   Widget build(BuildContext context) {
     final iap = context.watch<IapService>();
 
+    // District background — 14 Lovart-illustrated theme backdrops
+    // routed by the current level's district theme id. Falls back to
+    // the dark gradient when no theme asset matches. Each level
+    // renders against its district's visual atmosphere (cold-storage
+    // frosty, maritime ports, megacity neon, etc) instead of the
+    // same dark midnight for every level.
+    final district = DistrictService().districtForLevel(_currentLevel);
+    final districtBgPath = districtBackgroundAsset(district?.themeId);
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -1329,7 +1338,32 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
             colors: [GameColors.backgroundDark, GameColors.backgroundMid],
           ),
         ),
-        child: SafeArea(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (districtBgPath != null)
+              Positioned.fill(
+                child: Opacity(
+                  opacity: 0.55,
+                  child: Image.asset(
+                    districtBgPath,
+                    fit: BoxFit.cover,
+                    alignment: Alignment.center,
+                    filterQuality: FilterQuality.medium,
+                  ),
+                ),
+              ),
+            // Dim scrim so the playfield/HUD content stays readable
+            // over the district illustration. Tuned to 40% black so
+            // the district color still bleeds through but text + bay
+            // outlines hold their contrast.
+            if (districtBgPath != null)
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.40),
+                ),
+              ),
+            SafeArea(
           child: Consumer<GameState>(
             builder: (context, gameState, child) {
               // Handle game state changes for tutorial
@@ -1569,6 +1603,8 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
               );
             },
           ),
+        ),
+          ],
         ),
       ),
     );

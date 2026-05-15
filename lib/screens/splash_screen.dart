@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../utils/constants.dart';
+import '../utils/game_assets.dart';
 import '../utils/route_transitions.dart';
 import '../widgets/warehouse_decorations.dart';
 import 'home_screen.dart';
@@ -109,11 +110,24 @@ class _WarehouseSplashScreenState extends State<WarehouseSplashScreen>
                   ],
                 ),
               ),
-              // Forklift driving across the dock.
+              // Forklift driving across the dock — 2026-05-15 swapped
+              // the CustomPainter `StencilForklift` for the Lovart
+              // `hero_stencil_forklift` illustration. Same widget
+              // dimensions, same drive-in animation, but the asset
+              // is a polished mascot-style forklift with hard-hat
+              // driver + neon spotlight rather than the flat stencil.
               Positioned(
                 left: forkliftX,
                 bottom: 80,
-                child: const StencilForklift(width: 140, height: 92),
+                child: SizedBox(
+                  width: 140,
+                  height: 92,
+                  child: Image.asset(
+                    stencilForkliftAsset,
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.medium,
+                  ),
+                ),
               ),
               // Dust trail behind the forklift while moving.
               Positioned(

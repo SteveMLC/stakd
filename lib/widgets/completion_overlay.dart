@@ -149,20 +149,47 @@ class _CompletionOverlayState extends State<CompletionOverlay>
     _fadeController.forward();
     Future.delayed(const Duration(milliseconds: 150), () {
       _scaleController.forward();
-      _confettiController.forward(); // Single burst — no repeat
+      // Confetti fires LATER now — after the final star lands (was
+      // firing simultaneously with star 1, overlapping the whole
+      // sequence). The level-win haptic stays here as the
+      // receipt-arrives beat.
       haptics.levelWinPattern();
-      
+
       _animateStars();
     });
   }
 
+  /// Star reveal sequence — staged so each star lands as its own
+  /// distinct beat instead of all three popping in a 600ms blur.
+  ///
+  /// 2026-05-15 (Kimi audit): was 200ms intervals + confetti firing
+  /// before star 1 even started + no escalation on the final star.
+  /// Now: 450ms intervals (so each star reads), final-star haptic +
+  /// confetti burst fires AS the final star lands (the celebration
+  /// moment), and the haptic escalates per star (light → medium →
+  /// heavy) so the third star feels triumphant.
   void _animateStars() async {
-    for (int i = 0; i < widget.stars && i < maxStars; i++) {
-      await Future.delayed(const Duration(milliseconds: 200));
-      if (mounted) {
-        _starControllers[i].forward();
-        // Light haptic for each star
+    final stars = widget.stars.clamp(0, maxStars);
+    for (int i = 0; i < stars; i++) {
+      await Future.delayed(const Duration(milliseconds: 450));
+      if (!mounted) return;
+      _starControllers[i].forward();
+
+      final isFinalStar = i == stars - 1;
+      if (isFinalStar) {
+        // Final-star moment: confetti burst + heavy haptic + level-win
+        // pattern. Lines up with the elasticOut star pop reaching its
+        // peak (around the +160ms mark after `forward()`).
+        Future.delayed(const Duration(milliseconds: 60), () {
+          if (mounted) {
+            _confettiController.forward();
+            haptics.levelWinPattern();
+          }
+        });
+      } else if (i == 0) {
         haptics.lightTap();
+      } else {
+        haptics.mediumImpact();
       }
     }
   }
@@ -322,18 +349,34 @@ class _CompletionOverlayState extends State<CompletionOverlay>
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                            // Hero truck illustration — FLUX-generated
-                            // yellow delivery box truck loaded with
-                            // crates. Replaces the prior primitive
-                            // forklift that overflowed the receipt
-                            // frame. Sized to fit comfortably above
-                            // the star row without crowding it.
+                            // Hero truck illustration — Lovart cartoon
+                            // delivery box truck loaded with crates.
+                            // 2026-05-15 (Kimi audit): added a 380ms
+                            // slide-in from off-screen left so the
+                            // truck "drives onto" the receipt as it
+                            // appears. Was a static Image.asset which
+                            // wasted the hero asset's potential.
                             SizedBox(
                               height: 96,
-                              child: Image.asset(
-                                heroTruckAsset,
-                                fit: BoxFit.contain,
-                                filterQuality: FilterQuality.medium,
+                              child: AnimatedBuilder(
+                                animation: _scaleController,
+                                builder: (context, child) {
+                                  final t = Curves.easeOutCubic.transform(
+                                    (_scaleController.value).clamp(0.0, 1.0),
+                                  );
+                                  return Transform.translate(
+                                    offset: Offset(-160 * (1 - t), 0),
+                                    child: Opacity(
+                                      opacity: t.clamp(0.0, 1.0),
+                                      child: child,
+                                    ),
+                                  );
+                                },
+                                child: Image.asset(
+                                  heroTruckAsset,
+                                  fit: BoxFit.contain,
+                                  filterQuality: FilterQuality.medium,
+                                ),
                               ),
                             ),
                             const SizedBox(height: 4),
