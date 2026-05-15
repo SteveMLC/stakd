@@ -17,6 +17,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:warehouse_sort/services/audio_service.dart';
 import 'package:warehouse_sort/services/storage_service.dart';
 import 'package:warehouse_sort/widgets/completion_overlay.dart';
+import 'package:warehouse_sort/widgets/promotion_ceremony_overlay.dart';
 
 Future<void> _bootMinimal() async {
   SharedPreferences.setMockInitialValues({});
@@ -48,7 +49,20 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: Provider<bool>(
+        // Default text theme without any underline decoration — without
+        // this the widget-isolated render shows Flutter's yellow debug
+        // underlines under every Text because there's no production
+        // theme ancestor providing the default decoration: none.
+        theme: ThemeData(
+          textTheme: const TextTheme().apply(
+            displayColor: Colors.white,
+            bodyColor: Colors.white,
+            decoration: TextDecoration.none,
+          ),
+        ),
+        home: Material(
+          color: Colors.transparent,
+          child: Provider<bool>(
           create: (_) => false,
           child: Builder(builder: (context) {
             return CompletionOverlay(
@@ -71,6 +85,7 @@ void main() {
             );
           }),
         ),
+        ),
       ),
     );
 
@@ -80,5 +95,35 @@ void main() {
     }
 
     await _holdForCapture(tester, 'completion_overlay_3star', seconds: 6);
+  });
+
+  testWidgets('promotion ceremony renders tier medallion', (tester) async {
+    await _bootMinimal();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(
+          textTheme: const TextTheme().apply(
+            displayColor: Colors.white,
+            bodyColor: Colors.white,
+            decoration: TextDecoration.none,
+          ),
+        ),
+        home: Scaffold(
+          body: PromotionCeremonyOverlay(
+            newTierName: 'BRONZE',
+            reputationMultiplierBonus: 0.10,
+            onAcknowledge: () {},
+          ),
+        ),
+      ),
+    );
+
+    // Let the full 2.8s scale-in + 2.1s confetti settle.
+    for (var i = 0; i < 60; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    await _holdForCapture(tester, 'promotion_bronze', seconds: 5);
   });
 }

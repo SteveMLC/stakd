@@ -348,7 +348,7 @@ class _CompletionOverlayState extends State<CompletionOverlay>
                                   alignment: WrapAlignment.center,
                                   children: [
                                     if (widget.isNewMoveBest)
-                                      Text('\u{1f3c6} Best Moves!', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: starGold)),
+                                      Text('\u2605 Best Moves!', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: starGold)),
                                     if (widget.isNewTimeBest)
                                       Text('\u26a1 Best Time!', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: starGold)),
                                   ],
@@ -371,13 +371,26 @@ class _CompletionOverlayState extends State<CompletionOverlay>
                                 ),
                               ),
                               const SizedBox(height: 4),
-                              Text(
-                                '+${formatXp(widget.xpEarned)} XP  \u2022  +${formatCash(widget.coinsEarned)} \u{1fa99}',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w500,
-                                  color: GameColors.textMuted.withValues(alpha: 0.9),
-                                ),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    '+${formatXp(widget.xpEarned)} XP  \u2022  +${formatCash(widget.coinsEarned)}',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w500,
+                                      color: GameColors.textMuted
+                                          .withValues(alpha: 0.9),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    Icons.monetization_on,
+                                    size: 16,
+                                    color: GameColors.accent
+                                        .withValues(alpha: 0.85),
+                                  ),
+                                ],
                               ),
                             ],
                             // District clear + RP award badge. Fires
@@ -481,7 +494,37 @@ class _CompletionOverlayState extends State<CompletionOverlay>
                                 ),
                               ),
                               // Bottom hazard band — closes the receipt.
-                              const HazardStripe(height: 6, stripeWidth: 12),
+                              Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  const HazardStripe(
+                                    height: 6,
+                                    stripeWidth: 12,
+                                  ),
+                                  // Customs-stamp seal — tilted decal that
+                                  // overlaps the bottom hazard band, like a
+                                  // real freight receipt's "CLEARED" stamp.
+                                  Positioned(
+                                    right: 10,
+                                    top: -52,
+                                    child: IgnorePointer(
+                                      child: Transform.rotate(
+                                        angle: -0.22,
+                                        child: SizedBox(
+                                          width: 72,
+                                          height: 72,
+                                          child: Image.asset(
+                                            receiptStampAsset,
+                                            fit: BoxFit.contain,
+                                            filterQuality:
+                                                FilterQuality.medium,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
                         ),
