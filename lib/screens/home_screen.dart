@@ -193,14 +193,21 @@ class _HomeScreenState extends State<HomeScreen>
                 const SizedBox(height: 12),
                 _buildLogo(),
                 const SizedBox(height: 10),
-                Text(
-                  'Sort the crates. Build the empire.',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: GameColors.textMuted,
-                    letterSpacing: 1.5,
+                // Tagline shows ONLY on fresh-install / pre-first-clear.
+                // Once the player has cleared L1 it's wasted real estate —
+                // hide it forever so the HUD + Next-Milestone banner +
+                // PLAY get more breathing room (Kimi audit 2026-05-15,
+                // Lovart mockup independently confirmed).
+                if (StorageService().getLevelStars(1) == 0) ...[
+                  Text(
+                    'Sort the crates. Build the empire.',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: GameColors.textMuted,
+                      letterSpacing: 1.5,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 10),
+                  const SizedBox(height: 10),
+                ],
                 const WarehouseHud(),
                 const NextMilestoneBanner(),
                 const Spacer(flex: 2),
@@ -572,7 +579,11 @@ class _WarehousePlacard extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 340),
+        // Shrunk 340 → 280 (Kimi audit 2026-05-15). The placard was
+        // out-massing PLAY for visual weight on the 6.7" iPhone. Smaller
+        // placard lets PLAY win the eye while keeping the warehouse-
+        // brand wordmark legible at scale.
+        constraints: const BoxConstraints(maxWidth: 280),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             begin: Alignment.topCenter,
@@ -653,7 +664,12 @@ class _WarehousePlacard extends StatelessWidget {
                         'WAREHOUSE\nSORT',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 38,
+                          // Shrunk 38 → 32 (Kimi audit). Combined with
+                          // the smaller placard maxWidth, the wordmark
+                          // now sits as a secondary identity element
+                          // rather than competing with PLAY for the
+                          // primary visual anchor.
+                          fontSize: 32,
                           fontWeight: FontWeight.w900,
                           height: 1.0,
                           color: GameColors.text,
