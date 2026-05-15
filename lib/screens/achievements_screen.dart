@@ -185,6 +185,12 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
   }
 
   Widget _buildStatsHeader() {
+    // Fresh-install branch: zero unlocks → swap the numeric stats row
+    // for the Lovart empty-state hero (foreman saluting an empty
+    // trophy podium). Hints "your first trophy is coming" without
+    // burning the dim 0/30 placeholder onto the screen. Once the
+    // player unlocks anything, the stats row shows normally.
+    final firstInstall = _achievementService.unlockedCount == 0;
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(16),
@@ -196,14 +202,41 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
           width: 1,
         ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildStatItem('Unlocked', '${_achievementService.unlockedCount}/${_achievementService.totalCount}', Icons.stars),
-          _buildStatItem('Total XP', '+$_totalXPEarned', Icons.flash_on),
-          _buildStatItem('Total Gems', '+$_totalCoinsEarned', Icons.diamond),
-        ],
-      ),
+      child: firstInstall
+          ? Column(
+              children: [
+                SizedBox(
+                  height: 110,
+                  child: Image.asset(
+                    emptyAchievementsAsset,
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.medium,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'No trophies yet — clear a contract to earn your first.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: GameColors.textMuted,
+                    fontSize: 13,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            )
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildStatItem(
+                  'Unlocked',
+                  '${_achievementService.unlockedCount}/${_achievementService.totalCount}',
+                  Icons.stars,
+                ),
+                _buildStatItem('Total XP', '+$_totalXPEarned', Icons.flash_on),
+                _buildStatItem('Total Gems', '+$_totalCoinsEarned', Icons.diamond),
+              ],
+            ),
     );
   }
 

@@ -12,6 +12,7 @@ import '../utils/constants.dart';
 import '../utils/game_assets.dart';
 import '../widgets/game_board.dart';
 import '../widgets/warehouse_spinner.dart';
+import '../widgets/warehouse_decorations.dart';
 import '../widgets/name_entry_dialog.dart';
 
 // Top-level function for isolate-based puzzle generation
@@ -264,22 +265,69 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
         : _gameState.moveCount.toString();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Daily Contract'),
-        actions: [
-          IconButton(
-            icon: Icon(_showCalendar ? Icons.grid_4x4 : Icons.calendar_month),
-            onPressed: () {
-              setState(() {
-                _showCalendar = !_showCalendar;
-              });
-            },
-          ),
-        ],
+      // Custom header replaces the bare Material AppBar so the
+      // Daily Contract screen matches the warehouse chrome used by
+      // splash + completion + jam-recovery (HazardStripe band over
+      // MetalNameplate title). Keeps the calendar-toggle on the right.
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            const SizedBox(
+              height: 10,
+              child: HazardStripe(height: 10, stripeWidth: 14),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 10, 8, 10),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back, color: GameColors.text),
+                    tooltip: 'Back',
+                    onPressed: () => Navigator.of(context).maybePop(),
+                  ),
+                  const Expanded(
+                    child: Center(
+                      child: MetalNameplate(
+                        text: 'DAILY CONTRACT',
+                        icon: Icons.local_shipping,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      _showCalendar
+                          ? Icons.grid_4x4
+                          : Icons.calendar_month,
+                      color: GameColors.text,
+                    ),
+                    tooltip: _showCalendar ? 'Today' : 'History',
+                    onPressed: () {
+                      setState(() {
+                        _showCalendar = !_showCalendar;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(
+              height: 6,
+              child: HazardStripe(height: 6, stripeWidth: 10),
+            ),
+            Expanded(
+              child: _showCalendar
+                  ? _buildCalendarView()
+                  : _buildGameView(
+                      dateFormat,
+                      isCompleted,
+                      timeDisplay,
+                      movesDisplay,
+                    ),
+            ),
+          ],
+        ),
       ),
-      body: _showCalendar
-          ? _buildCalendarView()
-          : _buildGameView(dateFormat, isCompleted, timeDisplay, movesDisplay),
     );
   }
 
@@ -318,9 +366,16 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildStatCard('⏱️', timeDisplay, 'Time'),
-                  _buildStatCard('🧩', movesDisplay, 'Moves'),
-                  _buildStatCard('🔥', '$_streak', 'Streak'),
+                  // ⏱️ + 🧩 emoji used to render as inconsistent
+                  // glyphs across iOS sim versions; swapped to
+                  // amber-tinted Material icons so they match the
+                  // warehouse aesthetic and the steady-state
+                  // Lovart flame on the streak card. Tag the stat
+                  // type via an enum-like sentinel so the build
+                  // method can render the right glyph.
+                  _buildStatCard('time', timeDisplay, 'Time'),
+                  _buildStatCard('moves', movesDisplay, 'Moves'),
+                  _buildStatCard('streak', '$_streak', 'Streak'),
                 ],
               ),
             ],
@@ -375,23 +430,44 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
     );
   }
 
-  Widget _buildStatCard(String emoji, String value, String label) {
-    // Streak-flame card uses the Lovart-generated daily_streak_flame
-    // illustration instead of the raw 🔥 emoji (which can render as
-    // a question-mark glyph on some iOS sim versions + is less
-    // characterful than the Lovart cartoon flame).
-    final isFlame = emoji == '🔥';
+  Widget _buildStatCard(String kind, String value, String label) {
+    // 2026-05-15: stat-card glyphs are now keyed by `kind` instead of
+    // an emoji string, so the build chain can render the right
+    // illustration per stat without depending on emoji font support
+    // (which renders inconsistently on iOS sim across versions).
+    // - streak: Lovart-generated cartoon flame
+    // - time:   Material timer icon (amber tint, matches accent)
+    // - moves:  Material swap_horiz icon (suggests crate-shuffle)
+    Widget glyph;
+    switch (kind) {
+      case 'streak':
+        glyph = Image.asset(
+          dailyStreakFlameAsset,
+          width: 28,
+          height: 28,
+          filterQuality: FilterQuality.medium,
+        );
+        break;
+      case 'time':
+        glyph = const Icon(
+          Icons.access_time_filled_rounded,
+          size: 26,
+          color: GameColors.accent,
+        );
+        break;
+      case 'moves':
+        glyph = const Icon(
+          Icons.swap_horiz_rounded,
+          size: 28,
+          color: GameColors.accent,
+        );
+        break;
+      default:
+        glyph = const SizedBox.shrink();
+    }
     return Column(
       children: [
-        if (isFlame)
-          Image.asset(
-            dailyStreakFlameAsset,
-            width: 28,
-            height: 28,
-            filterQuality: FilterQuality.medium,
-          )
-        else
-          Text(emoji, style: const TextStyle(fontSize: 24)),
+        SizedBox(height: 28, child: Center(child: glyph)),
         const SizedBox(height: 4),
         Text(
           value,
