@@ -1408,15 +1408,20 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                     ],
                   ),
 
-                  // Hydraulic Pressure gauge — anchored to the left edge
-                  // of the board area. Player taps the VENT button on it
-                  // to trigger a 4-move burst (combo doesn't reset, 2×
-                  // cash on the next clear). Listens to its own
-                  // singleton service so it repaints independently.
+                  // Hydraulic Pressure gauge — anchored to the left
+                  // edge of the board area. Player taps the VENT
+                  // button on it to trigger a 4-move burst (combo
+                  // immortality, 2× cash on the next clear). Was
+                  // sized `top:100, bottom:100` which made it eat
+                  // ~75% of screen height as a tall chrome rail.
+                  // 2026-05-15 sized down to a focused ~220dp band
+                  // anchored near the top-center so it reads as a
+                  // status sliver, not a wall.
                   const Positioned(
-                    left: 12,
-                    top: 100,
-                    bottom: 100,
+                    left: 8,
+                    top: 110,
+                    height: 220,
+                    width: 22,
                     child: HydraulicPressureGauge(),
                   ),
 
