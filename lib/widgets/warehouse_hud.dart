@@ -380,27 +380,29 @@ class _TierBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: GameColors.accent.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: GameColors.accent.withValues(alpha: 0.4),
-          width: 1,
-        ),
-      ),
+    // Finishes the HUD trio (Cash + WH Lv/XP + Tier) with the riveted
+    // plate aesthetic — was the last flat element in the HUD Row.
+    // Tight padding (5/3 dp) because this sits at the right edge of
+    // the row sharing width with the _LevelBar's Expanded slot —
+    // extra plate width gets stolen from the level bar.
+    return RivetedPlate(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+      accentBorder: GameColors.accent,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.local_shipping, size: 12, color: GameColors.text),
+          Icon(
+            Icons.local_shipping,
+            size: 11,
+            color: GameColors.accent.withValues(alpha: 0.95),
+          ),
           const SizedBox(width: 4),
           Text(
             info.shortName,
             style: const TextStyle(
               color: GameColors.text,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
               letterSpacing: 0.5,
             ),
           ),
