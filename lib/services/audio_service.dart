@@ -8,6 +8,10 @@ class AudioService {
   AudioService._internal();
 
   final AudioPlayer _sfxPlayer = AudioPlayer();
+  // Dedicated player for short impact sounds (crate-thump, pickup) so they
+  // can layer over the main sfx track (e.g. slide whoosh + landing thump
+  // ring out together instead of the thump killing the slide mid-flight).
+  final AudioPlayer _impactPlayer = AudioPlayer();
   final AudioPlayer _musicPlayer = AudioPlayer();
 
   bool _soundEnabled = true;
@@ -26,12 +30,33 @@ class AudioService {
 
     try {
       await _sfxPlayer.setReleaseMode(ReleaseMode.stop);
+      await _impactPlayer.setReleaseMode(ReleaseMode.stop);
+      // Impact layer rides a bit lower than the main sfx so it adds
+      // body to slide/clear without overwhelming the lead voice.
+      await _impactPlayer.setVolume(0.75);
       await _musicPlayer.setReleaseMode(ReleaseMode.loop);
       await _musicPlayer.setVolume(0.3);
 
       _initialized = true;
     } catch (e) {
       debugPrint('Error initializing audio: $e');
+    }
+  }
+
+  /// Play a short impact sound on the dedicated impact channel so it
+  /// layers over (rather than interrupts) the current `playSound` call.
+  /// Used for the crate-thump that lands at the end of a slide whoosh,
+  /// and any other "rides on top" sfx where we want both voices to ring.
+  Future<void> playImpact(GameSound sound) async {
+    if (!_soundEnabled) return;
+    if (_failedSounds.contains(sound.path)) return;
+
+    try {
+      await _impactPlayer.stop();
+      await _impactPlayer.play(AssetSource(sound.path));
+    } catch (e) {
+      _failedSounds.add(sound.path);
+      debugPrint('Impact audio unavailable (${sound.path}): skipping');
     }
   }
 
@@ -133,7 +158,9 @@ class AudioService {
   Future<void> playCratePickup() => playSound(GameSound.cratePickup);
 
   /// Crate-thump impact when a layer lands on a stack after sliding.
-  Future<void> playCrateThump() => playSound(GameSound.crateThump);
+  /// Routed to the impact channel so it rings out *with* the slide
+  /// whoosh instead of stomping on it mid-flight.
+  Future<void> playCrateThump() => playImpact(GameSound.crateThump);
 
   /// Klaxon — heavy warning horn for level fail / dock jam.
   Future<void> playKlaxon() => playSound(GameSound.klaxon);
@@ -222,6 +249,7 @@ class AudioService {
       _resumeMusicOnForeground = _isMusicPlaying;
       await _musicPlayer.pause();
       await _sfxPlayer.stop();
+      await _impactPlayer.stop();
       _isMusicPlaying = false;
     } catch (e) {
       debugPrint('Error pausing audio for lifecycle: $e');
@@ -245,6 +273,7 @@ class AudioService {
   Future<void> dispose() async {
     try {
       await _sfxPlayer.dispose();
+      await _impactPlayer.dispose();
       await _musicPlayer.dispose();
     } catch (e) {
       debugPrint('Error disposing audio players: $e');

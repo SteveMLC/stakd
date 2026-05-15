@@ -258,9 +258,33 @@ class _GameBoardState extends State<GameBoard>
                                       );
                                       final previousSelectedStack =
                                           widget.gameState.selectedStackIndex;
+                                      // Snapshot the source stack BEFORE the tap
+                                      // resolves so we can detect a "fresh
+                                      // selection of a non-empty stack" (i.e.
+                                      // the player just grabbed a crate) below.
+                                      final tappedStackHadCrates = !widget
+                                          .gameState
+                                          .stacks[actualIndex]
+                                          .isEmpty;
 
                                       widget.gameState.onStackTap(actualIndex);
-                                      widget.onTap?.call();
+
+                                      // Detect a fresh pickup: no prior selection
+                                      // AND the just-tapped stack is now the
+                                      // selected one AND it had crates. In that
+                                      // case play the soft pickup click instead
+                                      // of the generic UI tap.
+                                      final selectedNow =
+                                          widget.gameState.selectedStackIndex;
+                                      final isFreshPickup =
+                                          previousSelectedStack < 0 &&
+                                          selectedNow == actualIndex &&
+                                          tappedStackHadCrates;
+                                      if (isFreshPickup) {
+                                        AudioService().playCratePickup();
+                                      } else {
+                                        widget.onTap?.call();
+                                      }
 
                                       // Check if move was made
                                       final moveMade =
@@ -269,6 +293,19 @@ class _GameBoardState extends State<GameBoard>
 
                                       if (moveMade) {
                                         widget.onMove?.call();
+                                        // Layer the thump on top of the slide
+                                        // whoosh — slide is ~0.44s, thump is
+                                        // ~0.50s; firing the thump ~360ms in
+                                        // lands it right at the visual impact
+                                        // of the layer settling on the stack.
+                                        Future.delayed(
+                                          const Duration(milliseconds: 360),
+                                          () {
+                                            if (mounted) {
+                                              AudioService().playCrateThump();
+                                            }
+                                          },
+                                        );
                                       } else {
                                         // Check if this was an invalid move attempt
                                         // (tried to move to a stack that can't accept the layer)
