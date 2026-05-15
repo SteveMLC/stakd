@@ -354,7 +354,12 @@ class _GameIconButtonState extends State<GameIconButton>
                   ),
                 ),
                 if (widget.badge != null) const _BadgePulseSpacer(),
-                if (widget.badge != null)
+                // Hide the badge entirely when it's null OR '0' —
+                // there's no point screaming "0 hints!" at the
+                // player; an empty button reads as "use this when
+                // you have one." Was rendering `0` as a visible chip,
+                // adding noise + suggesting broken UI.
+                if (widget.badge != null && widget.badge != '0')
                   Positioned(
                     top: -2,
                     right: -2,
