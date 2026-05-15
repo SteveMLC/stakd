@@ -83,6 +83,14 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
   // loop in the moment it pays out.
   double _incomeMulBefore = 1.0;
   double _incomeMulAfter = 1.0;
+  // District clear + Reputation award snapshot, captured around the
+  // district-clear path. Non-zero `_rpAwarded` triggers the inline RP
+  // beat on the SHIPMENT RECEIPT; `_tierPromoted` true makes that
+  // beat read as "TIER UP · BRONZE" with a pulse halo.
+  int _rpAwarded = 0;
+  bool _tierPromoted = false;
+  String? _newTierName;
+  String? _districtDisplayName;
 
   // Power-up state
   bool _colorBombSelectionMode = false;
@@ -383,6 +391,10 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
       // Cleared districts grant RP, which feeds the infinite-scaling
       // Reputation tier ladder (+0.10× permanent income per tier
       // promotion, no cap).
+      int districtRpAwarded = 0;
+      bool districtTierPromoted = false;
+      String? districtNewTierName;
+      String? districtClearedName;
       final district = DistrictService().districtForLevel(_currentLevel);
       if (district != null && _currentLevel == district.lastLevel) {
         // Verify every level in this district has >= 1 star (the
@@ -401,14 +413,18 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
         );
         if (rpAwarded > 0) {
           final promoted = await ReputationService().addReputation(rpAwarded);
+          districtRpAwarded = rpAwarded;
+          districtTierPromoted = promoted;
+          districtNewTierName = ReputationService().displayName;
+          districtClearedName = district.displayName;
           debugPrint(
             'District ${district.number} (${district.displayName}) cleared '
             '— +$rpAwarded RP, promoted=$promoted, '
             'newTier=${ReputationService().displayName}',
           );
           // Future: if `promoted` fire the PromotionCeremonyOverlay
-          // here. For now the multiplier reveal beat already shows
-          // the income mult bump on the next clear.
+          // here. For now the inline RP badge on the SHIPMENT RECEIPT
+          // (rendered when `_rpAwarded > 0`) carries the moment.
         }
       }
 
@@ -428,6 +444,10 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
         _isNewStarRecord = isNewRecord;
         _incomeMulBefore = incomeMul;
         _incomeMulAfter = incomeMulAfter;
+        _rpAwarded = districtRpAwarded;
+        _tierPromoted = districtTierPromoted;
+        _newTierName = districtNewTierName;
+        _districtDisplayName = districtClearedName;
       });
       // Cash-flies-to-wallet animation (warehouse meta payout). Includes
       // optional level-up banner when awardReward returned a new level.
@@ -1438,6 +1458,10 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                       isNewRecord: _isNewStarRecord,
                       incomeMulBefore: _incomeMulBefore,
                       incomeMulAfter: _incomeMulAfter,
+                      rpAwarded: _rpAwarded,
+                      tierPromoted: _tierPromoted,
+                      newTierName: _newTierName,
+                      districtDisplayName: _districtDisplayName,
                       onNextPuzzle: () async {
                         // Kick the forklift transit FIRST so the
                         // receipt is masked while we swap levels.

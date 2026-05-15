@@ -31,6 +31,30 @@ class CompletionOverlay extends StatefulWidget {
   final double incomeMulBefore;
   final double incomeMulAfter;
 
+  /// RP earned by clearing the district this level belongs to. Non-zero
+  /// only when the level was the FINAL level of its district AND every
+  /// level in the district has at least 1 star. Renders a stamped
+  /// "DISTRICT CLEARED · +N RP" badge on the receipt.
+  final int rpAwarded;
+
+  /// True if the RP award caused a Reputation tier promotion (Bronze,
+  /// Silver, etc.). Triggers a "TIER UP" pulse on the RP badge — the
+  /// full-screen promotion ceremony lives separately, but the receipt
+  /// gets the inline beat so the player sees the moment of promotion
+  /// in the same flow as the cash payout.
+  final bool tierPromoted;
+
+  /// Player-facing tier name AFTER the promotion (e.g. "Bronze",
+  /// "Silver", "Legendary II"). Only displayed when `tierPromoted` is
+  /// true; otherwise unused.
+  final String? newTierName;
+
+  /// District display name for the badge header (e.g. "Local Dock",
+  /// "Cold Storage", "District 7 — Deep-Water Port"). Renders in
+  /// Courier inside the RP badge so the player sees WHICH district
+  /// just cleared, not just "+1 RP".
+  final String? districtDisplayName;
+
   const CompletionOverlay({
     super.key,
     required this.moves,
@@ -51,6 +75,10 @@ class CompletionOverlay extends StatefulWidget {
     this.achievements = const [],
     this.incomeMulBefore = 1.0,
     this.incomeMulAfter = 1.0,
+    this.rpAwarded = 0,
+    this.tierPromoted = false,
+    this.newTierName,
+    this.districtDisplayName,
   });
 
   @override
@@ -330,12 +358,31 @@ class _CompletionOverlayState extends State<CompletionOverlay>
                                 ),
                               ),
                             ],
+                            // District clear + RP award badge. Fires
+                            // only on the FINAL level of a district
+                            // that had every level cleared. Lands
+                            // BEFORE the multiplier reveal so the
+                            // player sees the cause (district clear
+                            // → +N RP → tier promotion) immediately
+                            // before the effect (income multiplier
+                            // ticking up on the next line).
+                            if (widget.rpAwarded > 0) ...[
+                              const SizedBox(height: 10),
+                              _ReputationAwardBadge(
+                                rpAwarded: widget.rpAwarded,
+                                tierPromoted: widget.tierPromoted,
+                                newTierName: widget.newTierName,
+                                districtDisplayName:
+                                    widget.districtDisplayName,
+                              ),
+                            ],
                             // Income-multiplier reveal beat — fires only
                             // when this clear permanently bumped the
                             // multiplier (contract finished, WH level
                             // past 5 crossed, income-bump achievement
-                            // unlocked, etc). Reads like a forklift dash
-                            // gauge ticking up.
+                            // unlocked, district clear → tier promotion,
+                            // etc). Reads like a forklift dash gauge
+                            // ticking up.
                             if (widget.incomeMulAfter > widget.incomeMulBefore + 0.001) ...[
                               const SizedBox(height: 10),
                               _MultiplierReveal(
@@ -925,6 +972,210 @@ class _MultiplierRevealState extends State<_MultiplierReveal>
                           ],
                         ),
                       ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Receipt reveal: a District just cleared — the player earned RP and
+/// possibly promoted to a new Reputation tier. Renders as a stamped
+/// "DISTRICT CLEARED" certificate badge inline on the SHIPMENT
+/// RECEIPT, just above the multiplier reveal beat (so cause + effect
+/// land in the same flow).
+///
+/// Two visual states:
+/// - **RP only** (tierPromoted=false): accent-yellow border, badge
+///   shows "+1 RP" + district name. Subtle nod.
+/// - **TIER UP** (tierPromoted=true): pulsing accent-yellow halo +
+///   "TIER UP · BRONZE" Courier header replaces the district name.
+///   Bigger moment.
+class _ReputationAwardBadge extends StatefulWidget {
+  final int rpAwarded;
+  final bool tierPromoted;
+  final String? newTierName;
+  final String? districtDisplayName;
+
+  const _ReputationAwardBadge({
+    required this.rpAwarded,
+    required this.tierPromoted,
+    required this.newTierName,
+    required this.districtDisplayName,
+  });
+
+  @override
+  State<_ReputationAwardBadge> createState() => _ReputationAwardBadgeState();
+}
+
+class _ReputationAwardBadgeState extends State<_ReputationAwardBadge>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _revealAnim;
+  late Animation<double> _pulseAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    );
+    // 0-300ms: slide + fade in. 300-1100ms: pulse glow (tier up only).
+    _revealAnim = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.0, 0.22, curve: Curves.easeOutCubic),
+    );
+    _pulseAnim = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.22, 0.78, curve: Curves.easeInOut),
+    );
+    // Start ~400ms after mount — lands AFTER the stars cascade and
+    // BEFORE the multiplier reveal (which starts at +700ms).
+    Future.delayed(const Duration(milliseconds: 400), () {
+      if (mounted) _controller.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final revealT = _revealAnim.value;
+        // Parabolic pulse for tier-up halo so it crescendos in the
+        // middle of the visible window. 4·t·(1-t) peaks at t=0.5.
+        final pulseT = _pulseAnim.value;
+        final pulse =
+            widget.tierPromoted ? 4 * pulseT * (1 - pulseT) : 0.0;
+
+        return Opacity(
+          opacity: revealT,
+          child: Transform.translate(
+            offset: Offset(0, (1 - revealT) * 10),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFF2A2F38),
+                    Color(0xFF1A1F26),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: GameColors.accent
+                      .withValues(alpha: 0.55 + 0.4 * pulse),
+                  width: widget.tierPromoted ? 1.4 : 1.0,
+                ),
+                boxShadow: [
+                  if (widget.tierPromoted)
+                    BoxShadow(
+                      color:
+                          GameColors.accent.withValues(alpha: 0.35 * pulse),
+                      blurRadius: 16,
+                      spreadRadius: 1.5,
+                    ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header strip — "DISTRICT CLEARED" (RP only) or
+                  // "TIER UP · {TIER NAME}" (promotion).
+                  Text(
+                    widget.tierPromoted
+                        ? 'TIER UP · ${(widget.newTierName ?? '').toUpperCase()}'
+                        : 'DISTRICT CLEARED',
+                    style: TextStyle(
+                      color: Color.lerp(
+                        GameColors.accent,
+                        Colors.white,
+                        0.5 * pulse,
+                      ),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2.0,
+                      fontFamily: 'Courier',
+                      shadows: widget.tierPromoted
+                          ? [
+                              Shadow(
+                                color: GameColors.accent
+                                    .withValues(alpha: 0.6 * pulse),
+                                blurRadius: 8 * pulse,
+                              ),
+                            ]
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  // RP amount + district name body.
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Text(
+                        '+${widget.rpAwarded}',
+                        style: const TextStyle(
+                          color: GameColors.accent,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          fontFamily: 'Courier',
+                          height: 1.0,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'RP',
+                        style: TextStyle(
+                          color:
+                              GameColors.accent.withValues(alpha: 0.75),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          fontFamily: 'Courier',
+                          letterSpacing: 1.4,
+                          height: 1.0,
+                        ),
+                      ),
+                      if (widget.districtDisplayName != null) ...[
+                        const SizedBox(width: 10),
+                        Container(
+                          width: 1,
+                          height: 12,
+                          color: GameColors.accent.withValues(alpha: 0.4),
+                        ),
+                        const SizedBox(width: 10),
+                        Flexible(
+                          child: Text(
+                            widget.districtDisplayName!,
+                            style: TextStyle(
+                              color: GameColors.textMuted
+                                  .withValues(alpha: 0.95),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              fontFamily: 'Courier',
+                              letterSpacing: 0.4,
+                              height: 1.0,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ],
