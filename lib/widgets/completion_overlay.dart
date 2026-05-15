@@ -175,6 +175,10 @@ class _CompletionOverlayState extends State<CompletionOverlay>
       if (!mounted) return;
       _starControllers[i].forward();
 
+      // Star pop chime (1-indexed for AudioService.playStar):
+      // star_1 = low bell, star_2 = mid ding, star_3 = high sparkle.
+      AudioService().playStar(i + 1);
+
       final isFinalStar = i == stars - 1;
       if (isFinalStar) {
         // Final-star moment: confetti burst + heavy haptic + level-win

@@ -128,6 +128,37 @@ class AudioService {
   /// Play warehouse-level-up brass swell + C-major chord.
   Future<void> playLevelUp() => playSound(GameSound.levelup);
 
+  /// Crate-pickup soft click (alternate to `playTap` when the player
+  /// taps to select a crate, vs. tapping a UI button).
+  Future<void> playCratePickup() => playSound(GameSound.cratePickup);
+
+  /// Crate-thump impact when a layer lands on a stack after sliding.
+  Future<void> playCrateThump() => playSound(GameSound.crateThump);
+
+  /// Klaxon — heavy warning horn for level fail / dock jam.
+  Future<void> playKlaxon() => playSound(GameSound.klaxon);
+
+  /// Star pop chime — one per star, ascending pitch as N increases.
+  /// star_1=low, star_2=mid, star_3=highest + sparkle tail.
+  Future<void> playStar(int n) {
+    switch (n) {
+      case 1:
+        return playSound(GameSound.star1);
+      case 2:
+        return playSound(GameSound.star2);
+      default:
+        return playSound(GameSound.star3);
+    }
+  }
+
+  /// Sort-bomb explosion for the dynamite-crate (colorBomb) power-up.
+  /// Distinct from generic `playPowerUp` — bigger / more dramatic.
+  Future<void> playSortBomb() => playSound(GameSound.powerSortBomb);
+
+  /// Daily-streak claim jingle — fires when the player claims a
+  /// streak day from the Daily Contract reward screen.
+  Future<void> playStreakMilestone() => playSound(GameSound.streakMilestone);
+
   /// Start background music — loops the 64-second warehouse ambient
   /// (low rumble + electrical hum + F minor pad + forklift beeps +
   /// crate scuffs). Cross-faded at the loop join so the seam is
@@ -235,6 +266,15 @@ enum GameSound {
   powerup('sounds/powerup.mp3'),
   coin('sounds/coin.mp3'),
   levelup('sounds/levelup.mp3'),
+  // Mixkit Wave 2 additions (2026-05-15) — see SOUNDS_CREDITS.md
+  cratePickup('sounds/crate_pickup.mp3'),
+  crateThump('sounds/crate_thump.mp3'),
+  klaxon('sounds/klaxon.mp3'),
+  star1('sounds/star_1.mp3'),
+  star2('sounds/star_2.mp3'),
+  star3('sounds/star_3.mp3'),
+  powerSortBomb('sounds/power_sort_bomb.mp3'),
+  streakMilestone('sounds/streak_milestone.mp3'),
   chain2('sounds/clear.mp3'),  // Re-use clear with pitch shift
   chain3('sounds/clear.mp3'),  // Re-use clear with higher pitch
   chain4('sounds/win.mp3');    // Use win sound for mega chains

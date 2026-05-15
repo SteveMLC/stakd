@@ -71,7 +71,10 @@ class _JamRecoveryModalState extends State<JamRecoveryModal>
     _fadeController.forward();
     _scaleController.forward();
 
-    AudioService().playError();
+    // 2026-05-15: jam-recovery deserves the heavier `klaxon` blast,
+    // not the quick `error` tick used for normal invalid taps.
+    // Klaxon = "the dock is genuinely jammed, stop and use a tool."
+    AudioService().playKlaxon();
     haptics.mediumImpact();
   }
 

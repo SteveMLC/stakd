@@ -3,6 +3,7 @@ import '../models/daily_reward.dart';
 import '../services/daily_rewards_service.dart';
 import '../services/currency_service.dart';
 import '../services/haptic_service.dart';
+import '../services/audio_service.dart';
 import '../utils/constants.dart';
 import '../utils/number_format.dart';
 import 'particles/confetti_overlay.dart';
@@ -117,11 +118,14 @@ class _DailyRewardsPopupState extends State<DailyRewardsPopup>
 
   Future<void> _claimReward() async {
     if (!_canClaim) return;
-    
+
     haptics.successPattern();
-    
+    // Streak-milestone jingle plays as the player taps Claim — short
+    // celebratory beat distinct from level-complete `win` SFX.
+    AudioService().playStreakMilestone();
+
     final claimedReward = await _service.claimReward();
-    
+
     if (claimedReward != null) {
       _claimController.forward();
       

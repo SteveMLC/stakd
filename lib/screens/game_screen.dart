@@ -892,7 +892,10 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
     // Consume the power-up
     final success = await powerUpService.usePowerUp(PowerUpType.colorBomb);
     if (!success) return;
-    AudioService().playPowerUp();
+    // 2026-05-15: colorBomb is the loudest power-up — give it the
+    // dedicated arcade-explosion SFX instead of the generic powerup
+    // whoosh. Other 3 power-ups still use `playPowerUp`.
+    AudioService().playSortBomb();
 
     // Get positions of blocks to remove for animation
     final positions = <Offset>[];
