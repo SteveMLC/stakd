@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -34,6 +36,7 @@ import '../services/power_up_service.dart';
 import '../widgets/achievement_toast_overlay.dart';
 import '../widgets/particles/confetti_overlay.dart';
 import '../widgets/color_flash_overlay.dart';
+import '../widgets/warehouse_decorations.dart';
 import 'settings_screen.dart';
 
 /// Main gameplay screen
@@ -95,6 +98,15 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
   // Puzzle solve effects
   bool _showSolveConfetti = false;
   bool _showSolveFlash = false;
+
+  // Inter-puzzle forklift transit. When the player taps "Next Puzzle"
+  // on the receipt, a yellow forklift drives left → right across the
+  // screen carrying a crate. The actual level swap happens at the
+  // midpoint of the drive (behind the forklift) so the transition
+  // reads as "this delivery just rolled off, here comes the next one"
+  // — a tactile beat that makes the warehouse feel alive between
+  // puzzles instead of a flat instant cut.
+  bool _showTransit = false;
 
   IapService? _iapService;
   PowerUpService? _powerUpService;
@@ -506,6 +518,21 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
       _currentLevel++;
     });
     _loadLevel();
+  }
+
+  /// Plays the forklift-drives-across-the-screen transition between
+  /// the previous level's receipt and the next puzzle. Returns when
+  /// the forklift has fully exited screen right. The actual `_nextLevel`
+  /// swap is done HALFWAY through (behind the forklift) so the
+  /// transition reads as continuous.
+  Future<void> _runForkliftTransit() async {
+    if (_showTransit) return; // Idempotent — guard re-entry.
+    setState(() => _showTransit = true);
+    // Forklift drive duration is set inside the overlay widget; we
+    // wait for it to clear the screen before doing the swap.
+    await Future.delayed(const Duration(milliseconds: 1150));
+    if (!mounted) return;
+    setState(() => _showTransit = false);
   }
 
   void _restartLevel() {
@@ -1339,12 +1366,28 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                       isNewRecord: _isNewStarRecord,
                       incomeMulBefore: _incomeMulBefore,
                       incomeMulAfter: _incomeMulAfter,
-                      onNextPuzzle: () {
+                      onNextPuzzle: () async {
+                        // Kick the forklift transit FIRST so the
+                        // receipt is masked while we swap levels.
+                        // Stagger _onLevelComplete + _nextLevel a hair
+                        // into the drive so they happen "behind" the
+                        // moving forklift.
+                        final transit = _runForkliftTransit();
+                        await Future.delayed(
+                            const Duration(milliseconds: 380));
                         _onLevelComplete();
                         _nextLevel();
+                        await transit;
                       },
                       onHome: _goHome,
                       onReplay: _restartLevel,
+                    ),
+                  // Forklift transit overlay — drives across once
+                  // every "Next Puzzle" tap. Lives above the receipt
+                  // so it masks the level swap.
+                  if (_showTransit)
+                    const Positioned.fill(
+                      child: IgnorePointer(child: _ForkliftTransitOverlay()),
                     ),
                   if (iap.isLoading) _buildBlockingOverlay(),
                 ],
@@ -1619,6 +1662,178 @@ class _AddTubeButton extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Drives a yellow `StencilForklift` carrying a cardboard crate
+/// from off-screen left to off-screen right over ~1100ms. Layered
+/// above the receipt + below the IAP blocking overlay; we use it
+/// to mask the `_nextLevel` swap so the puzzle-to-puzzle handoff
+/// reads as one continuous shot ("delivery completed, here comes
+/// the next one") instead of an instant cut.
+class _ForkliftTransitOverlay extends StatefulWidget {
+  const _ForkliftTransitOverlay();
+
+  @override
+  State<_ForkliftTransitOverlay> createState() =>
+      _ForkliftTransitOverlayState();
+}
+
+class _ForkliftTransitOverlayState extends State<_ForkliftTransitOverlay>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    )..forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    // Forklift sized for warehouse credibility: ~38% screen wide.
+    final forkliftW = (screenWidth * 0.38).clamp(140.0, 220.0);
+    final forkliftH = forkliftW * 0.66;
+    // Crate sits above the forks, slightly behind the body.
+    final crateSize = forkliftH * 0.62;
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final t = _controller.value;
+        // Drive position eases in/out so the forklift "accelerates"
+        // off-screen left and decelerates off-screen right.
+        final drive = Curves.easeInOutQuad.transform(t);
+        // Span: from -forkliftW (fully off-screen left) to screenWidth
+        // (fully off-screen right). Total travel = screenWidth + forkliftW.
+        final x = -forkliftW + drive * (screenWidth + forkliftW * 1.5);
+        // Brief suspension bounce — 2 cycles of a soft sine over the
+        // whole drive. Reads as the forklift rolling over the dock.
+        final bounce = math.sin(t * math.pi * 4) * 3.0;
+        // Backdrop dims at the midpoint (~peak transit obscuration)
+        // to mask the level swap; transparent at the edges.
+        final dimAlpha = 4 * t * (1 - t) * 0.55;
+
+        return Stack(
+          children: [
+            // Dim sheet behind the forklift.
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withValues(alpha: dimAlpha),
+              ),
+            ),
+            // Forklift + crate, vertically centered.
+            Positioned(
+              left: x,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: Transform.translate(
+                  offset: Offset(0, bounce),
+                  child: SizedBox(
+                    width: forkliftW,
+                    height: forkliftH + crateSize * 0.7,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        // The crate sits on top of the forks (left side).
+                        Positioned(
+                          left: forkliftW * 0.02,
+                          top: forkliftH * 0.10,
+                          child: _TransitCrate(size: crateSize),
+                        ),
+                        // The forklift itself — mirror it so the forks
+                        // lead the drive direction (point right).
+                        Positioned(
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          child: Transform(
+                            alignment: Alignment.center,
+                            transform: Matrix4.diagonal3Values(-1, 1, 1),
+                            child: StencilForklift(
+                              width: forkliftW,
+                              height: forkliftH,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// A tiny cardboard-style crate to sit on the forklift's forks during
+/// the transit. Hand-rolled rather than reusing the gameplay layer
+/// widget so it stays decoration (no game-state coupling).
+class _TransitCrate extends StatelessWidget {
+  final double size;
+  const _TransitCrate({required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFB8895A), Color(0xFF8A6638)],
+        ),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: const Color(0xFF5A4426),
+          width: 1.4,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.35),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // Diagonal packing tape strap.
+          Positioned(
+            left: 0,
+            right: 0,
+            top: size * 0.42,
+            child: Container(
+              height: size * 0.14,
+              color: const Color(0xFFE6C68C).withValues(alpha: 0.7),
+            ),
+          ),
+          // Fragile-style stencil glyph in the middle.
+          Center(
+            child: Icon(
+              Icons.inventory_2_outlined,
+              color: const Color(0xFF3A2912).withValues(alpha: 0.75),
+              size: size * 0.42,
+            ),
+          ),
+        ],
       ),
     );
   }
