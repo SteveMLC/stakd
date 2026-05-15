@@ -438,9 +438,12 @@ void main() {
       }
     }
 
-    // Fresh install state — HUD reputation strip should read "UNRANKED".
-    expect(find.textContaining('UNRANKED'), findsWidgets,
-        reason: 'Fresh install should show "UNRANKED" on the HUD strip');
+    // Fresh install state — HUD reputation strip is HIDDEN entirely
+    // until the player earns first RP (Kimi audit 2026-05-15 — was
+    // low-contrast noise on the home screen). So at fresh install
+    // neither "UNRANKED" nor "BRONZE" should render.
+    expect(find.textContaining('UNRANKED'), findsNothing,
+        reason: 'Reputation strip should be HIDDEN at fresh install');
     expect(find.textContaining('BRONZE'), findsNothing,
         reason: 'Bronze tier should not be visible before any RP awarded');
 

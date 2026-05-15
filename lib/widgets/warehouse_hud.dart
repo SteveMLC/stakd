@@ -72,11 +72,15 @@ class WarehouseHud extends StatelessWidget {
                 ),
               ),
               // Second-row "REPUTATION" strip — the infinite-scaling
-              // tier ladder readout. Always visible (reads "Unranked
-              // · 0/5" at fresh install so the next-goal beat is
-              // explicit). Compact 24dp tall — doesn't crowd the
-              // gameplay screen below.
-              _ReputationStrip(reputation: reputation),
+              // tier ladder readout. Hidden until the player earns
+              // their first RP (Kimi audit 2026-05-15: showing
+              // "UNRANKED · 0/5 RP" at fresh install was low-contrast
+              // noise for new players and stole eye-mass from PLAY).
+              // The strip slides in the first time a District clears
+              // — that's when the player has just learned what RP
+              // means via the SHIPMENT RECEIPT badge.
+              if (reputation.totalRp > 0)
+                _ReputationStrip(reputation: reputation),
             ],
           ),
         ),

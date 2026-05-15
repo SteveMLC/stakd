@@ -208,22 +208,18 @@ class _HomeScreenState extends State<HomeScreen>
                 const SizedBox(height: 24),
                 _buildDailyChallengeSection(context),
                 const SizedBox(height: 16),
+                // Bottom menu cluster — Kimi audit 2026-05-15 cut:
+                //   - Contracts button DELETED (redundant with PLAY which
+                //     already routes through `_openLevelSelect`)
+                //   - Settings MOVED to top-bar gear icon
+                //   - 7 pills → 4 (Machinery + Forklifts in row 1, the
+                //     two shop destinations paired; Achievements +
+                //     Leaderboards in row 2 as social/browse pair)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 32),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Expanded(
-                        child: GameButton(
-                          text: 'Contracts',
-                          icon: Icons.assignment_outlined,
-                          isPrimary: false,
-                          isSmall: true,
-                          iconColor: const Color(0xFF4FC3F7), // sky blue
-                          onPressed: () => _openLevelSelect(context),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
                       Expanded(
                         child: GameButton(
                           text: 'Machinery',
@@ -232,6 +228,17 @@ class _HomeScreenState extends State<HomeScreen>
                           isSmall: true,
                           iconColor: const Color(0xFFE91E63), // hot pink
                           onPressed: () => _openMachineryShop(context),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: GameButton(
+                          text: 'Forklifts',
+                          icon: Icons.local_shipping,
+                          isPrimary: false,
+                          isSmall: true,
+                          iconColor: const Color(0xFFFFA726), // forklift orange
+                          onPressed: () => _openForkliftShop(context),
                         ),
                       ),
                     ],
@@ -262,36 +269,6 @@ class _HomeScreenState extends State<HomeScreen>
                           isSmall: true,
                           iconColor: const Color(0xFF66BB6A), // green
                           onPressed: () => _openLeaderboards(context),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 32),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: GameButton(
-                          text: 'Forklifts',
-                          icon: Icons.local_shipping,
-                          isPrimary: false,
-                          isSmall: true,
-                          iconColor: const Color(0xFFFFA726), // forklift orange
-                          onPressed: () => _openForkliftShop(context),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: GameButton(
-                          text: 'Settings',
-                          icon: Icons.settings,
-                          isPrimary: false,
-                          isSmall: true,
-                          iconColor: const Color(0xFFB0BEC5), // muted steel
-                          onPressed: () => _openSettings(context),
                         ),
                       ),
                     ],
@@ -390,6 +367,34 @@ class _HomeScreenState extends State<HomeScreen>
               ),
 
               const Spacer(),
+
+              // Settings gear — moved here from the bottom menu cluster
+              // (Kimi audit 2026-05-15). Universal mobile top-right
+              // pattern for "set once" utility. Same square-icon
+              // styling as the daily-rewards gift below for visual
+              // consistency.
+              Builder(builder: (context) {
+                return GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => _openSettings(context),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      color: GameColors.surface.withValues(alpha: 0.7),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: GameColors.textMuted.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.settings,
+                      color: GameColors.textMuted,
+                      size: 24,
+                    ),
+                  ),
+                );
+              }),
 
               // Daily rewards button (warehouse meta progress lives in
               // WarehouseHud below, so the old rank/XP-bar widgets are gone).
