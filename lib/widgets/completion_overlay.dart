@@ -2,6 +2,7 @@ import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../utils/constants.dart';
+import '../utils/number_format.dart';
 import '../services/haptic_service.dart';
 import '../services/audio_service.dart';
 import '../services/achievement_service.dart';
@@ -337,11 +338,16 @@ class _CompletionOverlayState extends State<CompletionOverlay>
                                   ],
                                 ),
                               ),
-                            // Score + rewards
+                            // Score + rewards. Score, XP, and coin
+                            // values route through the shared
+                            // formatCash helpers so post-D10 receipts
+                            // (which can have XP in the millions+)
+                            // render cleanly as "+1.2M XP" rather than
+                            // a 7-digit string that breaks the layout.
                             if (widget.score > 0) ...[
                               const SizedBox(height: 12),
                               Text(
-                                'Score: ${widget.score}',
+                                'Score: ${formatCash(widget.score)}',
                                 style: const TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,
@@ -350,7 +356,7 @@ class _CompletionOverlayState extends State<CompletionOverlay>
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                '+${widget.xpEarned} XP  \u2022  +${widget.coinsEarned} \u{1fa99}',
+                                '+${formatXp(widget.xpEarned)} XP  \u2022  +${formatCash(widget.coinsEarned)} \u{1fa99}',
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w500,

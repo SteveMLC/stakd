@@ -7,6 +7,7 @@ import '../services/machinery_service.dart';
 import '../services/reputation_service.dart';
 import '../services/warehouse_economy_service.dart';
 import '../utils/constants.dart';
+import '../utils/number_format.dart';
 import 'warehouse_decorations.dart';
 
 /// Lightweight HUD showing cash + warehouse level + XP progress.
@@ -198,8 +199,14 @@ class _CashChipState extends State<_CashChip> {
           onEnd: () => _displayed = widget.amount,
           builder: (context, value, _) {
             final shown = value.round();
+            // Route through the shared `formatCashCompact` helper —
+            // K/M/B/T/Qa/Qi/.../Qid suffix progression to 10^48, then
+            // scientific notation. Replaces the old custom _format
+            // that capped at billions with lowercase 'k'. Compact
+            // 1-decimal variant fits the HUD chip width across the
+            // whole infinite-scaling range.
             return Text(
-              _format(shown),
+              formatCashCompact(shown),
               style: const TextStyle(
                 color: GameColors.text,
                 fontWeight: FontWeight.w800,
@@ -211,20 +218,6 @@ class _CashChipState extends State<_CashChip> {
         ),
       ],
     );
-  }
-
-  static String _format(int n) {
-    if (n < 1000) return n.toString();
-    if (n < 1000000) {
-      final k = n / 1000;
-      return '${k.toStringAsFixed(k >= 100 ? 0 : 1)}k';
-    }
-    if (n < 1000000000) {
-      final m = n / 1000000;
-      return '${m.toStringAsFixed(m >= 100 ? 0 : 1)}M';
-    }
-    final b = n / 1000000000;
-    return '${b.toStringAsFixed(b >= 100 ? 0 : 1)}B';
   }
 }
 

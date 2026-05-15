@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../utils/constants.dart';
+import '../utils/number_format.dart';
 
 /// Animated "+\$X" pill that pops at center-bottom of the screen on
 /// level completion, then flies up toward the top-left HUD cash chip
@@ -211,7 +212,10 @@ class _PayoutPill extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            '+\$$cash',
+            // Route through formatCashWithSymbol so post-D10 payouts
+            // ($1M, $1B, $1Qa) read cleanly instead of stretching the
+            // pill or overflowing.
+            '+${formatCashWithSymbol(cash)}',
             style: const TextStyle(
               fontSize: 42,
               fontWeight: FontWeight.w900,
@@ -230,7 +234,7 @@ class _PayoutPill extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 2),
               child: Text(
-                '+$xp XP',
+                '+${formatXp(xp)} XP',
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
