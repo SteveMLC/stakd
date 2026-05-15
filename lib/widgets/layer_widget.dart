@@ -3,7 +3,9 @@ import '../models/layer_model.dart';
 import '../services/storage_service.dart';
 import '../utils/constants.dart';
 import '../utils/theme_colors.dart';
-import 'warehouse_decorations.dart';
+// `warehouse_decorations.dart` import dropped 2026-05-15 with the
+// per-layer HazardStripe / CorrugatedCardboardPainter removal — clean
+// standalone crates now, no per-layer noise.
 
 /// Displays a single colored layer
 class LayerWidget extends StatelessWidget {
@@ -140,84 +142,22 @@ class LayerWidget extends StatelessWidget {
               ),
             ),
           ),
-          // Warehouse crate detail — corrugated cardboard fluting + paper grain.
-          if (!isLocked && !isFrozen)
-            Positioned.fill(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(ThemeColors.blockBorderRadius),
-                child: CustomPaint(
-                  painter: CorrugatedCardboardPainter(
-                    seed: layer.colorIndex * 7 + 13,
-                  ),
-                ),
-              ),
-            ),
-          // Warehouse crate detail — yellow hazard-tape strip across the top edge.
-          if (!isLocked && !isFrozen)
-            Positioned(
-              left: 4,
-              right: 4,
-              top: 4,
-              height: 5,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(2),
-                child: const HazardStripe(
-                  height: 5,
-                  stripeWidth: 6,
-                ),
-              ),
-            ),
-          // Warehouse crate detail — center horizontal tape strip
-          if (!isLocked && !isFrozen)
-            Positioned(
-              left: 6,
-              right: 6,
-              top: height / 2 - 2,
-              height: 4,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.30),
-                  borderRadius: BorderRadius.circular(1),
-                ),
-              ),
-            ),
-          // Warehouse crate detail — shipping stamp text (FRAGILE / HEAVY / etc).
-          if (!isLocked && !isFrozen)
-            Positioned(
-              left: 8,
-              right: 8,
-              top: 12,
-              bottom: 8,
-              child: CustomPaint(
-                painter: ShippingStampPainter(colorIndex: layer.colorIndex),
-              ),
-            ),
-          // Warehouse crate detail — vertical edge planks (left + right)
+          // 2026-05-15: Removed the per-layer procedural detail stack
+          // (corrugated cardboard texture + yellow hazard tape strip +
+          // center tape + shipping stamp + edge planks). Each crate is
+          // now a CLEAN standalone object — the color-crate decal IS
+          // the identity. Block-type styling (frozen/locked) still
+          // overlays below; the noise floor that was competing with
+          // every decal is gone.
+          //
+          // The CorrugatedCardboardPainter + ShippingStampPainter +
+          // edge-plank Positioneds lived here in commits prior to
+          // f9eabeb. If you need them back as an opt-in modifier
+          // (e.g. "cardboard skin" cosmetic), git blame this comment.
           if (!isLocked && !isFrozen) ...[
-            Positioned(
-              left: 4,
-              top: 4,
-              bottom: 4,
-              width: 2,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(1),
-                ),
-              ),
-            ),
-            Positioned(
-              right: 4,
-              top: 4,
-              bottom: 4,
-              width: 2,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(1),
-                ),
-              ),
-            ),
+            // intentional no-op placeholder — keeps the conditional
+            // shape so future modifier overlays slot in here cleanly.
+            const SizedBox.shrink(),
           ],
           // Topmost layer's "active-face" decal — illustrated color
           // crate sticker on top of the existing procedural

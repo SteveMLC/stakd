@@ -13,19 +13,34 @@ import '../utils/constants.dart';
 // Hazard stripe
 // ---------------------------------------------------------------------------
 
-/// A horizontal yellow + black diagonal hazard-tape strip. Drop it
-/// above and below cards to scream "warehouse" without saying it.
+/// A horizontal bright speed-band — gradient base + forward-pointing
+/// motion chevrons. Drops above/below cards to read like a delivery
+/// route stripe (think runway markings + dashboard accent) rather than
+/// the prior construction-tape that read as Flutter's debug overflow
+/// indicator.
+///
+/// **2026-05-15 redesign:** The construction-tape look was misread as
+/// debug overflow + felt "dark industrial complex." The new design is
+/// bright, fast, delivery-themed — sky blue → cyan → white gradient
+/// with white motion arrows. Same widget API (`color1`/`color2`/
+/// `stripeWidth` honored as a fallback) so existing call-sites keep
+/// working without edits, but the visual is completely different.
 class HazardStripe extends StatelessWidget {
   final double height;
+  /// LEGACY param — kept for API compat with old call-sites. The new
+  /// speed-band uses the canonical sky-blue gradient and ignores this.
   final Color color1;
+  /// LEGACY param — same.
   final Color color2;
+  /// LEGACY param — controls chevron spacing as a rough analog of the
+  /// old stripe width.
   final double stripeWidth;
 
   const HazardStripe({
     super.key,
     this.height = 8,
-    this.color1 = const Color(0xFFFFC107),
-    this.color2 = const Color(0xFF1A1F26),
+    this.color1 = const Color(0xFF5BC0F8),
+    this.color2 = const Color(0xFFFFFFFF),
     this.stripeWidth = 14,
   });
 
@@ -45,6 +60,9 @@ class HazardStripe extends StatelessWidget {
   }
 }
 
+/// Speed-band painter — bright horizontal gradient base + forward-
+/// pointing motion chevrons. Replaces the prior yellow/black diagonal
+/// stripes that read as debug overflow.
 class HazardStripePainter extends CustomPainter {
   final Color color1;
   final Color color2;
@@ -58,27 +76,76 @@ class HazardStripePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final p1 = Paint()..color = color1;
-    final p2 = Paint()..color = color2;
-    // Slant the stripes -45deg.
-    final dy = size.height;
-    final stride = stripeWidth * 2;
-    for (var x = -size.height; x < size.width + size.height; x += stride) {
-      final path1 = Path()
-        ..moveTo(x, 0)
-        ..lineTo(x + stripeWidth, 0)
-        ..lineTo(x + stripeWidth + dy, dy)
-        ..lineTo(x + dy, dy)
-        ..close();
-      canvas.drawPath(path1, p1);
-      final path2 = Path()
-        ..moveTo(x + stripeWidth, 0)
-        ..lineTo(x + stride, 0)
-        ..lineTo(x + stride + dy, dy)
-        ..lineTo(x + stripeWidth + dy, dy)
-        ..close();
-      canvas.drawPath(path2, p2);
+    // Brand-aligned: Go7Studio neon-arcade aesthetic — dark midnight
+    // base ANCHOR with bright NEON accent rail running across it.
+    // Empire Tycoon → magenta/orange neon. Rampart → cyan/red.
+    // Warehouse_sort → magenta + electric-orange + cyan rotation so
+    // the band reads as a Go7Studio sibling, not industrial debug
+    // tape.
+    final rect = Offset.zero & size;
+
+    // Step 1: dark midnight base — pulls the band visually onto the
+    // app surface (which stays dark to match the Go7Studio key art).
+    final basePaint = Paint()..color = const Color(0xFF0E1828);
+    canvas.drawRect(rect, basePaint);
+
+    // Step 2: bright NEON gradient overlay — hot magenta → electric
+    // orange → cyan → magenta loop, like a wraparound LED strip on
+    // a delivery dock. Matches the Empire Tycoon "neon city" palette.
+    final neonPaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.centerLeft,
+        end: Alignment.centerRight,
+        colors: [
+          Color(0xFFE91E63), // hot magenta
+          Color(0xFFFF6B35), // electric orange
+          Color(0xFFFFD93D), // sunshine yellow
+          Color(0xFF2FB9B3), // cyan teal
+          Color(0xFF3742FA), // electric blue
+          Color(0xFFE91E63), // back to magenta (looped)
+        ],
+        stops: [0.0, 0.2, 0.5, 0.7, 0.85, 1.0],
+      ).createShader(rect);
+    canvas.drawRect(rect, neonPaint);
+
+    // Step 3: forward-pointing motion chevrons in white — the
+    // "delivery in motion" signal. Subtle, not dominating.
+    final chevronPaint = Paint()
+      ..color = const Color(0xFFFFFFFF).withValues(alpha: 0.55)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = (size.height * 0.16).clamp(0.7, 2.0)
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final stride = stripeWidth * 1.5;
+    final apex = size.height * 0.45;
+    final pad = size.height * 0.22;
+    for (var x = -stride; x < size.width + stride; x += stride) {
+      final path = Path()
+        ..moveTo(x, pad)
+        ..lineTo(x + apex, size.height / 2)
+        ..lineTo(x, size.height - pad);
+      canvas.drawPath(path, chevronPaint);
     }
+
+    // Step 4: bright top highlight + dark bottom edge to give it
+    // the LED-strip / glow feel.
+    final topHighlight = Paint()
+      ..color = const Color(0xFFFFFFFF).withValues(alpha: 0.55)
+      ..strokeWidth = 0.7;
+    canvas.drawLine(
+      Offset(0, 0.7),
+      Offset(size.width, 0.7),
+      topHighlight,
+    );
+    final bottomShadow = Paint()
+      ..color = const Color(0xFF000000).withValues(alpha: 0.45)
+      ..strokeWidth = 0.8;
+    canvas.drawLine(
+      Offset(0, size.height - 0.5),
+      Offset(size.width, size.height - 0.5),
+      bottomShadow,
+    );
   }
 
   @override
