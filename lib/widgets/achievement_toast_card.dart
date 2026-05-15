@@ -1,29 +1,42 @@
 import 'package:flutter/material.dart';
 import '../models/achievement.dart';
+import '../utils/constants.dart';
+import 'warehouse_decorations.dart';
 
-/// Achievement toast theme colors and sizes
+/// Achievement toast theme — warehouse manifest vocabulary.
+///
+/// Renders an unlocked achievement as a "DISPATCH STAMPED" notice
+/// instead of a generic gold trophy banner. Top hazard stripe, brushed-
+/// steel body, Courier monospace header strip, stamped-certificate PP
+/// chip. Reads consistently with the SHIPMENT RECEIPT + dispatch
+/// vocabulary used everywhere else in the app.
 class AchievementToastTheme {
-  // Core colors
-  static const Color goldAccent = Color(0xFFFFD700);
-  static const Color goldBorder = Color(0x50FFD700); // 50% opacity
-  static const Color charcoalDark = Color(0xFF1A1A1A);
-  static const Color charcoalMid = Color(0xFF2D2D2D);
-  
-  // Text colors
+  // Core warehouse palette — anchored to GameColors.
+  static const Color accent = GameColors.accent;            // safety yellow
+  static const Color accentSoft = Color(0x55FFC107);         // border tint
+  static const Color steelDark = Color(0xFF1A1F26);          // background base
+  static const Color steelMid = Color(0xFF252B36);           // surface
+  static const Color steelLight = Color(0xFF3A4250);         // top of gradient
+
+  // Text colors.
   static const Color textPrimary = Color(0xFFFFFFFF);
   static const Color textSecondary = Color(0xB3FFFFFF); // 70% opacity
-  
-  // Rarity tints (applied as gradient overlay)
-  static const Color rarityCommon = Color(0xFF2D2D2D);
-  static const Color rarityRare = Color(0xFF1E3A5F); // Blue tint
-  static const Color rarityEpic = Color(0xFF3D1F5C); // Purple tint
-  static const Color rarityLegendary = Color(0xFF4A3D00); // Gold tint
-  
-  // Rarity glow colors
+
+  // Rarity tints — kept distinct so legendary still feels special, but
+  // pulled toward the warehouse palette so they no longer look like a
+  // different app. Common = steel mid; rare/epic/legendary blend an
+  // industrial accent into the steel base.
+  static const Color rarityCommon = steelMid;
+  static const Color rarityRare = Color(0xFF1F3038);          // dock-blue tint
+  static const Color rarityEpic = Color(0xFF2E2540);          // dispatch-purple
+  static const Color rarityLegendary = Color(0xFF3A2E14);     // burnt-amber
+
+  // Rarity glow colors — accent-yellow for legendary so it matches the
+  // multiplier reveal pulse + the hazard stripe motif.
   static const Color glowCommon = Color(0x00000000); // No glow
-  static const Color glowRare = Color(0x401E90FF); // Blue glow
-  static const Color glowEpic = Color(0x40A855EA); // Purple glow
-  static const Color glowLegendary = Color(0x60FFD700); // Gold glow
+  static const Color glowRare = Color(0x405DADE2);    // dock blue glow
+  static const Color glowEpic = Color(0x40A855EA);    // dispatch purple
+  static const Color glowLegendary = Color(0x60FFC107); // safety yellow
   
   // Sizes
   static const double cardWidth = 320.0;
@@ -74,17 +87,19 @@ class AchievementToastTheme {
     }
   }
   
-  /// Get border color for rarity
+  /// Get border color for rarity — all anchored to the accent-yellow
+  /// safety palette so the toast reads as a warehouse notice, with
+  /// rarity-specific tinting layered on top.
   static Color getBorderColor(AchievementRarity rarity) {
     switch (rarity) {
       case AchievementRarity.common:
-        return goldBorder;
+        return accentSoft;
       case AchievementRarity.rare:
-        return const Color(0x501E90FF);
+        return const Color(0x705DADE2);
       case AchievementRarity.epic:
-        return const Color(0x50A855EA);
+        return const Color(0x70A855EA);
       case AchievementRarity.legendary:
-        return goldAccent.withValues(alpha: 0.6);
+        return accent.withValues(alpha: 0.75);
     }
   }
 }
@@ -118,10 +133,10 @@ class AchievementToastCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rarity = achievement.rarity;
-    final backgroundColor = AchievementToastTheme.getBackgroundColor(rarity);
+    final tint = AchievementToastTheme.getBackgroundColor(rarity);
     final glowColor = AchievementToastTheme.getGlowColor(rarity);
     final borderColor = AchievementToastTheme.getBorderColor(rarity);
-    
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -131,8 +146,21 @@ class AchievementToastCard extends StatelessWidget {
           maxWidth: AchievementToastTheme.cardMaxWidth,
         ),
         decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(AchievementToastTheme.borderRadius),
+          // Brushed-steel 3-stop gradient with rarity tint blended into
+          // the mid stop — keeps the warehouse vocabulary while still
+          // distinguishing legendary from common visually.
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AchievementToastTheme.steelLight,
+              Color.lerp(AchievementToastTheme.steelMid, tint, 0.55)!,
+              AchievementToastTheme.steelDark,
+            ],
+            stops: const [0.0, 0.5, 1.0],
+          ),
+          borderRadius:
+              BorderRadius.circular(AchievementToastTheme.borderRadius),
           border: Border.all(
             color: borderColor,
             width: AchievementToastTheme.cardBorderWidth,
@@ -140,51 +168,115 @@ class AchievementToastCard extends StatelessWidget {
           boxShadow: [
             // Elevation shadow
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.4),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+              color: Colors.black.withValues(alpha: 0.45),
+              blurRadius: 14,
+              offset: const Offset(0, 5),
             ),
             // Rarity glow
             if (glowColor != Colors.transparent)
               BoxShadow(
                 color: glowColor,
-                blurRadius: 16,
+                blurRadius: 18,
                 spreadRadius: 2,
               ),
           ],
         ),
-        child: Stack(
-          children: [
-            // Main content
-            Padding(
-              padding: AchievementToastTheme.cardPadding,
-              child: Row(
+        child: ClipRRect(
+          borderRadius:
+              BorderRadius.circular(AchievementToastTheme.borderRadius),
+          child: Stack(
+            children: [
+              Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Left: Icon
-                  _buildIcon(),
-                  const SizedBox(width: 12),
-                  // Center: Text
-                  Expanded(child: _buildText()),
-                  const SizedBox(width: 8),
-                  // Right: PP Chip
-                  _buildRewardChip(),
+                  // Top hazard stripe — same vocabulary as receipt +
+                  // achievement detail sheet headers.
+                  const HazardStripe(height: 4, stripeWidth: 10),
+                  // Courier-stenciled "DISPATCH STAMPED" header strip.
+                  _buildDispatchHeader(rarity),
+                  // Main row: icon + title/desc + PP chip.
+                  Padding(
+                    padding: AchievementToastTheme.cardPadding,
+                    child: Row(
+                      children: [
+                        _buildIcon(),
+                        const SizedBox(width: 12),
+                        Expanded(child: _buildText()),
+                        const SizedBox(width: 8),
+                        _buildRewardChip(),
+                      ],
+                    ),
+                  ),
                 ],
               ),
-            ),
-            // Close button (optional)
-            if (onClose != null)
-              Positioned(
-                top: 4,
-                right: 4,
-                child: _buildCloseButton(),
-              ),
-          ],
+              // Close button (optional)
+              if (onClose != null)
+                Positioned(
+                  top: 4,
+                  right: 4,
+                  child: _buildCloseButton(),
+                ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  /// Build the circular icon with gold ring
+  /// Stenciled "DISPATCH STAMPED" header strip beneath the top hazard
+  /// band. Includes the rarity label on the right so a legendary toast
+  /// reads "DISPATCH STAMPED · LEGENDARY" — sells the moment.
+  Widget _buildDispatchHeader(AchievementRarity rarity) {
+    final rarityLabel = RarityColors.label(rarity).toUpperCase();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.25),
+        border: Border(
+          bottom: BorderSide(
+            color: AchievementToastTheme.accent.withValues(alpha: 0.30),
+            width: 0.8,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.local_shipping_outlined,
+            size: 11,
+            color: AchievementToastTheme.accent.withValues(alpha: 0.9),
+          ),
+          const SizedBox(width: 6),
+          const Text(
+            'DISPATCH STAMPED',
+            style: TextStyle(
+              color: AchievementToastTheme.accent,
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 2.0,
+              fontFamily: 'Courier',
+            ),
+          ),
+          const Spacer(),
+          Text(
+            rarityLabel,
+            style: TextStyle(
+              color: AchievementToastTheme.accent.withValues(alpha: 0.75),
+              fontSize: 9,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.4,
+              fontFamily: 'Courier',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build the embossed brushed-steel circular icon. Reads as a riveted
+  /// metal medallion (same vocabulary as MetalNameplate) rather than a
+  /// gold trophy ring.
   Widget _buildIcon() {
     return Container(
       width: AchievementToastTheme.iconSize,
@@ -192,22 +284,22 @@ class AchievementToastCard extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(
-          color: AchievementToastTheme.goldAccent,
+          color: AchievementToastTheme.accent,
           width: AchievementToastTheme.iconBorderWidth,
         ),
-        gradient: RadialGradient(
+        gradient: const RadialGradient(
           colors: [
-            AchievementToastTheme.charcoalMid,
-            AchievementToastTheme.charcoalDark,
+            Color(0xFF4A525E),       // brushed steel highlight
+            Color(0xFF2A2F38),       // mid
+            Color(0xFF14181E),       // shadow base
           ],
-          center: Alignment.topLeft,
-          radius: 1.2,
+          center: Alignment(-0.4, -0.5),
+          radius: 1.3,
         ),
         boxShadow: [
-          // Inner shadow effect via gradient
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 4,
+            color: Colors.black.withValues(alpha: 0.45),
+            blurRadius: 5,
             offset: const Offset(1, 2),
           ),
         ],
@@ -215,28 +307,30 @@ class AchievementToastCard extends StatelessWidget {
       child: Center(
         child: Icon(
           _getCategoryIcon(),
-          color: AchievementToastTheme.goldAccent,
+          color: AchievementToastTheme.accent,
           size: 22,
         ),
       ),
     );
   }
 
-  /// Get icon based on achievement category
+  /// Get icon based on achievement category — Material outlined glyphs
+  /// chosen to match the warehouse-tool / dispatch vocabulary used
+  /// across the rest of the app (machinery shop, forklift shop, HUD).
   IconData _getCategoryIcon() {
     switch (achievement.category) {
       case AchievementCategory.gameplay:
-        return Icons.emoji_events; // Trophy
+        return Icons.precision_manufacturing_outlined; // forklift-adjacent
       case AchievementCategory.speed:
-        return Icons.timer;
+        return Icons.bolt_outlined;                    // dispatch-speed
       case AchievementCategory.collection:
-        return Icons.collections_bookmark;
+        return Icons.inventory_2_outlined;             // crate stack
       case AchievementCategory.mastery:
-        return Icons.star;
+        return Icons.workspace_premium_outlined;       // certified medallion
       case AchievementCategory.social:
-        return Icons.people;
+        return Icons.groups_outlined;                  // dock crew
       case AchievementCategory.special:
-        return Icons.auto_awesome;
+        return Icons.local_shipping_outlined;          // special dispatch
     }
   }
 
@@ -275,35 +369,56 @@ class AchievementToastCard extends StatelessWidget {
     );
   }
 
-  /// Build the PP reward chip
+  /// Build the PP reward chip as a stamped-certificate badge — accent
+  /// border + Courier label + tiny "PP" stencil suffix instead of a
+  /// pip+number layout. Matches the achievement-detail-sheet PP badge.
   Widget _buildRewardChip() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: AchievementToastTheme.charcoalDark,
-        borderRadius: BorderRadius.circular(AchievementToastTheme.chipBorderRadius),
+        color: AchievementToastTheme.steelDark.withValues(alpha: 0.85),
+        borderRadius:
+            BorderRadius.circular(AchievementToastTheme.chipBorderRadius),
         border: Border.all(
-          color: AchievementToastTheme.goldAccent.withValues(alpha: 0.4),
-          width: 1,
+          color: AchievementToastTheme.accent.withValues(alpha: 0.65),
+          width: 1.2,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: AchievementToastTheme.accent.withValues(alpha: 0.18),
+            blurRadius: 4,
+            spreadRadius: 0.5,
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
         children: [
-          // PP icon (diamond)
-          const Icon(
-            Icons.diamond,
-            color: AchievementToastTheme.goldAccent,
-            size: 14,
-          ),
-          const SizedBox(width: 4),
-          // PP amount
+          // Reward amount — slightly larger, w900 Courier so it reads
+          // like a stamped value field on a waybill.
           Text(
             '+${achievement.ppReward}',
             style: const TextStyle(
               fontSize: AchievementToastTheme.chipTextSize,
-              fontWeight: FontWeight.w700,
-              color: AchievementToastTheme.goldAccent,
+              fontWeight: FontWeight.w900,
+              color: AchievementToastTheme.accent,
+              fontFamily: 'Courier',
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(width: 3),
+          // "PP" suffix in a smaller Courier — same vocabulary as the
+          // detail-sheet reward badge.
+          Text(
+            'PP',
+            style: TextStyle(
+              fontSize: AchievementToastTheme.chipTextSize - 3,
+              fontWeight: FontWeight.w900,
+              color: AchievementToastTheme.accent.withValues(alpha: 0.7),
+              fontFamily: 'Courier',
+              letterSpacing: 1.0,
             ),
           ),
         ],
