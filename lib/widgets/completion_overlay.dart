@@ -24,6 +24,12 @@ class CompletionOverlay extends StatefulWidget {
   final int xpEarned;
   final bool undoUsed;
   final List<AchievementDef> achievements;
+  // Income multiplier snapshot around this clear. If `incomeMulAfter`
+  // > `incomeMulBefore`, the receipt renders a one-line "ticker reveal"
+  // showing the multiplier ratcheting up — sells the accretive growth
+  // loop in the same beat the cash hits.
+  final double incomeMulBefore;
+  final double incomeMulAfter;
 
   const CompletionOverlay({
     super.key,
@@ -43,6 +49,8 @@ class CompletionOverlay extends StatefulWidget {
     this.xpEarned = 0,
     this.undoUsed = false,
     this.achievements = const [],
+    this.incomeMulBefore = 1.0,
+    this.incomeMulAfter = 1.0,
   });
 
   @override
@@ -320,6 +328,19 @@ class _CompletionOverlayState extends State<CompletionOverlay>
                                   fontWeight: FontWeight.w500,
                                   color: GameColors.textMuted.withValues(alpha: 0.9),
                                 ),
+                              ),
+                            ],
+                            // Income-multiplier reveal beat — fires only
+                            // when this clear permanently bumped the
+                            // multiplier (contract finished, WH level
+                            // past 5 crossed, income-bump achievement
+                            // unlocked, etc). Reads like a forklift dash
+                            // gauge ticking up.
+                            if (widget.incomeMulAfter > widget.incomeMulBefore + 0.001) ...[
+                              const SizedBox(height: 10),
+                              _MultiplierReveal(
+                                before: widget.incomeMulBefore,
+                                after: widget.incomeMulAfter,
                               ),
                             ],
                             // Inline achievement summary
@@ -747,5 +768,171 @@ class _ConfettiPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _ConfettiPainter oldDelegate) {
     return oldDelegate.progress != progress;
+  }
+}
+
+/// Receipt reveal: the income multiplier just permanently increased,
+/// so animate a "dashboard gauge" tick from the old value to the new
+/// one. Looks like a Courier-stenciled dial label + a value that
+/// counts up over ~750ms — the player feels their floor get raised
+/// for free.
+class _MultiplierReveal extends StatefulWidget {
+  final double before;
+  final double after;
+
+  const _MultiplierReveal({required this.before, required this.after});
+
+  @override
+  State<_MultiplierReveal> createState() => _MultiplierRevealState();
+}
+
+class _MultiplierRevealState extends State<_MultiplierReveal>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _tickController;
+  late Animation<double> _tickAnim;
+  // Slide+fade-in for the whole pill (sits on top of the count-up).
+  late Animation<double> _revealAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _tickController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    );
+    // First 280ms: pill slides up + fades in. Next 750ms: number ticks
+    // up. Trailing 70ms: brief pulse glow on the new value.
+    _revealAnim = CurvedAnimation(
+      parent: _tickController,
+      curve: const Interval(0.0, 0.25, curve: Curves.easeOutCubic),
+    );
+    _tickAnim = CurvedAnimation(
+      parent: _tickController,
+      curve: const Interval(0.25, 0.95, curve: Curves.easeOutCubic),
+    );
+    // Start ~700ms after mount so it lands AFTER the stars finish
+    // popping. (3 stars × 200ms cascade ≈ 600ms.)
+    Future.delayed(const Duration(milliseconds: 700), () {
+      if (mounted) _tickController.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _tickController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _tickController,
+      builder: (context, _) {
+        // Use a parabolic peak for the glow so it crescendos near end.
+        final tickT = _tickAnim.value;
+        final pulse = 4 * tickT * (1 - tickT);
+        final current = widget.before +
+            (widget.after - widget.before) * tickT;
+        final revealT = _revealAnim.value;
+
+        return Opacity(
+          opacity: revealT,
+          child: Transform.translate(
+            offset: Offset(0, (1 - revealT) * 8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFF2A2F38),
+                    Color(0xFF1A1F26),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: GameColors.accent.withValues(alpha: 0.45 + 0.4 * pulse),
+                  width: 1.0,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: GameColors.accent.withValues(alpha: 0.20 * pulse),
+                    blurRadius: 12,
+                    spreadRadius: 0.5,
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'INCOME MULTIPLIER',
+                    style: TextStyle(
+                      color: GameColors.accent,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2.2,
+                      fontFamily: 'Courier',
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      // Before value — dimmed.
+                      Text(
+                        '${widget.before.toStringAsFixed(2)}×',
+                        style: TextStyle(
+                          color: GameColors.textMuted.withValues(alpha: 0.7),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'Courier',
+                          decoration: TextDecoration.lineThrough,
+                          decorationColor:
+                              GameColors.textMuted.withValues(alpha: 0.5),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Arrow.
+                      Icon(
+                        Icons.arrow_forward,
+                        size: 14,
+                        color: GameColors.accent.withValues(alpha: 0.85),
+                      ),
+                      const SizedBox(width: 8),
+                      // Current (counting up) value — accent, bigger,
+                      // gets a pulse glow at the end.
+                      Text(
+                        '${current.toStringAsFixed(2)}×',
+                        style: TextStyle(
+                          color: Color.lerp(
+                            GameColors.accent,
+                            Colors.white,
+                            0.4 * pulse,
+                          ),
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          fontFamily: 'Courier',
+                          shadows: [
+                            Shadow(
+                              color: GameColors.accent
+                                  .withValues(alpha: 0.7 * pulse),
+                              blurRadius: 10 * pulse,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 }

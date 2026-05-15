@@ -67,6 +67,15 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
   int _earnedStars = 0;
   int _coinsEarned = 0;
   bool _isNewStarRecord = false;
+  // Income multiplier snapshot around the rewards step. If `_incomeMulAfter`
+  // > `_incomeMulBefore`, the SHIPMENT RECEIPT shows a ticker beat:
+  //   "INCOME MULTIPLIER  2.10×  →  2.20×"
+  // — i.e. this clear permanently raised the floor on all future earnings
+  // (a contract finished, a WH level past 5 was crossed, or an income-bump
+  // achievement just unlocked). The reveal sells the "accretive growth"
+  // loop in the moment it pays out.
+  double _incomeMulBefore = 1.0;
+  double _incomeMulAfter = 1.0;
 
   // Power-up state
   bool _colorBombSelectionMode = false;
@@ -343,11 +352,22 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
         'levelUp=$levelUp, contract=${completedContract?.contract.displayName}',
       );
 
+      // Snapshot the income multiplier AFTER all the reward + contract
+      // wiring so any of (a) a WH level past 5, (b) a contract clear, or
+      // (c) an income-bump achievement unlocked by checkStarAchievements
+      // contributes to the post-clear value. `incomeMul` (line 321) was
+      // already the pre-clear value, used to compute this payout's cash.
+      final whLevelAfter = WarehouseEconomyService().warehouseLevel;
+      final incomeMulAfter =
+          IncomeMultiplierService().computeMultiplier(warehouseLevel: whLevelAfter);
+
       setState(() {
         _completionDuration = DateTime.now().difference(startTime);
         _earnedStars = stars;
         _coinsEarned = coinsEarned;
         _isNewStarRecord = isNewRecord;
+        _incomeMulBefore = incomeMul;
+        _incomeMulAfter = incomeMulAfter;
       });
       // Cash-flies-to-wallet animation (warehouse meta payout). Includes
       // optional level-up banner when awardReward returned a new level.
@@ -1317,6 +1337,8 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                       stars: _earnedStars,
                       coinsEarned: _coinsEarned,
                       isNewRecord: _isNewStarRecord,
+                      incomeMulBefore: _incomeMulBefore,
+                      incomeMulAfter: _incomeMulAfter,
                       onNextPuzzle: () {
                         _onLevelComplete();
                         _nextLevel();
