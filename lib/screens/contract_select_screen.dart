@@ -262,20 +262,46 @@ class _ContractCard extends StatelessWidget {
         );
       case _LockState.needsPreviousClear:
         final prev = ContractService.contracts[definition.contractIndex - 1];
-        return Row(children: [
-          Icon(Icons.lock, size: 16, color: GameColors.textMuted.withValues(alpha: 0.7)),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Clear ${prev.displayName} first',
-              style: TextStyle(
-                color: GameColors.textMuted.withValues(alpha: 0.85),
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
+        // Manifest-style lock copy: a stenciled "AWAITING CLEARANCE"
+        // status stamp + a human-readable explainer that names the
+        // gating contract. Reads like a paper waybill flagged "hold".
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.lock,
+              size: 16,
+              color: GameColors.textMuted.withValues(alpha: 0.7),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'AWAITING CLEARANCE',
+                    style: TextStyle(
+                      color: GameColors.accent,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.6,
+                      fontFamily: 'Courier',
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Finish ${prev.displayName} first',
+                    style: TextStyle(
+                      color: GameColors.textMuted.withValues(alpha: 0.85),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-        ]);
+          ],
+        );
       case _LockState.needsRegionalTier:
         return _buildRegionalCta(context);
     }
@@ -303,12 +329,39 @@ class _ContractCard extends StatelessWidget {
     }
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(children: [
-        Icon(Icons.lock, size: 16, color: GameColors.textMuted.withValues(alpha: 0.7)),
+      // Manifest-style gate header: a "REGIONAL DESK REQUIRED" stamp +
+      // explainer instead of the prior bare "Regional Hub required" so
+      // the lock state reads consistently with awaiting-clearance copy.
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(Icons.lock,
+            size: 16, color: GameColors.textMuted.withValues(alpha: 0.7)),
         const SizedBox(width: 8),
-        const Text('Regional Hub required', style: TextStyle(
-          color: GameColors.textMuted, fontSize: 13, fontWeight: FontWeight.w600,
-        )),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Text(
+                'REGIONAL DESK REQUIRED',
+                style: TextStyle(
+                  color: GameColors.accent,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.6,
+                  fontFamily: 'Courier',
+                ),
+              ),
+              SizedBox(height: 2),
+              Text(
+                'Upgrade your dispatch tier',
+                style: TextStyle(
+                  color: GameColors.textMuted,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
       ]),
       const SizedBox(height: 8),
       SizedBox(

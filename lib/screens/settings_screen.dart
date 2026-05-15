@@ -180,16 +180,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildSectionTitle(String title) {
+    // Section divider styled like the printed-header strip on a
+    // dispatch clipboard: uppercase Courier label with a hazard-tape
+    // underline so each block of toggles reads as a sectioned manifest.
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: GameColors.accent,
-          letterSpacing: 1,
-        ),
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title.toUpperCase(),
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+              color: GameColors.accent,
+              letterSpacing: 2.2,
+              fontFamily: 'Courier',
+            ),
+          ),
+          const SizedBox(height: 4),
+          const SizedBox(
+            width: 64,
+            child: HazardStripe(height: 2, stripeWidth: 6),
+          ),
+        ],
       ),
     );
   }
@@ -200,25 +214,68 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required bool value,
     required VoidCallback onToggle,
   }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: GameColors.surface,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: GameColors.accent),
-          const SizedBox(width: 16),
-          Expanded(child: Text(title, style: const TextStyle(fontSize: 16))),
-          Switch(
-            value: value,
-            onChanged: (_) => onToggle(),
-            activeThumbColor: GameColors.accent,
-            activeTrackColor: GameColors.accent.withValues(alpha: 0.4),
+    // Dock-terminal row: brushed-steel gradient, accent border, corner
+    // rivets, and a custom hazard-yellow toggle that reads like a real
+    // panel switch on the warehouse floor.
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onToggle,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF3A4250),
+              Color(0xFF252B36),
+              Color(0xFF1A1F26),
+            ],
           ),
-        ],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: GameColors.accent.withValues(alpha: 0.4),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.35),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+            BoxShadow(
+              color: Colors.white.withValues(alpha: 0.05),
+              blurRadius: 1,
+              offset: const Offset(0, -1),
+            ),
+          ],
+        ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            const Positioned(left: -2, top: -4, child: _PanelRivet()),
+            const Positioned(right: -2, top: -4, child: _PanelRivet()),
+            Row(
+              children: [
+                Icon(icon, color: GameColors.accent, size: 22),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: GameColors.text,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ),
+                _MetalToggle(value: value),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -227,32 +284,224 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // Warehouse Sort v1 ships with a locked theme (warehouse warm gray
     // + safety yellow), so the row is informational only — no theme
     // store entry. Themes will return in v1.1 with multiple unlockable
-    // dock skins.
+    // dock skins. Matches the dock-terminal styling of toggle rows so
+    // the visuals block reads as one cohesive panel.
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
-        color: GameColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFF3A4250),
+            Color(0xFF252B36),
+            Color(0xFF1A1F26),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: GameColors.accent.withValues(alpha: 0.25),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: Row(
-        children: const [
-          Icon(Icons.palette_outlined, size: 24, color: GameColors.text),
-          SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Theme', style: TextStyle(fontSize: 16)),
-                Text(
-                  'Default Warehouse',
-                  style: TextStyle(fontSize: 12, color: GameColors.textMuted),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          const Positioned(left: -2, top: -4, child: _PanelRivet()),
+          const Positioned(right: -2, top: -4, child: _PanelRivet()),
+          Row(
+            children: const [
+              Icon(Icons.palette_outlined,
+                  size: 22, color: GameColors.textMuted),
+              SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Theme',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: GameColors.text,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Default Warehouse',
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: GameColors.textMuted,
+                          letterSpacing: 0.4),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
+}
+
+/// Tiny rivet drawn from a radial gradient — matches the corner rivets
+/// on the WAYBILL placard so settings rows feel like the same machined
+/// panel.
+class _PanelRivet extends StatelessWidget {
+  const _PanelRivet();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 5,
+      height: 5,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const RadialGradient(
+          colors: [Color(0xFF7A8290), Color(0xFF2A303A)],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.55),
+            blurRadius: 1.5,
+            offset: const Offset(0, 0.5),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Custom warehouse-floor toggle: steel-grey track when off, hazard-
+/// yellow when on. The thumb is a small machined puck that slides
+/// between an ON and OFF stencil printed on the track. Drops the
+/// system [Switch] entirely so the screen stops looking like a Material
+/// settings page.
+class _MetalToggle extends StatelessWidget {
+  final bool value;
+  const _MetalToggle({required this.value});
+
+  static const double _trackW = 52;
+  static const double _trackH = 26;
+  static const double _thumbSize = 18;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      width: _trackW,
+      height: _trackH,
+      decoration: BoxDecoration(
+        gradient: value
+            ? const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFFFFD24A),
+                  GameColors.accent,
+                  Color(0xFFE6A800),
+                ],
+              )
+            : const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF1A1F26),
+                  Color(0xFF252B36),
+                ],
+              ),
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(
+          color: value
+              ? const Color(0xFF8B6914)
+              : const Color(0xFF505868),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: value
+                ? GameColors.accent.withValues(alpha: 0.35)
+                : Colors.black.withValues(alpha: 0.4),
+            blurRadius: value ? 6 : 3,
+            offset: const Offset(0, 1),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.5),
+            blurRadius: 1,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // Stencil label printed on the track opposite the thumb.
+          Positioned(
+            left: value ? 8 : null,
+            right: value ? null : 8,
+            top: 0,
+            bottom: 0,
+            child: Center(
+              child: Text(
+                value ? 'ON' : 'OFF',
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w900,
+                  fontFamily: 'Courier',
+                  letterSpacing: 1.2,
+                  color: value
+                      ? const Color(0xFF8B6914)
+                      : GameColors.textMuted.withValues(alpha: 0.8),
+                ),
+              ),
+            ),
+          ),
+          // Sliding thumb.
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            left: value ? _trackW - _thumbSize - 4 : 4,
+            top: (_trackH - _thumbSize) / 2,
+            child: Container(
+              width: _thumbSize,
+              height: _thumbSize,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const RadialGradient(
+                  center: Alignment(-0.3, -0.3),
+                  radius: 1.0,
+                  colors: [
+                    Color(0xFFE8ECF2),
+                    Color(0xFF8B95A1),
+                    Color(0xFF3A4250),
+                  ],
+                  stops: [0.0, 0.55, 1.0],
+                ),
+                border: Border.all(
+                  color: const Color(0xFF1A1F26),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.45),
+                    blurRadius: 2,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

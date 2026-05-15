@@ -1966,13 +1966,21 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(4),
                 boxShadow: [
-                  // Drop shadow - bigger for multi-grab
+                  // Drop shadow GROWS at peak of arc (the crate is
+                  // farthest from the dock floor, so shadow blurs +
+                  // moves further down). 4·t·(1-t) peaks at 0.5 → 1.0.
                   BoxShadow(
                     color: Colors.black.withValues(
-                      alpha: isMultiGrab ? 0.4 : 0.3,
+                      alpha: (isMultiGrab ? 0.4 : 0.3) +
+                          0.20 * (4 * t * (1 - t)),
                     ),
-                    blurRadius: isMultiGrab ? 12 : 8,
-                    offset: Offset(0, isMultiGrab ? 6 : 4),
+                    blurRadius: (isMultiGrab ? 12.0 : 8.0) +
+                        16.0 * (4 * t * (1 - t)),
+                    offset: Offset(
+                      0,
+                      (isMultiGrab ? 6.0 : 4.0) +
+                          10.0 * (4 * t * (1 - t)),
+                    ),
                   ),
                   // Color glow while moving - stronger for multi-grab
                   BoxShadow(
@@ -1984,12 +1992,75 @@ class _AnimatedLayerOverlayState extends State<_AnimatedLayerOverlay>
                   ),
                 ],
               ),
-              child: layerWidget,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  layerWidget,
+                  // Fork-tine silhouette — visible only during the
+                  // first 25% of the animation (the "pickup" phase).
+                  // Two thin yellow rectangles slide in from below
+                  // the crate, look like a forklift's fork tines
+                  // lifting it off the bay.
+                  if (t < 0.25)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: CustomPaint(
+                          painter: _ForkTinePainter(
+                            // Slide in 0 → 1 over first 25% of arc.
+                            slideT: (t / 0.25).clamp(0.0, 1.0),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         );
       },
     );
+  }
+}
+
+/// Paints two thin yellow forklift fork-tines sliding in from the
+/// bottom of the moving crate during the "pickup" phase. Sells the
+/// "you are running a forklift" identity — every crate move is a
+/// pallet getting lifted off a dock bay.
+class _ForkTinePainter extends CustomPainter {
+  final double slideT; // 0 = fully tucked under, 1 = fully extended
+
+  const _ForkTinePainter({required this.slideT});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final tine = Paint()
+      ..color = const Color(0xFFFFC107).withValues(alpha: 0.85);
+    final tineEdge = Paint()
+      ..color = const Color(0xFF8B6914).withValues(alpha: 0.9)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+
+    // Tines sit at the bottom of the crate. As slideT → 1, they
+    // protrude further to the right (the "fork has slid under the
+    // pallet" beat).
+    final length = size.width * (0.4 + 0.55 * slideT);
+    final y1 = size.height - 8;
+    final y2 = size.height - 3;
+    const tineHeight = 2.5;
+
+    void drawTine(double y) {
+      final rect = Rect.fromLTWH(-2, y, length, tineHeight);
+      canvas.drawRect(rect, tine);
+      canvas.drawRect(rect, tineEdge);
+    }
+
+    drawTine(y1);
+    drawTine(y2);
+  }
+
+  @override
+  bool shouldRepaint(covariant _ForkTinePainter oldDelegate) {
+    return oldDelegate.slideT != slideT;
   }
 }
 

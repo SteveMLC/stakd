@@ -159,37 +159,68 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
   }
 
   Widget _buildTabBar() {
+    // Tabs styled as clipboard category tabs — UPPERCASE Courier, tight
+    // letterspacing, no emoji glyph. Reads as a printed manifest header
+    // row instead of the previous Material tab labels.
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: GameColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFF3A4250),
+            Color(0xFF252B36),
+            Color(0xFF1A1F26),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: GameColors.accent.withValues(alpha: 0.25),
+          width: 1,
+        ),
       ),
       child: TabBar(
         controller: _tabController,
         isScrollable: true,
-        labelColor: GameColors.text,
+        labelColor: GameColors.accent,
         unselectedLabelColor: GameColors.textMuted,
         indicatorColor: GameColors.accent,
         indicatorWeight: 3,
         labelStyle: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
+          fontSize: 11,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 2.0,
+          fontFamily: 'Courier',
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 2.0,
+          fontFamily: 'Courier',
         ),
         tabs: LeaderboardType.values.map((type) {
           return Tab(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(type.icon),
-                const SizedBox(width: 6),
-                Text(type.shortName),
-              ],
-            ),
+            child: Text(_tabLabel(type)),
           );
         }).toList(),
       ),
     );
+  }
+
+  /// Manifest-style label for each tab. Replaces the emoji + mixed-case
+  /// label combo with the clipboard categories called out in the spec.
+  String _tabLabel(LeaderboardType type) {
+    switch (type) {
+      case LeaderboardType.dailyChallenge:
+        return 'DAILY';
+      case LeaderboardType.weeklyStars:
+        return 'WEEKLY';
+      case LeaderboardType.allTimeStars:
+        return 'ALL-TIME';
+      case LeaderboardType.bestCombo:
+        return 'COMBO';
+    }
   }
 
   Widget _buildLeaderboardTab(LeaderboardType type) {
@@ -326,121 +357,138 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
     final isTopThree = entry.rank <= 3;
     final isCurrentPlayer = entry.isCurrentPlayer;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: isCurrentPlayer
-            ? GameColors.accent.withValues(alpha: 0.2)
-            : GameColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: isCurrentPlayer
-            ? Border.all(color: GameColors.accent, width: 2)
-            : isTopThree
-                ? Border.all(
-                    color: _getMedalColor(entry.rank).withValues(alpha: 0.5),
-                    width: 1,
-                  )
-                : null,
-      ),
-      child: Row(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Rank
-          SizedBox(
-            width: 40,
-            child: isTopThree
-                ? _buildMedal(entry.rank)
-                : Text(
-                    '#${entry.rank}',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: isCurrentPlayer
-                          ? GameColors.accent
-                          : GameColors.textMuted,
-                    ),
-                  ),
-          ),
-          const SizedBox(width: 12),
-          
-          // Player name
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          // Dispatch-manifest line item: brushed-steel gradient row with
+          // a stenciled rank square on the left, Courier player name in
+          // the middle, accent-yellow score on the right.
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: isCurrentPlayer
+                    ? const [
+                        Color(0xFF4A4030),
+                        Color(0xFF2E2A1F),
+                        Color(0xFF1F1B14),
+                      ]
+                    : const [
+                        Color(0xFF3A4250),
+                        Color(0xFF252B36),
+                        Color(0xFF1A1F26),
+                      ],
+              ),
+              borderRadius: BorderRadius.vertical(
+                top: const Radius.circular(6),
+                bottom: Radius.circular(isTopThree ? 0 : 6),
+              ),
+              border: Border.all(
+                color: isCurrentPlayer
+                    ? GameColors.accent.withValues(alpha: 0.8)
+                    : isTopThree
+                        ? _getMedalColor(entry.rank).withValues(alpha: 0.55)
+                        : GameColors.accent.withValues(alpha: 0.18),
+                width: isCurrentPlayer ? 1.5 : 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.35),
+                  blurRadius: 5,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        entry.playerName,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight:
-                              isCurrentPlayer ? FontWeight.bold : FontWeight.w500,
-                          color: isCurrentPlayer
-                              ? GameColors.accent
-                              : GameColors.text,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (isCurrentPlayer) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: GameColors.accent,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Text(
-                          'YOU',
+                // Stenciled rank square — 32x32, Courier w900, accent
+                // yellow for top 3 else white. Reads like a stamped
+                // sequence number on a shipping label.
+                _StenciledRankSquare(
+                  rank: entry.rank,
+                  highlight: isTopThree,
+                ),
+                const SizedBox(width: 12),
+
+                // Player name in Courier, plus the YOU stamp if this is
+                // the current player's row.
+                Expanded(
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          entry.playerName,
                           style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: GameColors.text,
+                            fontSize: 14,
+                            fontFamily: 'Courier',
+                            fontWeight: isCurrentPlayer
+                                ? FontWeight.w900
+                                : FontWeight.w700,
+                            color: isCurrentPlayer
+                                ? GameColors.accent
+                                : GameColors.text,
+                            letterSpacing: 0.6,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (isCurrentPlayer) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: GameColors.accent,
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                          child: const Text(
+                            'YOU',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF1A1F26),
+                              letterSpacing: 1.2,
+                              fontFamily: 'Courier',
+                            ),
                           ),
                         ),
+                      ],
+                    ],
+                  ),
+                ),
+
+                // Score, right-aligned, accent yellow w900.
+                Text(
+                  _service.formatScore(entry.score, type),
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                    color: GameColors.accent,
+                    letterSpacing: 0.6,
+                    shadows: [
+                      Shadow(
+                        color: Color(0x88000000),
+                        blurRadius: 2,
+                        offset: Offset(0, 1),
                       ),
                     ],
-                  ],
+                  ),
                 ),
               ],
             ),
           ),
-          
-          // Score
-          Text(
-            _service.formatScore(entry.score, type),
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: isCurrentPlayer ? GameColors.accent : GameColors.text,
-            ),
-          ),
+          // Top-3 rows get a hazard-tape underline so the podium reads
+          // visually distinct from the rest of the manifest.
+          if (isTopThree)
+            const HazardStripe(height: 2, stripeWidth: 8),
         ],
-      ),
-    );
-  }
-
-  Widget _buildMedal(int rank) {
-    final color = _getMedalColor(rank);
-    final icon = rank == 1 ? '🥇' : rank == 2 ? '🥈' : '🥉';
-
-    return Container(
-      width: 32,
-      height: 32,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.2),
-        shape: BoxShape.circle,
-      ),
-      child: Center(
-        child: Text(
-          icon,
-          style: const TextStyle(fontSize: 18),
-        ),
       ),
     );
   }
@@ -469,5 +517,63 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
       case LeaderboardType.bestCombo:
         return 'Chain clears together\nto build combos!';
     }
+  }
+}
+
+/// 32x32 stenciled rank square, Courier w900, accent-yellow ink for the
+/// top-3 podium and white for everyone else. Drawn as a dark steel
+/// plate with a subtle inset border so it reads as a metal placard
+/// nailed to the side of the manifest row.
+class _StenciledRankSquare extends StatelessWidget {
+  final int rank;
+  final bool highlight;
+
+  const _StenciledRankSquare({
+    required this.rank,
+    required this.highlight,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 32,
+      height: 32,
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1F26),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: highlight
+              ? GameColors.accent.withValues(alpha: 0.65)
+              : const Color(0xFF505868),
+          width: 1.2,
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x66000000),
+            blurRadius: 2,
+            offset: Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Center(
+        child: Text(
+          rank.toString().padLeft(2, '0'),
+          style: TextStyle(
+            fontFamily: 'Courier',
+            fontSize: 14,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.0,
+            color: highlight ? GameColors.accent : GameColors.text,
+            shadows: const [
+              Shadow(
+                color: Color(0xAA000000),
+                blurRadius: 1.5,
+                offset: Offset(0, 1),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

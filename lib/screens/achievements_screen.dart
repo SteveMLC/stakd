@@ -40,7 +40,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
         return '🔥';
       case AchievementCategoryExt.specialBlocks:
         return '❄️';
-      case AchievementCategoryExt.garden:
+      case AchievementCategoryExt.warehouse:
         return '🌿';
       case AchievementCategoryExt.variety:
         return '🎨';
@@ -59,7 +59,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
         return const Color(0xFFFF9800); // orange
       case AchievementCategoryExt.specialBlocks:
         return const Color(0xFF9B59B6); // purple
-      case AchievementCategoryExt.garden:
+      case AchievementCategoryExt.warehouse:
         return const Color(0xFF4CAF50); // green
       case AchievementCategoryExt.variety:
         return const Color(0xFFFF9800); // orange
@@ -78,8 +78,8 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
         return 'Streak';
       case AchievementCategoryExt.specialBlocks:
         return 'Special';
-      case AchievementCategoryExt.garden:
-        return 'Garden';
+      case AchievementCategoryExt.warehouse:
+        return 'Warehouse';
       case AchievementCategoryExt.variety:
         return 'Variety';
       case AchievementCategoryExt.hidden:

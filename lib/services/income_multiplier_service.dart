@@ -45,6 +45,12 @@ class IncomeMultiplierService extends ChangeNotifier {
 
   /// Achievement IDs that grant a permanent income bump.
   /// Curated set: tied to milestones the player feels proud about.
+  ///
+  /// Original 7 + extended 6 = 13 IDs total. A fully decked-out player
+  /// can stack +3.25× from this source alone (13 × 0.25). Combined caps
+  /// in [computeMultiplier] still hold, so the overall multiplier math
+  /// continues to land at the documented ≈20× ceiling for a maxed-out
+  /// Regional 3★ shipment.
   static const Set<String> incomeBumpAchievementIds = {
     'local_tycoon', // Clear all 3 Local contracts
     'regional_unlocked', // Unlock Regional Hub tier
@@ -53,6 +59,13 @@ class IncomeMultiplierService extends ChangeNotifier {
     'warehouse_lv_15', // Reach Warehouse Level 15
     'first_shipment', // Ship first sorted bay
     'centurion', // Clear 100 puzzles (legacy carried over)
+    // Extended catalog (2026-05-14):
+    'zero_damage_dispatch', // No-undo Local contract sweep
+    'waybill_streak', // 3-star sweep of any Local contract
+    'fleet_foreman', // Own 4 of the 6 machines
+    'overtime_payout', // Land a single payout at ≥5× multiplier
+    'union_steward', // 2 forklifts beyond default + Regional
+    'night_shift_supervisor', // 10 contracts cleared 00:00–06:00
   };
 
   final Set<String> _unlockedBumps = {};

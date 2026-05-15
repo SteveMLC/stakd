@@ -11,7 +11,7 @@ enum AchievementCategoryExt {
   speed,
   streak,
   specialBlocks,
-  garden,
+  warehouse,
   variety,
   hidden,
 }
@@ -380,7 +380,7 @@ class AchievementService extends ChangeNotifier {
       id: 'first_shipment',
       name: 'First Shipment',
       description: 'Ship your first sorted bay',
-      category: AchievementCategoryExt.garden,
+      category: AchievementCategoryExt.warehouse,
       xpReward: 200,
       coinReward: 60,
     ),
@@ -388,7 +388,7 @@ class AchievementService extends ChangeNotifier {
       id: 'forklift_collector',
       name: 'Forklift Collector',
       description: 'Buy your first cosmetic forklift',
-      category: AchievementCategoryExt.garden,
+      category: AchievementCategoryExt.warehouse,
       xpReward: 400,
       coinReward: 125,
     ),
@@ -396,7 +396,7 @@ class AchievementService extends ChangeNotifier {
       id: 'regional_unlocked',
       name: 'Going Regional',
       description: 'Unlock the Regional Hub tier',
-      category: AchievementCategoryExt.garden,
+      category: AchievementCategoryExt.warehouse,
       xpReward: 800,
       coinReward: 250,
     ),
@@ -404,7 +404,7 @@ class AchievementService extends ChangeNotifier {
       id: 'local_tycoon',
       name: 'Local Tycoon',
       description: 'Clear all 3 Local contracts',
-      category: AchievementCategoryExt.garden,
+      category: AchievementCategoryExt.warehouse,
       xpReward: 2000,
       coinReward: 600,
     ),
@@ -412,7 +412,7 @@ class AchievementService extends ChangeNotifier {
       id: 'cash_milestone_5k',
       name: 'Five-Figure Foreman',
       description: 'Earn \$5,000 in shipments',
-      category: AchievementCategoryExt.garden,
+      category: AchievementCategoryExt.warehouse,
       xpReward: 600,
       coinReward: 200,
       target: 5000,
@@ -421,9 +421,61 @@ class AchievementService extends ChangeNotifier {
       id: 'warehouse_lv_15',
       name: 'Senior Operator',
       description: 'Reach Warehouse Level 15',
-      category: AchievementCategoryExt.garden,
+      category: AchievementCategoryExt.warehouse,
       xpReward: 4000,
       coinReward: 1200,
+    ),
+
+    // 🏭 WAREHOUSE PROGRESSION (extended, 6) — growth-loop bumps
+    AchievementDef(
+      id: 'zero_damage_dispatch',
+      name: 'Zero-Damage Dispatch',
+      description: 'Clear all 3 levels of any Local contract without using undo',
+      category: AchievementCategoryExt.mastery,
+      xpReward: 800,
+      coinReward: 250,
+    ),
+    AchievementDef(
+      id: 'waybill_streak',
+      name: 'Clean Waybill',
+      description: '3-star every level in any Local contract',
+      category: AchievementCategoryExt.mastery,
+      xpReward: 1000,
+      coinReward: 300,
+    ),
+    AchievementDef(
+      id: 'fleet_foreman',
+      name: 'Fleet Foreman',
+      description: 'Own 4 of the 6 machinery items simultaneously',
+      category: AchievementCategoryExt.warehouse,
+      xpReward: 1500,
+      coinReward: 500,
+    ),
+    AchievementDef(
+      id: 'overtime_payout',
+      name: 'Overtime Payout',
+      description: 'Earn a single shipment payout at 5× total income multiplier',
+      category: AchievementCategoryExt.warehouse,
+      xpReward: 2000,
+      coinReward: 750,
+    ),
+    AchievementDef(
+      id: 'union_steward',
+      name: 'Union Steward',
+      description: 'Own 2 forklift skins beyond Yellow Standard AND own Regional',
+      category: AchievementCategoryExt.warehouse,
+      xpReward: 1200,
+      coinReward: 400,
+    ),
+    AchievementDef(
+      id: 'night_shift_supervisor',
+      name: 'Night Shift Supervisor 🌙',
+      description: 'Clear 10 contracts between midnight and 6 AM',
+      category: AchievementCategoryExt.hidden,
+      xpReward: 600,
+      coinReward: 200,
+      target: 10,
+      isHidden: true,
     ),
 
     // 🎨 VARIETY (5)
@@ -698,7 +750,7 @@ class AchievementService extends ChangeNotifier {
       newlyUnlocked.addAll(_tryUnlock(['bullet_time']));
     }
     if (difficulty.toLowerCase() == 'medium' && seconds < 20) {
-      newlyUnlocked.addAll(_tryUnlock(['zen_flash']));
+      newlyUnlocked.addAll(_tryUnlock(['quick_dispatch']));
     }
     if (difficulty.toLowerCase() == 'hard' && seconds < 40) {
       newlyUnlocked.addAll(_tryUnlock(['rapid_master']));
@@ -751,28 +803,146 @@ class AchievementService extends ChangeNotifier {
     return newlyUnlocked;
   }
 
-  List<AchievementDef> checkGardenProgress({
-    required int stage,
-    required int elements,
-  }) {
+  List<AchievementDef> checkDailyStreak({required int days}) {
     final newlyUnlocked = <AchievementDef>[];
 
-    if (stage >= 3) newlyUnlocked.addAll(_tryUnlock(['garden_sprout']));
-    if (stage >= 5) newlyUnlocked.addAll(_tryUnlock(['blooming_garden']));
-    if (stage >= 7) newlyUnlocked.addAll(_tryUnlock(['sacred_grove']));
-    if (stage >= 10) newlyUnlocked.addAll(_tryUnlock(['paradise_found']));
-
-    newlyUnlocked.addAll(_setProgressAndCheck('collectors_pride', elements));
+    newlyUnlocked.addAll(_setProgressAndCheck('daily_devotee', days));
+    newlyUnlocked.addAll(_setProgressAndCheck('monthly_master', days));
 
     return newlyUnlocked;
   }
 
-  List<AchievementDef> checkDailyStreak({required int days}) {
-    final newlyUnlocked = <AchievementDef>[];
-    
-    newlyUnlocked.addAll(_setProgressAndCheck('daily_devotee', days));
-    newlyUnlocked.addAll(_setProgressAndCheck('monthly_master', days));
+  // ============================================================================
+  // WAREHOUSE-PROGRESSION CHECKS (extended catalog)
+  // ============================================================================
 
+  /// Internal cache for per-contract "no undo across all 3 levels" tracking.
+  /// `Map<contractIndex, Set<levelNumber>>` — populated by
+  /// [checkContractLevelClear]; cleared on undo via [resetContractUndoTrack].
+  final Map<int, Set<int>> _noUndoLevelsPerContract = {};
+
+  /// Call when a contract level finishes. Tracks per-contract undo state
+  /// for [zero_damage_dispatch] and 3-star state for [waybill_streak].
+  ///
+  /// - [contractIndex] — see [ContractService.contracts]
+  /// - [levelInContract] — the absolute level number (1..30)
+  /// - [contractFirstLevel] / [contractLastLevel] — bounds of the contract
+  /// - [stars] — 0..3 stars earned on this clear
+  /// - [undoUsed] — whether the player used undo at any point this level
+  /// - [allLevelStarsInContract] — best-stars map for every level in the
+  ///   contract after this clear; used to detect the 3-star sweep.
+  /// - [contractTier] — pass `'local'` if this contract is a Local-tier
+  ///   contract; the two new achievements only fire on Local contracts.
+  List<AchievementDef> checkContractLevelClear({
+    required int contractIndex,
+    required int levelInContract,
+    required int contractFirstLevel,
+    required int contractLastLevel,
+    required int stars,
+    required bool undoUsed,
+    required Map<int, int> allLevelStarsInContract,
+    required String contractTier,
+  }) {
+    final newlyUnlocked = <AchievementDef>[];
+    final isLocal = contractTier.toLowerCase() == 'local';
+
+    // ---- zero_damage_dispatch: track no-undo levels per contract --------
+    if (undoUsed) {
+      _noUndoLevelsPerContract.remove(contractIndex);
+    } else {
+      final set = _noUndoLevelsPerContract.putIfAbsent(
+        contractIndex,
+        () => <int>{},
+      );
+      set.add(levelInContract);
+
+      // Local contracts in this codebase are 3-level groups when the
+      // spec is interpreted as "all 3 levels"; we also tolerate 5-level
+      // contracts by treating the contract as "all levels in the
+      // contract span". Either way: every level in [first..last] must be
+      // present in the set with undoUsed==false.
+      if (isLocal) {
+        final fullSpan = <int>{
+          for (var l = contractFirstLevel; l <= contractLastLevel; l++) l,
+        };
+        if (set.containsAll(fullSpan)) {
+          newlyUnlocked.addAll(_tryUnlock(['zero_damage_dispatch']));
+        }
+      }
+    }
+
+    // ---- waybill_streak: 3-star every level in any Local contract -------
+    if (isLocal) {
+      var allThreeStar = true;
+      for (var l = contractFirstLevel; l <= contractLastLevel; l++) {
+        if ((allLevelStarsInContract[l] ?? 0) < 3) {
+          allThreeStar = false;
+          break;
+        }
+      }
+      if (allThreeStar) {
+        newlyUnlocked.addAll(_tryUnlock(['waybill_streak']));
+      }
+    }
+
+    return newlyUnlocked;
+  }
+
+  /// Optional helper — clears the per-contract no-undo tracking for one
+  /// contract. The UI can call this on explicit "undo" action so a single
+  /// undo invalidates the streak even before the level finishes.
+  void resetContractUndoTrack(int contractIndex) {
+    _noUndoLevelsPerContract.remove(contractIndex);
+  }
+
+  /// Call when a contract is fully cleared (every level ≥1 star). Counts
+  /// toward [night_shift_supervisor] only when the device-local hour is
+  /// in `[0, 6)`. The unlock fires at 10 such night-shift clears. Pass
+  /// `nowOverride` from tests; defaults to `DateTime.now()`.
+  List<AchievementDef> checkContractCleared({DateTime? nowOverride}) {
+    final newlyUnlocked = <AchievementDef>[];
+    final hour = (nowOverride ?? DateTime.now()).hour;
+    if (hour >= 0 && hour < 6) {
+      newlyUnlocked.addAll(_incrementAndCheck('night_shift_supervisor'));
+    }
+    return newlyUnlocked;
+  }
+
+  /// Call after every [MachineryService.purchase]. Fires
+  /// [fleet_foreman] when the player owns ≥4 of the 6 machinery items.
+  List<AchievementDef> checkMachineryOwnership({required int ownedCount}) {
+    final newlyUnlocked = <AchievementDef>[];
+    if (ownedCount >= 4) {
+      newlyUnlocked.addAll(_tryUnlock(['fleet_foreman']));
+    }
+    return newlyUnlocked;
+  }
+
+  /// Call after shipment-reward payout. Fires [overtime_payout] when the
+  /// total income multiplier applied to the shipment is ≥5.0×.
+  List<AchievementDef> checkPayoutMultiplier({required double multiplier}) {
+    final newlyUnlocked = <AchievementDef>[];
+    if (multiplier >= 5.0) {
+      newlyUnlocked.addAll(_tryUnlock(['overtime_payout']));
+    }
+    return newlyUnlocked;
+  }
+
+  /// Call after [CosmeticService.purchase] OR [BusinessTierService.purchase].
+  /// Fires [union_steward] when the player owns ≥2 forklift skins beyond
+  /// Yellow Standard AND owns the Regional business tier.
+  ///
+  /// - [forkliftSkinsOwnedBeyondDefault] — count of owned forklift skins
+  ///   excluding `ForkliftSkin.yellowStandard`
+  /// - [ownsRegionalTier] — true if Regional Hub has been purchased
+  List<AchievementDef> checkUnionSteward({
+    required int forkliftSkinsOwnedBeyondDefault,
+    required bool ownsRegionalTier,
+  }) {
+    final newlyUnlocked = <AchievementDef>[];
+    if (forkliftSkinsOwnedBeyondDefault >= 2 && ownsRegionalTier) {
+      newlyUnlocked.addAll(_tryUnlock(['union_steward']));
+    }
     return newlyUnlocked;
   }
 

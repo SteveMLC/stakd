@@ -189,7 +189,10 @@ void main() {
         reason: 'Contract ${contract.displayName} should be in initial viewport',
       );
     }
-    expect(find.textContaining('Clear Local Contract 1 first'), findsWidgets);
+    // Locked-state copy was bumped to manifest-style "AWAITING CLEARANCE
+    // · Finish <prev> first" — assert the explainer line that names the
+    // gating contract so we still catch a wiring regression on the gate.
+    expect(find.textContaining('Finish Local Contract 1 first'), findsWidgets);
   });
 
   testWidgets('economy + level mapping match v0.3 spec', (tester) async {
