@@ -359,8 +359,20 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
           newWarehouseLevel: levelUp,
         );
       }
-      // Play win sound
+      // Play win sound (forklift horn + chime). If the player also
+      // levelled up their warehouse, layer the heavier level-up
+      // fanfare ~250ms after — gives the level-up its own beat.
       AudioService().playWin();
+      if (levelUp != null) {
+        Future.delayed(const Duration(milliseconds: 600), () {
+          AudioService().playLevelUp();
+        });
+      }
+      // Coin ding fires when the cash payout pill appears so the
+      // "money flying" beat has its own bell.
+      Future.delayed(const Duration(milliseconds: 250), () {
+        AudioService().playCoin();
+      });
 
       // Screen flash (white, 200ms)
       setState(() {
@@ -699,6 +711,7 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
     // Consume the power-up
     final success = await powerUpService.usePowerUp(PowerUpType.colorBomb);
     if (!success) return;
+    AudioService().playPowerUp();
 
     // Get positions of blocks to remove for animation
     final positions = <Offset>[];
@@ -771,6 +784,7 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
     // Consume the power-up
     final success = await powerUpService.usePowerUp(PowerUpType.shuffle);
     if (!success) return;
+    AudioService().playPowerUp();
 
     // Collect current block positions and colors for animation
     final positions = <Offset>[];
@@ -867,6 +881,7 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
     // Consume the power-up
     final success = await powerUpService.usePowerUp(PowerUpType.magnet);
     if (!success) return;
+    AudioService().playPowerUp();
 
     // Get source position for animation
     final stackKey = _stackKeys[stackIndex];

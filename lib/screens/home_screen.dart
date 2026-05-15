@@ -55,6 +55,10 @@ class _HomeScreenState extends State<HomeScreen>
     )..forward();
     _loadDailyData();
     _checkDailyRewards();
+    // Music start is fired from main.dart after runApp so the
+    // audioplayers `FramePositionUpdater` doesn't leave a transient
+    // scheduler callback when integration tests (which bypass main)
+    // tear down between cases.
   }
 
   @override

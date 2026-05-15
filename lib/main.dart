@@ -94,7 +94,15 @@ void main() async {
   // Background path: services that touch flaky platform channels
   // (AdMob, StoreKit, AVAudioSession, sim networking). They can take
   // their time finishing — the home screen paints first.
-  unawaited(_safeInit('AudioService', () => AudioService().init()));
+  unawaited(() async {
+    await _safeInit('AudioService', () => AudioService().init());
+    // Kick the warehouse ambient drone (64s looped track) once the
+    // service has settled. Doing it here — outside any widget's
+    // initState — keeps the audioplayers FramePositionUpdater's
+    // frame callback from leaking into integration-test tear-down
+    // (tests bypass main, so the music never starts in tests).
+    AudioService().startMusic();
+  }());
   unawaited(_safeInit('AdService', () => AdService().init()));
   unawaited(_safeInit('IapService', () => IapService().init()));
   unawaited(() async {

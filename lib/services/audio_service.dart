@@ -119,11 +119,25 @@ class AudioService {
   /// Play error/invalid move sound
   Future<void> playError() => playSound(GameSound.error);
 
-  /// Start background music
+  /// Play power-up activate sound (rising whoosh + ratchet click).
+  Future<void> playPowerUp() => playSound(GameSound.powerup);
+
+  /// Play coin/cash chip ding (cash payout flying to HUD).
+  Future<void> playCoin() => playSound(GameSound.coin);
+
+  /// Play warehouse-level-up brass swell + C-major chord.
+  Future<void> playLevelUp() => playSound(GameSound.levelup);
+
+  /// Start background music — loops the 64-second warehouse ambient
+  /// (low rumble + electrical hum + F minor pad + forklift beeps +
+  /// crate scuffs). Cross-faded at the loop join so the seam is
+  /// inaudible.
   Future<void> startMusic() async {
-    if (!_musicEnabled) return;
+    if (!_musicEnabled || _isMusicPlaying) return;
 
     try {
+      await _musicPlayer.setReleaseMode(ReleaseMode.loop);
+      await _musicPlayer.setVolume(0.45); // Subtle background level
       await _musicPlayer.play(AssetSource('sounds/music.mp3'));
       _isMusicPlaying = true;
     } catch (e) {
@@ -207,13 +221,20 @@ class AudioService {
   }
 }
 
-/// Available game sounds
+/// Available game sounds — Walt's warehouse audio kit. Every SFX
+/// is now synthesized in the warehouse vocabulary: dock-terminal
+/// clicks, roller-belt whooshes, dispatch-stamp thunks, low buzzers,
+/// forklift horns, bell dings, and a longer 64s looping ambient
+/// drone with periodic forklift backup beeps + crate scuffs.
 enum GameSound {
   tap('sounds/tap.mp3'),
   slide('sounds/slide.mp3'),
   clear('sounds/clear.mp3'),
   win('sounds/win.mp3'),
   error('sounds/error.mp3'),
+  powerup('sounds/powerup.mp3'),
+  coin('sounds/coin.mp3'),
+  levelup('sounds/levelup.mp3'),
   chain2('sounds/clear.mp3'),  // Re-use clear with pitch shift
   chain3('sounds/clear.mp3'),  // Re-use clear with higher pitch
   chain4('sounds/win.mp3');    // Use win sound for mega chains
