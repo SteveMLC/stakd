@@ -7,6 +7,7 @@ import '../services/contract_service.dart';
 import '../services/district_service.dart';
 import '../services/warehouse_economy_service.dart';
 import '../utils/constants.dart';
+import '../utils/game_assets.dart';
 import '../utils/number_format.dart';
 import '../utils/route_transitions.dart';
 import '../widgets/game_button.dart';
@@ -285,11 +286,32 @@ class _ContractCard extends StatelessWidget {
                       if (district.wrinkles.isEmpty) {
                         return const SizedBox.shrink();
                       }
+                      final wrinkle = district.wrinkles.first;
+                      final glyph = wrinkleGlyphAsset(wrinkle);
                       return Padding(
                         padding: const EdgeInsets.only(left: 6),
-                        child: _Pill(
-                          label: district.wrinkles.first.toUpperCase(),
-                          color: const Color(0xFF5DADE2), // dock blue
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Illustrated wrinkle pictogram from
+                            // Lovart Wave 2 (snowflake / hourglass /
+                            // cracked glass / stacked boxes / etc).
+                            // Falls back to the text-only pill when
+                            // the wrinkle id has no asset yet.
+                            if (glyph != null) ...[
+                              Image.asset(
+                                glyph,
+                                width: 18,
+                                height: 18,
+                                filterQuality: FilterQuality.medium,
+                              ),
+                              const SizedBox(width: 4),
+                            ],
+                            _Pill(
+                              label: wrinkle.toUpperCase(),
+                              color: const Color(0xFF5DADE2), // dock blue
+                            ),
+                          ],
                         ),
                       );
                     }),
@@ -788,11 +810,28 @@ class _NextDistrictTeaser extends StatelessWidget {
                     ),
                     if (hasWrinkles) ...[
                       const SizedBox(width: 6),
-                      _Pill(
-                        label:
-                            district.wrinkles.first.toUpperCase(),
-                        color: const Color(0xFF5DADE2), // dock blue
-                      ),
+                      Builder(builder: (_) {
+                        final wrinkle = district.wrinkles.first;
+                        final glyph = wrinkleGlyphAsset(wrinkle);
+                        return Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (glyph != null) ...[
+                              Image.asset(
+                                glyph,
+                                width: 16,
+                                height: 16,
+                                filterQuality: FilterQuality.medium,
+                              ),
+                              const SizedBox(width: 3),
+                            ],
+                            _Pill(
+                              label: wrinkle.toUpperCase(),
+                              color: const Color(0xFF5DADE2),
+                            ),
+                          ],
+                        );
+                      }),
                     ],
                   ],
                 ),
