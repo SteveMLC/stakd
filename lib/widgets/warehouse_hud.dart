@@ -111,7 +111,11 @@ class _MultiplierPill extends StatelessWidget {
           Icon(Icons.trending_up, size: 13, color: color),
           const SizedBox(width: 3),
           Text(
-            '×${multiplier.toStringAsFixed(multiplier >= 10 ? 0 : 1)}',
+            // Route through formatMultiplier so the pill reads
+            // "×1.5" / "×6.5" / "×11" cleanly through the infinite-
+            // scaling Reputation ladder. Trims trailing zeros so
+            // "×2.0" becomes "×2" automatically.
+            formatMultiplier(multiplier),
             style: TextStyle(
               color: color,
               fontSize: 12,

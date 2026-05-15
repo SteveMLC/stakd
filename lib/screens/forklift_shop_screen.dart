@@ -5,6 +5,7 @@ import '../services/audio_service.dart';
 import '../services/cosmetic_service.dart';
 import '../services/warehouse_economy_service.dart';
 import '../utils/constants.dart';
+import '../utils/number_format.dart';
 import '../widgets/game_button.dart';
 import '../widgets/warehouse_decorations.dart';
 import '../widgets/warehouse_hud.dart';
@@ -242,16 +243,13 @@ class _ForkliftCard extends StatelessWidget {
     ));
   }
 
-  static String _cash(int n) {
-    if (n < 1000) return n.toString();
-    final s = n.toString();
-    final buf = StringBuffer();
-    for (var i = 0; i < s.length; i++) {
-      if (i > 0 && (s.length - i) % 3 == 0) buf.write(',');
-      buf.write(s[i]);
-    }
-    return buf.toString();
-  }
+  /// Delegates to the shared `formatCash` helper so all shop price
+  /// displays render with K/M/B/T/Qa suffix progression at scale
+  /// (post-D10 income compounds to where forklift cosmetics still
+  /// need to read cleanly even at $1M+). Keeps the call-site shape
+  /// (`'\$${_cash(info.cashCost)}'`) so no per-line edits — just
+  /// route through formatCash.
+  static String _cash(int n) => formatCash(n);
 }
 
 class _SkinIcon extends StatelessWidget {

@@ -5,6 +5,7 @@ import '../services/audio_service.dart';
 import '../services/machinery_service.dart';
 import '../services/warehouse_economy_service.dart';
 import '../utils/constants.dart';
+import '../utils/number_format.dart';
 import '../widgets/game_button.dart';
 import '../widgets/warehouse_decorations.dart';
 import '../widgets/warehouse_hud.dart';
@@ -323,16 +324,14 @@ class _MachineryCard extends StatelessWidget {
     ));
   }
 
-  static String _cash(int n) {
-    if (n < 1000) return n.toString();
-    final s = n.toString();
-    final buf = StringBuffer();
-    for (var i = 0; i < s.length; i++) {
-      if (i > 0 && (s.length - i) % 3 == 0) buf.write(',');
-      buf.write(s[i]);
-    }
-    return buf.toString();
-  }
+  /// Delegates to the shared `formatCash` helper so all machinery
+  /// price displays render with K/M/B/T/Qa suffix progression. The
+  /// existing catalog already lists machinery at $5K-$250K so today
+  /// they render with the comma form (5K → "5K", 75K → "75K"); but
+  /// future late-game machinery additions past Drone Fleet will hit
+  /// $1M+ and benefit from clean suffix scaling. Keeps the call-site
+  /// shape unchanged.
+  static String _cash(int n) => formatCash(n);
 }
 
 /// Slow breathing glow shell for "owned" / "active" shop cards. Same
