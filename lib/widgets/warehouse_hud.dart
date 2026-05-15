@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../services/business_tier_service.dart';
 import '../services/income_multiplier_service.dart';
 import '../services/machinery_service.dart';
+import '../services/reputation_service.dart';
 import '../services/warehouse_economy_service.dart';
 import '../utils/constants.dart';
 import 'warehouse_decorations.dart';
@@ -28,6 +29,9 @@ class WarehouseHud extends StatelessWidget {
     // Watch machinery so the multiplier pill repaints when a player buys
     // a new machine — MachineryService is the 5th input into computeMultiplier.
     context.watch<MachineryService>();
+    // Watch reputation so the second-row strip + the multiplier pill
+    // both repaint when a tier promotion fires.
+    final reputation = context.watch<ReputationService>();
     final mul = incomeMul.computeMultiplier(
       warehouseLevel: economy.warehouseLevel,
     );
@@ -66,6 +70,12 @@ class WarehouseHud extends StatelessWidget {
                   ],
                 ),
               ),
+              // Second-row "REPUTATION" strip — the infinite-scaling
+              // tier ladder readout. Always visible (reads "Unranked
+              // · 0/5" at fresh install so the next-goal beat is
+              // explicit). Compact 24dp tall — doesn't crowd the
+              // gameplay screen below.
+              _ReputationStrip(reputation: reputation),
             ],
           ),
         ),
@@ -370,6 +380,113 @@ class _TierBadge extends StatelessWidget {
               fontSize: 11,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Second-row HUD strip showing the player's Reputation tier + progress
+/// toward the next promotion. The infinite-scaling meta-economy lives
+/// here — every district cleared grants RP, every tier promotion grants
+/// +0.10× permanent income, the ladder runs forever (Bronze → Silver
+/// → ... → Legendary → Legendary II → Legendary III → ...).
+///
+/// Compact ~24dp tall: short Courier label on the left, progress bar
+/// in the middle, RP count on the right. Always rendered (reads
+/// "Unranked · 0/5 RP" at fresh install so the next-goal beat is
+/// explicit and the player learns the system exists before they earn
+/// their first RP).
+class _ReputationStrip extends StatelessWidget {
+  final ReputationService reputation;
+  const _ReputationStrip({required this.reputation});
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = reputation.progressToNextTier;
+    final rp = reputation.totalRp;
+    final next = reputation.rpForNextTier;
+    final tierName = reputation.displayName;
+    final isUnranked = reputation.currentTierLevel == 0;
+
+    // Compact layout: total height ≈ 14dp (2 top + 4 bar + 2 bottom +
+    // label/text overlap). Original 24dp variant overflowed the home
+    // screen's fixed Column by 15px — this slimmer pass fits cleanly
+    // inside the existing HUD container without forcing a home_screen
+    // layout refactor.
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 2, 14, 6),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(
+            color: GameColors.accent.withValues(alpha: 0.18),
+            width: 0.6,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          // Tier label — Courier stencil, accent border. Reads as a
+          // dock-floor rank stamp. Dimmed at "Unranked" so the player
+          // notices when it lights up on first Bronze promotion.
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+            decoration: BoxDecoration(
+              color: isUnranked
+                  ? GameColors.textMuted.withValues(alpha: 0.12)
+                  : GameColors.accent.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(3),
+              border: Border.all(
+                color: isUnranked
+                    ? GameColors.textMuted.withValues(alpha: 0.45)
+                    : GameColors.accent.withValues(alpha: 0.55),
+                width: 0.8,
+              ),
+            ),
+            child: Text(
+              tierName.toUpperCase(),
+              style: TextStyle(
+                color: isUnranked ? GameColors.textMuted : GameColors.accent,
+                fontSize: 8,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.2,
+                fontFamily: 'Courier',
+                height: 1.0,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Progress bar — thin accent fill, matches WH level bar
+          // shape so the player reads them as related.
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(2),
+              child: LinearProgressIndicator(
+                value: progress.clamp(0.0, 1.0),
+                minHeight: 4,
+                backgroundColor:
+                    GameColors.background.withValues(alpha: 0.5),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  isUnranked
+                      ? GameColors.textMuted.withValues(alpha: 0.7)
+                      : GameColors.accent,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // RP count — "{current}/{nextThreshold}" in tight Courier.
+          Text(
+            '$rp/$next',
+            style: const TextStyle(
+              color: GameColors.textMuted,
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.4,
+              fontFamily: 'Courier',
+              height: 1.0,
             ),
           ),
         ],

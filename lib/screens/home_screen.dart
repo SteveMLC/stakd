@@ -190,9 +190,9 @@ class _HomeScreenState extends State<HomeScreen>
               children: [
                 const Spacer(flex: 2),
                 _buildTopBar(),
-                const SizedBox(height: 16),
-                _buildLogo(),
                 const SizedBox(height: 12),
+                _buildLogo(),
+                const SizedBox(height: 10),
                 Text(
                   'Sort the crates. Build the empire.',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -200,7 +200,7 @@ class _HomeScreenState extends State<HomeScreen>
                     letterSpacing: 1.5,
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 10),
                 const WarehouseHud(),
                 const NextMilestoneBanner(),
                 const Spacer(flex: 2),
