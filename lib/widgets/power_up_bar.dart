@@ -222,56 +222,47 @@ class _PowerUpButtonState extends State<_PowerUpButton>
                     ),
                   ),
 
-                  // Count badge — red ammo chip when stocked, muted
-                  // when zero so the player knows when to refill.
+                  // Count chip — subtle uses-remaining pill, NOT a
+                  // red alert badge. Was a screaming red gradient w/
+                  // white border + drop shadow at top-right that
+                  // read as a notification dot ("ERROR ERROR ERROR"
+                  // per Winnie's audit). Now a small dark amber pill
+                  // tucked at the bottom-right so the eye lands on
+                  // the icon first, count is supplementary info.
                   Positioned(
-                    right: -4,
-                    top: -4,
+                    right: 2,
+                    bottom: 2,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
+                        horizontal: 5,
+                        vertical: 1,
                       ),
                       constraints: const BoxConstraints(
-                        minWidth: 20,
-                        minHeight: 18,
+                        minWidth: 14,
+                        minHeight: 14,
                       ),
                       decoration: BoxDecoration(
-                        gradient: isDisabled
-                            ? null
-                            : const LinearGradient(
-                                colors: [
-                                  Color(0xFFE53935),
-                                  Color(0xFFC62828),
-                                ],
-                              ),
                         color: isDisabled
-                            ? GameColors.textMuted.withValues(alpha: 0.6)
-                            : null,
-                        borderRadius: BorderRadius.circular(10),
+                            ? Colors.black.withValues(alpha: 0.55)
+                            : Colors.black.withValues(alpha: 0.72),
+                        borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.45),
-                          width: 1,
+                          color: isDisabled
+                              ? GameColors.textMuted.withValues(alpha: 0.35)
+                              : GameColors.accent.withValues(alpha: 0.55),
+                          width: 0.8,
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: (isDisabled
-                                    ? Colors.black
-                                    : const Color(0xFFE53935))
-                                .withValues(alpha: 0.45),
-                            blurRadius: 5,
-                            offset: const Offset(0, 1),
-                          ),
-                        ],
                       ),
                       child: Center(
                         child: Text(
                           '${widget.count}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w900,
-                            height: 1.1,
+                          style: TextStyle(
+                            color: isDisabled
+                                ? GameColors.textMuted
+                                : GameColors.accent,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            height: 1.0,
                           ),
                         ),
                       ),

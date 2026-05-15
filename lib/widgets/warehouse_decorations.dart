@@ -89,29 +89,32 @@ class HazardStripePainter extends CustomPainter {
     final basePaint = Paint()..color = const Color(0xFF0E1828);
     canvas.drawRect(rect, basePaint);
 
-    // Step 2: bright NEON gradient overlay — hot magenta → electric
-    // orange → cyan → magenta loop, like a wraparound LED strip on
-    // a delivery dock. Matches the Empire Tycoon "neon city" palette.
-    final neonPaint = Paint()
+    // Step 2: warm WAREHOUSE palette band — forklift amber →
+    // loading-dock orange → forklift amber. The old rainbow loop
+    // (magenta/cyan/electric-blue/magenta) read as Empire Tycoon's
+    // lane + "every accent color at once" disco noise; Winnie's
+    // audit 2026-05-15 said pick ONE warm direction. This is the
+    // "Workshop Warm" theme: tight 2-color amber/orange gradient
+    // that differentiates from Empire Tycoon's pink-magenta and
+    // Rampart's cool blue. Matches the Go7Studio banner's
+    // warehouse-tile palette directly.
+    final warmPaint = Paint()
       ..shader = const LinearGradient(
         begin: Alignment.centerLeft,
         end: Alignment.centerRight,
         colors: [
-          Color(0xFFE91E63), // hot magenta
-          Color(0xFFFF6B35), // electric orange
-          Color(0xFFFFD93D), // sunshine yellow
-          Color(0xFF2FB9B3), // cyan teal
-          Color(0xFF3742FA), // electric blue
-          Color(0xFFE91E63), // back to magenta (looped)
+          Color(0xFFFFB627), // forklift amber (primary)
+          Color(0xFFFF7A1A), // loading-dock orange
+          Color(0xFFFFB627), // forklift amber (looped)
         ],
-        stops: [0.0, 0.2, 0.5, 0.7, 0.85, 1.0],
+        stops: [0.0, 0.5, 1.0],
       ).createShader(rect);
-    canvas.drawRect(rect, neonPaint);
+    canvas.drawRect(rect, warmPaint);
 
-    // Step 3: forward-pointing motion chevrons in white — the
-    // "delivery in motion" signal. Subtle, not dominating.
+    // Step 3: forward-pointing motion chevrons in cream — the
+    // "delivery in motion" signal. Subtle, warm against the amber.
     final chevronPaint = Paint()
-      ..color = const Color(0xFFFFFFFF).withValues(alpha: 0.55)
+      ..color = const Color(0xFFFFF4DC).withValues(alpha: 0.40)
       ..style = PaintingStyle.stroke
       ..strokeWidth = (size.height * 0.16).clamp(0.7, 2.0)
       ..strokeCap = StrokeCap.round

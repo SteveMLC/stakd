@@ -1274,15 +1274,25 @@ class _StackWidgetState extends State<_StackWidget>
                           width: double.infinity,
                           height: double.infinity,
                           decoration: BoxDecoration(
+                            // Empty bays get a warm-tinted inner gradient
+                            // so they visibly read as "drop targets here"
+                            // against the dark midnight background. Filled
+                            // bays keep the existing neutral gradient so
+                            // the colored crate layers dominate visually.
                             gradient: LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
-                              colors: [
-                                ThemeColors.emptySlotColor.withValues(
-                                  alpha: 0.85,
-                                ),
-                                ThemeColors.emptySlotColor,
-                              ],
+                              colors: widget.stack.isEmpty
+                                  ? [
+                                      GameColors.accent.withValues(alpha: 0.08),
+                                      Colors.black.withValues(alpha: 0.45),
+                                    ]
+                                  : [
+                                      ThemeColors.emptySlotColor.withValues(
+                                        alpha: 0.85,
+                                      ),
+                                      ThemeColors.emptySlotColor,
+                                    ],
                             ),
                             borderRadius: BorderRadius.circular(
                               GameSizes.stackBorderRadius,
@@ -1312,6 +1322,13 @@ class _StackWidgetState extends State<_StackWidget>
                                   ? glowColor.withValues(
                                       alpha: 0.6 + pulseValue * 0.4,
                                     )
+                                  // Empty/idle bay: dim amber border
+                                  // instead of invisible `emptySlotColor`
+                                  // so the player can SEE the bay's
+                                  // perimeter (Winnie's audit
+                                  // 2026-05-15: "bays are invisible").
+                                  : widget.stack.isEmpty
+                                  ? GameColors.accent.withValues(alpha: 0.35)
                                   : ThemeColors.emptySlotColor,
                               width: widget.isDragValidTarget
                                   ? 3

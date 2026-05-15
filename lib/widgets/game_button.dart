@@ -356,43 +356,38 @@ class _GameIconButtonState extends State<GameIconButton>
                 if (widget.badge != null) const _BadgePulseSpacer(),
                 if (widget.badge != null)
                   Positioned(
-                    top: -4,
-                    right: -4,
+                    top: -2,
+                    right: -2,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 5, vertical: 2),
+                          horizontal: 4, vertical: 1),
                       constraints: const BoxConstraints(
-                        minWidth: 18,
-                        minHeight: 18,
+                        minWidth: 14,
+                        minHeight: 14,
                       ),
+                      // Subtle amber pill on dark plate — NOT a red
+                      // alert badge. Was a glowing red gradient that
+                      // read as "ERROR" on every icon (Winnie's audit
+                      // 2026-05-15: "stops the screen screaming").
+                      // Now uses the amber accent so multiple visible
+                      // badges register as supplementary info, not
+                      // alarm.
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [
-                            Color(0xFFE53935),
-                            Color(0xFFC62828),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(10),
+                        color: Colors.black.withValues(alpha: 0.72),
+                        borderRadius: BorderRadius.circular(7),
                         border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.45),
-                          width: 1,
+                          color: GameColors.accent.withValues(alpha: 0.55),
+                          width: 0.8,
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFE53935)
-                                .withValues(alpha: 0.5),
-                            blurRadius: 6,
-                          ),
-                        ],
                       ),
                       child: Center(
                         child: Text(
                           widget.badge!,
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            height: 1.1,
+                          style: TextStyle(
+                            fontSize: 9,
+                            color: GameColors.accent,
+                            fontWeight: FontWeight.w800,
+                            height: 1.0,
                           ),
                         ),
                       ),
