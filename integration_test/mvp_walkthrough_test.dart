@@ -410,4 +410,67 @@ void main() {
       );
     }
   });
+
+  testWidgets(
+      'meta-loop wiring: addReputation flips HUD strip from UNRANKED to BRONZE',
+      (tester) async {
+    // Verifies the Reputation→HUD chain end-to-end at the UI level.
+    // Service-level tests already cover the math (tier thresholds,
+    // multiplier, persistence); this test confirms the HUD strip
+    // actually re-renders when the service fires a tier promotion.
+    //
+    // Why this matters: the user asked "have you actually tested it?"
+    // — the existing 8 tests cover navigation + L1 board render + one
+    // stack tap, but none of them exercise the District→Reputation→
+    // Income loop the recent commits wired up. This is the first
+    // integration test that touches the new meta-loop systems.
+    await _bootServices();
+    await tester.pumpWidget(_pumpedApp());
+    for (var i = 0; i < 16; i++) {
+      await tester.pump(const Duration(milliseconds: 250));
+    }
+    // Dismiss daily-rewards popup if it auto-fires.
+    final claim = find.textContaining('CLAIM');
+    if (claim.evaluate().isNotEmpty) {
+      await tester.tap(claim.first, warnIfMissed: false);
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 250));
+      }
+    }
+
+    // Fresh install state — HUD reputation strip should read "UNRANKED".
+    expect(find.textContaining('UNRANKED'), findsWidgets,
+        reason: 'Fresh install should show "UNRANKED" on the HUD strip');
+    expect(find.textContaining('BRONZE'), findsNothing,
+        reason: 'Bronze tier should not be visible before any RP awarded');
+
+    // Service-level award: 5 RP crosses the Bronze threshold.
+    final promoted = await ReputationService().addReputation(5);
+    expect(promoted, isTrue,
+        reason: 'addReputation(5) should fire a tier promotion');
+    expect(ReputationService().currentTier, ReputationTier.bronze);
+
+    // Pump to allow the HUD to repaint via Consumer<ReputationService>.
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(milliseconds: 250));
+    }
+
+    // HUD strip should now read "BRONZE" — proves the Consumer<
+    // ReputationService> watch in `WarehouseHud` actually triggers a
+    // rebuild on service notify, and `_ReputationStrip` reads the
+    // updated `displayName`.
+    expect(find.textContaining('BRONZE'), findsWidgets,
+        reason: 'Bronze promotion should surface as "BRONZE" on the HUD strip');
+    expect(find.textContaining('UNRANKED'), findsNothing,
+        reason: 'After promotion, "UNRANKED" should no longer appear');
+
+    // Bonus assertion: the income multiplier sum should now include
+    // Reputation's +0.10× contribution. Without an existing baseline
+    // we just assert that the multiplier exceeds 1.0 (Bronze adds
+    // 0.10×; any other bonuses might add more).
+    final mul = IncomeMultiplierService()
+        .computeMultiplier(warehouseLevel: 1);
+    expect(mul, greaterThan(1.05),
+        reason: 'Reputation tier 1 should bump computeMultiplier above 1.0');
+  });
 }
