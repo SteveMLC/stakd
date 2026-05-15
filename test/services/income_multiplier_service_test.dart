@@ -6,6 +6,7 @@ import 'package:warehouse_sort/services/business_tier_service.dart';
 import 'package:warehouse_sort/services/contract_service.dart';
 import 'package:warehouse_sort/services/income_multiplier_service.dart';
 import 'package:warehouse_sort/services/machinery_service.dart';
+import 'package:warehouse_sort/services/reputation_service.dart';
 import 'package:warehouse_sort/services/warehouse_economy_service.dart';
 
 void main() {
@@ -24,6 +25,8 @@ void main() {
       await MachineryService().init();
       await WarehouseEconomyService().reset();
       await WarehouseEconomyService().init();
+      await ReputationService().reset();
+      await ReputationService().init();
     });
 
     test('fresh install: multiplier is 1.0 (no bonuses)', () {
@@ -119,7 +122,8 @@ void main() {
       final svc = IncomeMultiplierService();
       await svc.recordAchievementBump('first_shipment');
       final parts = svc.breakdown(warehouseLevel: 10);
-      expect(parts.length, 6); // Base + contracts + tiers + ach + levels + machinery
+      // Base + contracts + tiers + ach + levels + machinery + reputation
+      expect(parts.length, 7);
       expect(parts[0].label, 'Base');
       expect(parts[0].bonus, 1.0);
       // 1 achievement bump = 0.25
@@ -131,6 +135,36 @@ void main() {
       // No machinery owned by default
       final machLine = parts.firstWhere((p) => p.label.contains('machinery'));
       expect(machLine.bonus, 0.0);
+      // Reputation line present, 0 at fresh install (Unranked)
+      final repLine = parts.firstWhere((p) => p.label.contains('Reputation'));
+      expect(repLine.bonus, 0.0);
+      expect(repLine.label, contains('Unranked'));
+    });
+
+    test('Reputation tier bonus is uncapped + stacks into multiplier',
+        () async {
+      // Bronze (tier 1) = +0.10×, no other bonuses → 1.10×
+      await ReputationService().addReputation(5);
+      expect(
+        IncomeMultiplierService().computeMultiplier(warehouseLevel: 1),
+        closeTo(1.10, 0.001),
+      );
+
+      // Legendary (tier 9, 225 RP) = +0.90×
+      await ReputationService().addReputation(220);
+      expect(
+        IncomeMultiplierService().computeMultiplier(warehouseLevel: 1),
+        closeTo(1.90, 0.001),
+      );
+
+      // Tier 100 = +10.00× — no cap, infinite-scaling axis
+      await ReputationService().reset();
+      await ReputationService().init();
+      await ReputationService().addReputation(25_250);
+      expect(
+        IncomeMultiplierService().computeMultiplier(warehouseLevel: 1),
+        closeTo(11.0, 0.001),
+      );
     });
 
     test('owning machinery adds its income bonuses to the multiplier', () async {

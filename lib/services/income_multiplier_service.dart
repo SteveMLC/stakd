@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'business_tier_service.dart';
 import 'contract_service.dart';
 import 'machinery_service.dart';
+import 'reputation_service.dart';
 import '../data/local_regional_levels.dart';
 
 /// Aggregates *permanent* income multipliers earned across the game's
@@ -131,12 +132,20 @@ class IncomeMultiplierService extends ChangeNotifier {
     final machineryBonus =
         MachineryService().totalIncomeBonus.clamp(0.0, maxMachineryBonus);
 
+    // Reputation tier ladder bonus — UNCAPPED, scales infinitely with
+    // tier number (+0.10× per tier). This is the infinite-scaling
+    // axis that pairs with District progression; capping it would
+    // recreate the v0.3 endgame plateau the Districts architecture
+    // exists to eliminate.
+    final reputationBonus = ReputationService().tierMultiplierBonus;
+
     return 1.0 +
         contractBonus +
         tierBonus +
         achievementBonus +
         levelBonus +
-        machineryBonus;
+        machineryBonus +
+        reputationBonus;
   }
 
   /// Human-readable breakdown of the current multiplier — useful for
@@ -176,6 +185,10 @@ class IncomeMultiplierService extends ChangeNotifier {
       (
         label: '$machineryOwnedCount machinery owned',
         bonus: MachineryService().totalIncomeBonus.clamp(0.0, maxMachineryBonus),
+      ),
+      (
+        label: 'Reputation: ${ReputationService().displayName}',
+        bonus: ReputationService().tierMultiplierBonus,
       ),
     ];
   }

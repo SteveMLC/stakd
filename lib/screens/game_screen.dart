@@ -19,6 +19,8 @@ import '../services/business_tier_service.dart';
 import '../services/contract_service.dart';
 import '../services/income_multiplier_service.dart';
 import '../services/hydraulic_pressure_service.dart';
+import '../services/district_service.dart';
+import '../services/reputation_service.dart';
 import '../data/local_regional_levels.dart';
 import '../utils/constants.dart';
 import '../utils/route_transitions.dart';
@@ -373,6 +375,42 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
         'Warehouse reward: +\$$cashEarned, +$xpEarned XP, '
         'levelUp=$levelUp, contract=${completedContract?.contract.displayName}',
       );
+
+      // District clear + Reputation award. Fires when this level is
+      // the LAST in its district (D1-D6 = the final level of the
+      // matching contract; D7+ = procedural, every 5 levels past L30)
+      // AND every level inside the district has at least 1 star.
+      // Cleared districts grant RP, which feeds the infinite-scaling
+      // Reputation tier ladder (+0.10× permanent income per tier
+      // promotion, no cap).
+      final district = DistrictService().districtForLevel(_currentLevel);
+      if (district != null && _currentLevel == district.lastLevel) {
+        // Verify every level in this district has >= 1 star (the
+        // current level was just awarded its stars above via
+        // ContractService.recordLevelComplete).
+        var allCleared = true;
+        for (var l = district.firstLevel; l <= district.lastLevel; l++) {
+          if (ContractService().starsForLevel(l) < 1) {
+            allCleared = false;
+            break;
+          }
+        }
+        final rpAwarded = await DistrictService().onLevelComplete(
+          level: _currentLevel,
+          everyLevelInDistrictHasStar: allCleared,
+        );
+        if (rpAwarded > 0) {
+          final promoted = await ReputationService().addReputation(rpAwarded);
+          debugPrint(
+            'District ${district.number} (${district.displayName}) cleared '
+            '— +$rpAwarded RP, promoted=$promoted, '
+            'newTier=${ReputationService().displayName}',
+          );
+          // Future: if `promoted` fire the PromotionCeremonyOverlay
+          // here. For now the multiplier reveal beat already shows
+          // the income mult bump on the next clear.
+        }
+      }
 
       // Snapshot the income multiplier AFTER all the reward + contract
       // wiring so any of (a) a WH level past 5, (b) a contract clear, or
