@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../data/local_regional_levels.dart';
 import '../services/business_tier_service.dart';
 import '../services/contract_service.dart';
+import '../services/district_service.dart';
 import '../services/warehouse_economy_service.dart';
 import '../utils/constants.dart';
 import '../utils/number_format.dart';
@@ -168,6 +169,21 @@ class _ContractCard extends StatelessWidget {
                       fontFamily: 'Courier',
                     ),
                   ),
+                  // District suffix: " · D{N}" so the player learns the
+                  // contract-to-district mapping at a glance. Same
+                  // service that powers procedural districts past D6 —
+                  // contracts 0..5 map 1:1 to D1..D6.
+                  Text(
+                    ' · D${definition.contractIndex + 1}',
+                    style: TextStyle(
+                      color: GameColors.accent
+                          .withValues(alpha: unlocked ? 0.9 : 0.5),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.4,
+                      fontFamily: 'Courier',
+                    ),
+                  ),
                   const Spacer(),
                   Text(
                     completed
@@ -204,14 +220,54 @@ class _ContractCard extends StatelessWidget {
                           color: GameColors.text, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 0.5,
                         )),
                         const SizedBox(height: 2),
-                        Text('Lv ${definition.firstLevel}–${definition.lastLevel}', style: const TextStyle(
-                          color: GameColors.textMuted, fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.5,
-                        )),
+                        // District name + level range — surfaces the
+                        // theme identity that the infinite-scaling
+                        // ladder uses ("Local Dock", "Cold Storage",
+                        // procedural "Deep-Water Port" past D6). For
+                        // hand-tuned D1-D6 this maps from the
+                        // contract index; for procedural D7+ the
+                        // displayName already carries the District N
+                        // prefix from the composer.
+                        Builder(builder: (_) {
+                          final district = DistrictService()
+                              .definitionFor(definition.contractIndex + 1);
+                          return Text(
+                            '${district.displayName.toUpperCase()}  ·  Lv ${definition.firstLevel}–${definition.lastLevel}',
+                            style: TextStyle(
+                              color: GameColors.accent
+                                  .withValues(alpha: unlocked ? 0.85 : 0.45),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.2,
+                              fontFamily: 'Courier',
+                            ),
+                          );
+                        }),
                       ]),
                     ),
                     const SizedBox(width: 8),
                     _Pill(label: tierLabel, color: _accent),
                     if (completed) ...[const SizedBox(width: 6), const _CompletedBadge()],
+                    // Wrinkle pill — only renders for districts that
+                    // introduce a gameplay modifier. D3 Cold Storage
+                    // gets "FROZEN"; procedural districts get
+                    // whatever the composer assigned. Surface this
+                    // BEFORE the player starts the contract so the
+                    // wrinkle isn't a surprise mid-level.
+                    Builder(builder: (_) {
+                      final district = DistrictService()
+                          .definitionFor(definition.contractIndex + 1);
+                      if (district.wrinkles.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: _Pill(
+                          label: district.wrinkles.first.toUpperCase(),
+                          color: const Color(0xFF5DADE2), // dock blue
+                        ),
+                      );
+                    }),
                   ]),
                   const SizedBox(height: 6),
                   Text(definition.tagline, style: TextStyle(
