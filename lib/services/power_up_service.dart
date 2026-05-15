@@ -12,6 +12,9 @@ enum PowerUpType {
 
 /// Extension for power-up metadata
 extension PowerUpTypeExtension on PowerUpType {
+  /// LEGACY: emoji glyph kept as fallback string in case any UI surface
+  /// (e.g. accessibility tooltip, future text-only contexts) wants a
+  /// 1-char representation. Visual buttons should use `iconAsset` below.
   String get icon {
     switch (this) {
       case PowerUpType.colorBomb:
@@ -22,6 +25,24 @@ extension PowerUpTypeExtension on PowerUpType {
         return '🏗️';
       case PowerUpType.hint:
         return '👷';
+    }
+  }
+
+  /// Custom illustrated icon — generated locally via FLUX.1-schnell,
+  /// rembg'd, and WebP-encoded at `assets/icons_generated/webp/192/`.
+  /// Replaces the emoji `icon` getter for all visual surfaces (power-up
+  /// bar, info dialogs, achievement art). 192² source covers up to the
+  /// 64dp power-up button on 3x retina with headroom.
+  String get iconAsset {
+    switch (this) {
+      case PowerUpType.colorBomb:
+        return 'assets/icons_generated/webp/192/dynamite_crate.webp';
+      case PowerUpType.shuffle:
+        return 'assets/icons_generated/webp/192/reroute_shipment.webp';
+      case PowerUpType.magnet:
+        return 'assets/icons_generated/webp/192/bay_crane.webp';
+      case PowerUpType.hint:
+        return 'assets/icons_generated/webp/192/foreman_advice.webp';
     }
   }
 

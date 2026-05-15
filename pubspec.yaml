@@ -39,6 +39,12 @@ flutter:
     - assets/images/textures/
     - assets/images/zen-garden/
     - assets/images/backgrounds/
+    # Custom illustrated icons — locally generated via FLUX.1-schnell,
+    # background-stripped via rembg, encoded as WebP (~10-15 KB each).
+    # See tools/generate_icons{,_mflux}.py + tools/process_icons.py.
+    - assets/icons_generated/webp/192/
+    - assets/icons_generated/webp/256/
+    - assets/icons_generated/webp/768/
 
 flutter_launcher_icons:
   android: true

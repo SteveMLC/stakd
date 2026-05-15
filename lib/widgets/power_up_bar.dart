@@ -203,15 +203,21 @@ class _PowerUpButtonState extends State<_PowerUpButton>
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  // Icon
+                  // Icon — custom illustrated WebP from
+                  // `assets/icons_generated/webp/192/`. Faded when the
+                  // count is zero so the disabled state still reads.
                   Center(
-                    child: Text(
-                      widget.type.icon,
-                      style: TextStyle(
-                        fontSize: 28,
-                        color: isDisabled
-                            ? Colors.white.withValues(alpha: 0.3)
-                            : null,
+                    child: Padding(
+                      padding: const EdgeInsets.all(6),
+                      child: Opacity(
+                        opacity: isDisabled ? 0.32 : 1.0,
+                        child: Image.asset(
+                          widget.type.iconAsset,
+                          width: 44,
+                          height: 44,
+                          fit: BoxFit.contain,
+                          filterQuality: FilterQuality.medium,
+                        ),
                       ),
                     ),
                   ),
