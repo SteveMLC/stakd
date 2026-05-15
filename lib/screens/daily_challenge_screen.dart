@@ -11,6 +11,7 @@ import '../services/level_generator.dart';
 import '../utils/constants.dart';
 import '../utils/game_assets.dart';
 import '../widgets/game_board.dart';
+import '../widgets/warehouse_spinner.dart';
 import '../widgets/name_entry_dialog.dart';
 
 // Top-level function for isolate-based puzzle generation
@@ -249,7 +250,7 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
     final challenge = _challenge;
     if (challenge == null) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(child: WarehouseSpinner()),
       );
     }
 

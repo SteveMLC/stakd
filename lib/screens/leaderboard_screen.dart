@@ -5,6 +5,7 @@ import '../utils/constants.dart';
 import '../utils/game_assets.dart';
 import '../widgets/game_button.dart';
 import '../widgets/warehouse_decorations.dart';
+import '../widgets/warehouse_spinner.dart';
 import '../widgets/name_entry_dialog.dart';
 
 /// Global leaderboards screen with tabbed categories
@@ -231,7 +232,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
 
     if (isLoading && entries.isEmpty) {
       return const Center(
-        child: CircularProgressIndicator(color: GameColors.accent),
+        child: WarehouseSpinner(),
       );
     }
 

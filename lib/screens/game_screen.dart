@@ -44,6 +44,7 @@ import '../widgets/particles/confetti_overlay.dart';
 import '../widgets/color_flash_overlay.dart';
 import '../widgets/warehouse_decorations.dart';
 import '../widgets/promotion_ceremony_overlay.dart';
+import '../widgets/warehouse_spinner.dart';
 import '../utils/game_assets.dart';
 import 'settings_screen.dart';
 
@@ -1618,7 +1619,7 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(),
+              WarehouseSpinner(size: 64),
               SizedBox(height: 12),
               Text('Processing purchase...'),
             ],
