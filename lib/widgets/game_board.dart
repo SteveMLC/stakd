@@ -8,6 +8,7 @@ import '../models/stack_model.dart';
 import '../services/haptic_service.dart';
 import '../services/storage_service.dart';
 import '../services/audio_service.dart';
+import '../utils/crate_assets.dart';
 import '../utils/constants.dart';
 import '../utils/theme_colors.dart';
 // Engine modules available for reuse in future games:
@@ -1484,6 +1485,13 @@ class _StackWidgetState extends State<_StackWidget>
           layer: layer,
           isTop: isTop,
           height: GameSizes.layerHeight,
+          // Top layer of each stack renders as the matching color crate
+          // illustration (FLUX-generated). Underlying layers stay
+          // procedural so the stack reads as a pile of color rectangles
+          // with one illustrated "active face" on top.
+          topFaceAsset: isTop
+              ? CrateAssets.assetForColorIndex(layer.colorIndex)
+              : null,
         );
 
         // Multi-grab highlight: pulse + glow ring overlay on the

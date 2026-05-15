@@ -13,6 +13,18 @@ class LayerWidget extends StatelessWidget {
   final double height;
   final bool glowEffect;
 
+  /// Optional custom "active face" art for the topmost layer of a stack.
+  /// When non-null AND `isTop` is true AND the layer is not in a modifier
+  /// state (locked/frozen), the procedural cardboard/tape/stamp/plank
+  /// painters are suppressed and this asset is overlaid as the visual
+  /// identity of the layer — typically the matching color crate from
+  /// `CrateAssets.assetForColorIndex(layer.colorIndex)`.
+  ///
+  /// Underlying layers stay procedural so the stack still reads as a
+  /// pile of color rectangles; only the "active face" gets the burst-
+  /// of-cargo illustration.
+  final String? topFaceAsset;
+
   const LayerWidget({
     super.key,
     required this.layer,
@@ -20,7 +32,17 @@ class LayerWidget extends StatelessWidget {
     this.width = GameSizes.stackWidth - 8,
     this.height = GameSizes.layerHeight,
     this.glowEffect = false,
+    this.topFaceAsset,
   });
+
+  /// True when the topmost-layer "active face" rendering path is active.
+  /// Gates the procedural cardboard/tape/stamp/edge-plank painters so
+  /// only one visual identity wins.
+  bool get _showCrateFace =>
+      isTop &&
+      topFaceAsset != null &&
+      !layer.isLocked &&
+      !layer.isFrozen;
 
   @override
   Widget build(BuildContext context) {
@@ -197,6 +219,33 @@ class LayerWidget extends StatelessWidget {
               ),
             ),
           ],
+          // Topmost layer's "active-face" decal — small centered sticker
+          // on top of the existing procedural cardboard/tape/stamp/plank
+          // vocabulary. The decal is the PERSONALITY layer (matching
+          // color crate from `CrateAssets.assetForColorIndex`); the
+          // underlying procedural block is the GAMEPLAY layer (the
+          // uniform geometry that drives the puzzle reading).
+          //
+          // Industry-standard composition: keep the block geometry
+          // exactly as-is for gameplay parsing speed, drop a 38dp
+          // square art decal centered on top, leaving the colored
+          // gradient + bevel visible around the edges.
+          if (_showCrateFace)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Center(
+                  child: SizedBox(
+                    width: width * 0.78,
+                    height: height * 0.88,
+                    child: Image.asset(
+                      topFaceAsset!,
+                      fit: BoxFit.contain,
+                      filterQuality: FilterQuality.medium,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           // Locked block frost overlay
           if (isLocked)
             Container(
