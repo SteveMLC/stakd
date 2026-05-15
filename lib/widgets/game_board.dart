@@ -1570,16 +1570,19 @@ class _StackWidgetState extends State<_StackWidget>
                               ),
                             ),
                           ),
+                        // 2026-05-15 (Steve audit): the streak hint used
+                        // to float `top: -14` centered above the bay,
+                        // which read as a detached glitchy "2" pill in
+                        // the playfield screenshot. Anchored to the
+                        // top-right corner now so it nests against the
+                        // bay frame instead of hovering in space.
                         if (_shouldShowMultiGrabIndicator)
                           Positioned(
-                            top: -14,
-                            left: 0,
-                            right: 0,
-                            child: Center(
-                              child: _MultiGrabIndicator(
-                                count: widget.stack.topGroupSize,
-                                animation: _multiGrabIndicatorAnimation,
-                              ),
+                            top: -8,
+                            right: -4,
+                            child: _MultiGrabIndicator(
+                              count: widget.stack.topGroupSize,
+                              animation: _multiGrabIndicatorAnimation,
                             ),
                           ),
                       ],
@@ -1755,38 +1758,45 @@ class _MultiGrabIndicator extends StatelessWidget {
         return Tooltip(
           message: 'Same-color streak! Stack matching colors for bonus points',
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.4 + pulse * 0.1),
-              borderRadius: BorderRadius.circular(10),
+              color: Colors.black.withValues(alpha: 0.65 + pulse * 0.1),
+              borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: const Color(
                   0xFFFFD700,
-                ).withValues(alpha: 0.4 + pulse * 0.2),
-                width: 1.5,
+                ).withValues(alpha: 0.55 + pulse * 0.25),
+                width: 1.2,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
+                ),
+              ],
             ),
-            // 2026-05-15: `'🔥$count'` rendered the fire emoji as a
-            // broken `[?]` glyph on iOS sim (U+1F525 falls through
-            // when the bundled Apple Color Emoji set doesn't carry it
-            // — same class as the 🏆 / 🪙 fixes). Swap for a real
-            // Material flame icon + the count text in a Row so the
-            // streak badge actually reads.
+            // Corner-anchored streak hint — smaller flame + count
+            // pair so it nests cleanly against the bay's top-right
+            // corner instead of floating detached above the frame.
+            // (Was emoji '🔥' before — iOS sim falls back to a
+            // broken glyph for U+1F525 so we use the Material icon.)
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
+                const Icon(
                   Icons.local_fire_department,
-                  size: 14,
-                  color: const Color(0xFFFF6B35), // hot orange flame
+                  size: 11,
+                  color: Color(0xFFFF6B35),
                 ),
-                const SizedBox(width: 2),
+                const SizedBox(width: 1),
                 Text(
-                  '$count',
+                  'x$count',
                   style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white.withValues(alpha: 0.95),
+                    height: 1.0,
                   ),
                 ),
               ],

@@ -1345,10 +1345,21 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
         child: Stack(
           fit: StackFit.expand,
           children: [
+            // 2026-05-15 (Steve audit): the previous 0.55 image
+            // opacity + 0.40 black scrim left the magenta/neon-blue
+            // district art blasting through the playfield. Crates
+            // had to compete with the background for attention. New
+            // mix: image at 0.30 + radial-gradient scrim that is
+            // darkest in the center (where the bays live) and only
+            // lets the district color bleed through near the edges
+            // as a soft atmospheric tint. Effective center
+            // brightness now ~0.30 × 0.20 = 0.06 (was 0.55 × 0.60
+            // = 0.33). Bay colors now dominate; district reads as
+            // a vibe, not a clash.
             if (districtBgPath != null)
               Positioned.fill(
                 child: Opacity(
-                  opacity: 0.55,
+                  opacity: 0.30,
                   child: Image.asset(
                     districtBgPath,
                     fit: BoxFit.cover,
@@ -1357,14 +1368,20 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                   ),
                 ),
               ),
-            // Dim scrim so the playfield/HUD content stays readable
-            // over the district illustration. Tuned to 40% black so
-            // the district color still bleeds through but text + bay
-            // outlines hold their contrast.
             if (districtBgPath != null)
-              Positioned.fill(
-                child: Container(
-                  color: Colors.black.withValues(alpha: 0.40),
+              const Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      center: Alignment.center,
+                      radius: 1.1,
+                      colors: [
+                        Color(0xCC0D1117), // ~80% black at center
+                        Color(0x66000000), // ~40% black at edges
+                      ],
+                      stops: [0.0, 1.0],
+                    ),
+                  ),
                 ),
               ),
             SafeArea(
@@ -1429,10 +1446,14 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                             : null,
                       ),
 
-                      // Add Tube button
+                      // Add Tube button — was wedged with `bottom:4`
+                      // padding right above the bottom action bar
+                      // (Steve audit "squeezed between power-ups and
+                      // bottom action bar with no breathing room").
+                      // Centered + given proper vertical air now.
                       if (!gameState.addTubeUsed)
                         Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
                           child: _AddTubeButton(
                             onTap: () => _onAddTubePressed(gameState),
                           ),
@@ -1449,17 +1470,18 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                   // Hydraulic Pressure gauge — anchored to the left
                   // edge of the board area. Player taps the VENT
                   // button on it to trigger a 4-move burst (combo
-                  // immortality, 2× cash on the next clear). Was
-                  // sized `top:100, bottom:100` which made it eat
-                  // ~75% of screen height as a tall chrome rail.
-                  // 2026-05-15 sized down to a focused ~220dp band
-                  // anchored near the top-center so it reads as a
-                  // status sliver, not a wall.
+                  // immortality, 2× cash on the next clear).
+                  // 2026-05-15 (Steve audit): the 22dp width
+                  // rendered the vertical "PRESSURE" Courier label
+                  // as an illegible anemic sliver. Bumped to 32dp
+                  // so the label + fluid column actually read, and
+                  // pulled `left` further from the screen edge so
+                  // it doesn't hug the safe-area inset.
                   const Positioned(
-                    left: 8,
+                    left: 10,
                     top: 110,
                     height: 220,
-                    width: 22,
+                    width: 32,
                     child: HydraulicPressureGauge(),
                   ),
 
@@ -1765,16 +1787,13 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
           ),
           const SizedBox(width: 8),
 
-          // Hint button (most-used during play — keep visible).
-          GameIconButton(
-            icon: Icons.lightbulb_outline,
-            badge: '$_hintsRemainingThisPuzzle',
-            isDisabled: _hintsRemainingThisPuzzle <= 0,
-            onPressed: _hintsRemainingThisPuzzle > 0 ? _showHint : null,
-          ),
-          const SizedBox(width: 6),
-
-          // Settings button
+          // 2026-05-15 (Steve audit): the top-bar hint button was a
+          // duplicate of the same Icons.lightbulb_outline + badge that
+          // already lives in `_buildBottomControls`. Two hint buttons
+          // on screen at once read as a glitch and crammed the HUD.
+          // Bottom hint is the thumb-reachable one and stays canonical.
+          // Settings button is the only secondary action that remains
+          // up top.
           GameIconButton(icon: Icons.settings, onPressed: _goToSettings),
         ],
       ),
