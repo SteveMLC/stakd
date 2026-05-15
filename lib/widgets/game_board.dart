@@ -292,20 +292,15 @@ class _GameBoardState extends State<GameBoard>
                                           previousMoveCount;
 
                                       if (moveMade) {
+                                        // NOTE: in practice this branch is
+                                        // unreachable for valid moves — every
+                                        // move now routes through
+                                        // _AnimatedLayerOverlay and `moveCount`
+                                        // only increments in `completeMove()`.
+                                        // The slide whoosh + crate thump for
+                                        // animated moves fire from the overlay's
+                                        // onComplete callback below instead.
                                         widget.onMove?.call();
-                                        // Layer the thump on top of the slide
-                                        // whoosh — slide is ~0.44s, thump is
-                                        // ~0.50s; firing the thump ~360ms in
-                                        // lands it right at the visual impact
-                                        // of the layer settling on the stack.
-                                        Future.delayed(
-                                          const Duration(milliseconds: 360),
-                                          () {
-                                            if (mounted) {
-                                              AudioService().playCrateThump();
-                                            }
-                                          },
-                                        );
                                       } else {
                                         // Check if this was an invalid move attempt
                                         // (tried to move to a stack that can't accept the layer)
@@ -418,6 +413,17 @@ class _GameBoardState extends State<GameBoard>
 
                             widget.gameState.completeMove();
                             widget.onMove?.call();
+                            // Land impact — rides the dedicated impact channel
+                            // so it layers over the slide whoosh without
+                            // cutting it off. Pairs with the landing particle
+                            // burst above so the crate-thump punctuates the
+                            // moment the layer settles on the destination.
+                            AudioService().playCrateThump();
+                            // Light haptic on land — sells the impact without
+                            // being too aggressive on every move. Heavier
+                            // chain/clear haptics fire below from
+                            // _triggerChainEffects when applicable.
+                            haptics.lightTap();
                             // Show combo popup for consecutive correct moves (3+)
                             final combo = widget.gameState.currentCombo;
                             if (combo >= 3) {
@@ -974,6 +980,13 @@ class _StackWidgetState extends State<_StackWidget>
   late Animation<double> _multiGrabIndicatorAnimation;
   late AnimationController _completionGlowController;
   late Animation<double> _completionGlowAnimation;
+  // Tap-lift rim flash — fires for ~280ms when a previously-unselected
+  // stack with crates becomes the active selection. Visual pair to the
+  // new crate-pickup audio: pops a brief amber glow on the bay rim so
+  // the "I grabbed a crate" beat reads instantly, instead of relying
+  // on the slower -28px lift + 1.06× scale alone.
+  late AnimationController _pickupFlashController;
+  late Animation<double> _pickupFlashAnimation;
   bool _isLongPressing = false;
   bool _isDragging = false;
   Offset? _panStartPosition;
@@ -1046,6 +1059,30 @@ class _StackWidgetState extends State<_StackWidget>
       ),
     ]).animate(_completionGlowController);
 
+    // Pickup flash: fast attack (60ms) → slow fade (220ms). The fast
+    // attack lands on-beat with the crate-pickup sfx; the slow fade
+    // smoothly hands off to the steady-state accent border.
+    _pickupFlashController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 280),
+    );
+    _pickupFlashAnimation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(
+          begin: 0.0,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeOut)),
+        weight: 22, // ~60ms
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(
+          begin: 1.0,
+          end: 0.0,
+        ).chain(CurveTween(curve: Curves.easeIn)),
+        weight: 78, // ~220ms
+      ),
+    ]).animate(_pickupFlashController);
+
     _syncMultiGrabIndicator();
   }
 
@@ -1058,6 +1095,16 @@ class _StackWidgetState extends State<_StackWidget>
       _completionGlowController.forward(from: 0);
       // Haptic: medium impact on column completion
       haptics.mediumImpact();
+    }
+
+    // Pickup flash: fires the first frame the player picks up a crate
+    // from this stack (unselected → selected AND stack has crates).
+    // Skipped for empty bays (no crate to grab) and for re-entry after
+    // an aborted/cancelled drag (where the stack stays selected).
+    if (widget.isSelected &&
+        !oldWidget.isSelected &&
+        !widget.stack.isEmpty) {
+      _pickupFlashController.forward(from: 0);
     }
 
     // Start/stop pulsing based on nearing completion
@@ -1116,6 +1163,7 @@ class _StackWidgetState extends State<_StackWidget>
     _multiGrabPulseController.dispose();
     _multiGrabIndicatorController.dispose();
     _completionGlowController.dispose();
+    _pickupFlashController.dispose();
     super.dispose();
   }
 
@@ -1273,6 +1321,7 @@ class _StackWidgetState extends State<_StackWidget>
           _pulseController,
           _multiGrabPulseController,
           _completionGlowController,
+          _pickupFlashController,
         ]),
         builder: (context, child) {
           final pulseValue = nearingCompletion ? _pulseAnimation.value : 0.0;
@@ -1441,6 +1490,22 @@ class _StackWidgetState extends State<_StackWidget>
                                   ),
                                   blurRadius: 12,
                                   spreadRadius: 2,
+                                ),
+                              // Tap-lift pickup flash — fires once on
+                              // unselected → selected. Rides on top of
+                              // the steady-state accent glow above so
+                              // the first 280ms reads as a brighter
+                              // amber pop. Active only while the flash
+                              // controller is running, then disappears.
+                              if (_pickupFlashController.isAnimating)
+                                BoxShadow(
+                                  color: const Color(0xFFFFE08A).withValues(
+                                    alpha: 0.55 * _pickupFlashAnimation.value,
+                                  ),
+                                  blurRadius:
+                                      14 + _pickupFlashAnimation.value * 10,
+                                  spreadRadius:
+                                      2 + _pickupFlashAnimation.value * 5,
                                 ),
                               if (widget.isRecentlyCleared)
                                 BoxShadow(
