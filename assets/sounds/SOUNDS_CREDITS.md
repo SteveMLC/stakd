@@ -1,84 +1,89 @@
 # Warehouse Sort — Sound Effects Credits
 
-All sound effects in this directory are generated via the
-**ElevenLabs Sound Effects API** (commercial license) on 2026-05-15.
-Each was generated from a warehouse-specific text prompt — no
-upstream attribution requirement, but the prompts used to seed each
-generation are preserved below for reproducibility.
+Curated 2026-05-15 from the manifest at `docs/audio-sources.md`
+(originally compiled 2026-05-13). Audio pipeline went through three
+phases this session:
 
-## Sound files
+1. Original Stakd-era Kenney + WobbleBoxx CC0 stock — generic UI clicks
+2. ElevenLabs SFX API generations — muddy, off-character results
+3. **Mixkit curated CC0 fetch (current)** — professionally produced,
+   warehouse-themed, no attribution required
 
-### tap.mp3 (~9 KB)
-- **Prompt:** "Sharp metallic stamp on clipboard, single quick tap, crisp office sound, dry, no reverb"
-- **Duration:** 0.5s
-- **Use:** stack selection, button presses
+The current sound bank pulls from **Mixkit's free CC0 library**
+(no attribution required, commercial use OK). One sound (`music.mp3`,
+22s ambient warehouse loop) is retained from the ElevenLabs phase
+because Mixkit doesn't expose loopable warehouse-ambient tracks.
 
-### slide.mp3 (~9 KB)
-- **Prompt:** "Wooden crate sliding smoothly across a metal conveyor belt, short whoosh with scraping wood texture"
-- **Duration:** 0.5s
-- **Use:** layer movement between bays
+## Active sound bank
 
-### clear.mp3 (~10 KB)
-- **Prompt:** "Single satisfying freight elevator ding bell, warehouse industrial chime, bright clear tone"
-- **Duration:** 0.6s
-- **Use:** stack completion / clear
+### Core gameplay SFX
 
-### win.mp3 (~25 KB)
-- **Prompt:** "Warehouse air horn blast followed by a small crowd cheering and applause, celebratory, victorious"
-- **Duration:** 1.5s
-- **Use:** level complete
+| File | Source | License | Slot |
+|---|---|---|---|
+| `tap.mp3` | [Mixkit — select-click](https://mixkit.co/free-sound-effects/select-click/) | Mixkit (no attribution) | Stack selection, button presses |
+| `slide.mp3` | [Mixkit — fast-whoosh-transition](https://mixkit.co/free-sound-effects/fast-whoosh-transition/) | Mixkit | Layer movement between bays |
+| `clear.mp3` | [Mixkit — achievement-bell](https://mixkit.co/free-sound-effects/achievement-bell/) | Mixkit | Stack / bay completion |
+| `win.mp3` | [Mixkit — successful-horns-fanfare](https://mixkit.co/free-sound-effects/successful-horns-fanfare/) | Mixkit | Level complete |
+| `error.mp3` | [Mixkit — losing-piano](https://mixkit.co/free-sound-effects/losing-piano/) | Mixkit | Invalid move, level fail |
+| `coin.mp3` | [Mixkit — winning-a-coin-video-game](https://mixkit.co/free-sound-effects/winning-a-coin-video-game/) | Mixkit | Cash reward |
+| `levelup.mp3` | [Mixkit — game-level-completed](https://mixkit.co/free-sound-effects/game-level-completed/) | Mixkit | Warehouse level up, tier promotion |
+| `powerup.mp3` | [Mixkit — quick-metal-transition-sweep](https://mixkit.co/free-sound-effects/quick-metal-transition-sweep/) | Mixkit | Power-up activation |
+| `klaxon.mp3` | [Mixkit — basketball-buzzer](https://mixkit.co/free-sound-effects/basketball-buzzer/) | Mixkit | Level fail / jam alert |
+| `crate_thump.mp3` | [Mixkit — hard-pop-click](https://mixkit.co/free-sound-effects/hard-pop-click/) | Mixkit | Crate landing impact |
+| `crate_pickup.mp3` | [Mixkit — modern-click-box-check](https://mixkit.co/free-sound-effects/modern-click-box-check/) | Mixkit | Crate selected (NEW slot) |
 
-### error.mp3 (~14 KB)
-- **Prompt:** "Forklift reverse backup beeper, exactly three short electronic beep chirps, industrial warning"
-- **Duration:** 0.8s
-- **Use:** invalid move
+### Star reveal chimes (NEW — staged completion sequence)
 
-### coin.mp3 (~10 KB)
-- **Prompt:** "Cash register ka-ching, classic till bell with coin clatter, satisfying reward sound"
-- **Duration:** 0.6s
-- **Use:** cash payout, bonus
+| File | Source | License |
+|---|---|---|
+| `star_1.mp3` | [Mixkit — relaxing-bell-chime](https://mixkit.co/free-sound-effects/relaxing-bell-chime/) | Mixkit |
+| `star_2.mp3` | [Mixkit — cooking-bell-ding](https://mixkit.co/free-sound-effects/cooking-bell-ding/) | Mixkit |
+| `star_3.mp3` | [Mixkit — fairy-arcade-sparkle](https://mixkit.co/free-sound-effects/fairy-arcade-sparkle/) | Mixkit |
 
-### levelup.mp3 (~29 KB)
-- **Prompt:** "Industrial fanfare, rising klaxon horn sweep into triumphant brass stinger, warehouse celebration"
-- **Duration:** 1.8s
-- **Use:** warehouse level up, tier promotion
+### Power-ups (NEW slots)
 
-### powerup.mp3 (~14 KB)
-- **Prompt:** "Pneumatic piston whoosh hiss followed by a bright bell ding, mechanical power-up, factory air valve"
-- **Duration:** 0.8s
-- **Use:** power-up activation
+| File | Source | License |
+|---|---|---|
+| `power_sort_bomb.mp3` | [Mixkit — arcade-game-explosion](https://mixkit.co/free-sound-effects/arcade-game-explosion/) | Mixkit |
+| `streak_milestone.mp3` | [Mixkit — quick-positive-video-game-notification-interface](https://mixkit.co/free-sound-effects/quick-positive-video-game-notification-interface/) | Mixkit |
 
-### forklift_idle.mp3 (~20 KB) — NEW
-- **Prompt:** "Idle forklift engine humming, low diesel rumble, smooth steady mechanical loop, no movement"
-- **Duration:** 1.2s (loopable)
-- **Use:** menu ambient background
+### Ambient
 
-### klaxon.mp3 (~17 KB) — NEW
-- **Prompt:** "Heavy industrial warning klaxon alarm, single one-shot blast, deep loud factory alert horn"
-- **Duration:** 1.0s
-- **Use:** level fail / jam alert
+| File | Source | License | Notes |
+|---|---|---|---|
+| `forklift_idle.mp3` | ElevenLabs SFX API (`forklift engine humming, low diesel rumble, smooth steady mechanical loop`) | Commercial license | Loopable engine hum for menu screens |
+| `music.mp3` | ElevenLabs SFX API (`Calm warehouse ambient background loop, low conveyor whirr, distant forklift hum`) | Commercial license | 22s ambient background loop |
 
-### crate_thump.mp3 (~9 KB) — NEW
-- **Prompt:** "Heavy wooden crate landing hard on a stack of crates, single thump, solid wood impact, no echo"
-- **Duration:** 0.5s
-- **Use:** crate landing on stack
+### Zen mode (legacy CC0)
 
-### music.mp3 (~587 KB)
-- **Source:** Legacy ambient pad (carry-over from prior identity).
-- **TODO:** replace with warehouse-themed ambient music (low
-  conveyor whirr + distant forklift hum).
+| File | Source | License |
+|---|---|---|
+| `zen/wind_ambient.mp3` | Carry-over from prior identity (CC0) | CC0 |
+| `zen/wind_chime.mp3` | Carry-over from prior identity (CC0) | CC0 |
 
-## Generation script
+## Fetch script
 
-`tools/generate_audio.sh` — paste-ready bash script with prompts
-inline. Requires `ELEVENLABS_API_KEY` env var. Reproducible: same
-prompts + same API will produce equivalent (not identical) outputs.
+`tools/fetch_audio.py` — reusable Python fetcher that pulls Mixkit
+preview MP3s directly from page HTML (the `<source src>` URL is
+embedded; no API key needed). Run any time to refresh the curated
+sound bank or add new slots.
 
-## Cost
+## Cost / attribution
 
-11 sound effects × ~$0.04 per generation = ~$0.50 total.
+- **Mixkit**: zero cost, zero attribution required for commercial use.
+- **ElevenLabs SFX (forklift_idle + music)**: ~$0.10 total.
+- **Total session audio production**: ~$0.10 (ambient only — everything
+  else is free curated Mixkit).
+
+## Attribution block
+
+None required. All active sounds are Mixkit (no-attribution license).
+The optional Freesound CC0 credit block at the bottom of the manifest
+isn't applicable since no Freesound sounds made it into the final
+shipped bank (all primary Mixkit picks succeeded).
 
 ---
 
-**Generated:** 2026-05-15 via ElevenLabs SFX API.
-**Replaced:** Stakd-era Kenney.nl + WobbleBoxx CC0 stock sounds.
+**Updated:** 2026-05-15
+**Replaced:** ElevenLabs SFX generations (muddy / off-character) +
+the original Stakd-era Kenney + WobbleBoxx CC0 stock.
