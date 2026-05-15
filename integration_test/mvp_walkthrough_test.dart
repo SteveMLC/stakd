@@ -32,6 +32,7 @@ import 'package:warehouse_sort/services/hydraulic_pressure_service.dart';
 import 'package:warehouse_sort/services/income_multiplier_service.dart';
 import 'package:warehouse_sort/services/machinery_service.dart';
 import 'package:warehouse_sort/services/power_up_service.dart';
+import 'package:warehouse_sort/services/reputation_service.dart';
 import 'package:warehouse_sort/services/storage_service.dart';
 import 'package:warehouse_sort/services/theme_service.dart';
 import 'package:warehouse_sort/services/warehouse_economy_service.dart';
@@ -56,6 +57,8 @@ Future<void> _bootServices() async {
   await IncomeMultiplierService().init();
   await HydraulicPressureService().reset();
   await HydraulicPressureService().init();
+  await ReputationService().reset();
+  await ReputationService().init();
   // AudioService.init touches platform channels but no-ops on test runs.
   await AudioService().init();
 }
@@ -74,6 +77,7 @@ Widget _pumpedApp() {
       ChangeNotifierProvider.value(value: MachineryService()),
       ChangeNotifierProvider.value(value: IncomeMultiplierService()),
       ChangeNotifierProvider.value(value: HydraulicPressureService()),
+      ChangeNotifierProvider.value(value: ReputationService()),
     ],
     child: const WarehouseSortApp(),
   );
