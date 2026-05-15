@@ -517,6 +517,38 @@ class AchievementService extends ChangeNotifier {
       coinReward: 200,
     ),
     AchievementDef(
+      id: 'silver_promotion',
+      name: 'Silver Tier',
+      description: 'Reach Silver Reputation tier (15 RP)',
+      category: AchievementCategoryExt.warehouse,
+      xpReward: 1200,
+      coinReward: 400,
+    ),
+    AchievementDef(
+      id: 'gold_promotion',
+      name: 'Gold Tier',
+      description: 'Reach Gold Reputation tier (30 RP)',
+      category: AchievementCategoryExt.warehouse,
+      xpReward: 2000,
+      coinReward: 700,
+    ),
+    AchievementDef(
+      id: 'platinum_promotion',
+      name: 'Platinum Tier',
+      description: 'Reach Platinum Reputation tier (50 RP)',
+      category: AchievementCategoryExt.warehouse,
+      xpReward: 3500,
+      coinReward: 1100,
+    ),
+    AchievementDef(
+      id: 'diamond_promotion',
+      name: 'Diamond Tier',
+      description: 'Reach Diamond Reputation tier (75 RP)',
+      category: AchievementCategoryExt.warehouse,
+      xpReward: 5500,
+      coinReward: 1600,
+    ),
+    AchievementDef(
       id: 'legendary_promotion',
       name: 'Legendary Tycoon',
       description: 'Reach Legendary Reputation tier (225 RP)',
@@ -1023,23 +1055,46 @@ class AchievementService extends ChangeNotifier {
 
   /// Call after `ReputationService.addReputation` returns true (a
   /// tier promotion fired). Fires the appropriate tier-milestone
-  /// achievement based on the new tier level.
+  /// achievements based on the new tier level. Idempotent — re-firing
+  /// at the same tier is a no-op.
   ///
-  /// - `bronze_promotion` — when the player crosses tier 1 (Bronze, RP 5)
-  /// - `legendary_promotion` — when the player crosses tier 9
-  ///   (Legendary, RP 225)
+  /// Tier coverage:
+  /// - tier 1 (Bronze, 5 RP) → `bronze_promotion`
+  /// - tier 2 (Silver, 15 RP) → `silver_promotion`
+  /// - tier 3 (Gold, 30 RP) → `gold_promotion`
+  /// - tier 4 (Platinum, 50 RP) → `platinum_promotion`
+  /// - tier 5 (Diamond, 75 RP) → `diamond_promotion`
+  /// - tier 9 (Legendary, 225 RP) → `legendary_promotion`
   ///
-  /// Intermediate tiers (Silver, Gold, Platinum, Diamond, Master,
-  /// Apex, Mythic) and post-Legendary tier extensions don't have
-  /// dedicated achievements yet — those are tracked implicitly by the
-  /// player's `currentTierLevel`. Bronze + Legendary are the named
-  /// bookends so the early + late milestones both get celebrated.
+  /// Atomic at multi-tier jumps: if the player crosses several tiers
+  /// in one award (e.g. starts at 0 RP and earns 30 RP all at once,
+  /// crossing Bronze + Silver + Gold), all three achievements unlock
+  /// in the same call. `_tryUnlock` filters out previously-unlocked
+  /// entries so re-runs are safe.
+  ///
+  /// Intermediate Master (tier 6) + Apex (tier 7) + Mythic (tier 8)
+  /// + post-Legendary tiers are tracked implicitly by the player's
+  /// `currentTierLevel`. Diamond → Legendary is the longest gap
+  /// (75 → 225 RP, ~150 district clears) and matches the difficulty
+  /// jump the player feels in the meta-loop.
   List<AchievementDef> checkReputationTier({
     required int newTierLevel,
   }) {
     final newlyUnlocked = <AchievementDef>[];
     if (newTierLevel >= 1) {
       newlyUnlocked.addAll(_tryUnlock(['bronze_promotion']));
+    }
+    if (newTierLevel >= 2) {
+      newlyUnlocked.addAll(_tryUnlock(['silver_promotion']));
+    }
+    if (newTierLevel >= 3) {
+      newlyUnlocked.addAll(_tryUnlock(['gold_promotion']));
+    }
+    if (newTierLevel >= 4) {
+      newlyUnlocked.addAll(_tryUnlock(['platinum_promotion']));
+    }
+    if (newTierLevel >= 5) {
+      newlyUnlocked.addAll(_tryUnlock(['diamond_promotion']));
     }
     if (newTierLevel >= 9) {
       newlyUnlocked.addAll(_tryUnlock(['legendary_promotion']));

@@ -405,16 +405,60 @@ void main() {
 
     test('checkReputationTier(8) does NOT fire legendary', () {
       final result = svc.checkReputationTier(newTierLevel: 8);
+      // Tiers 1-5 (Bronze, Silver, Gold, Platinum, Diamond) all
+      // unlock at tier 8 since the player has crossed them all.
       expect(result.any((d) => d.id == 'bronze_promotion'), isTrue);
+      expect(result.any((d) => d.id == 'silver_promotion'), isTrue);
+      expect(result.any((d) => d.id == 'gold_promotion'), isTrue);
+      expect(result.any((d) => d.id == 'platinum_promotion'), isTrue);
+      expect(result.any((d) => d.id == 'diamond_promotion'), isTrue);
       expect(result.any((d) => d.id == 'legendary_promotion'), isFalse);
     });
 
-    test('all 5 new milestone achievements exist in catalog', () {
+    test('checkReputationTier(2) fires Bronze + Silver only', () {
+      final result = svc.checkReputationTier(newTierLevel: 2);
+      expect(result.any((d) => d.id == 'bronze_promotion'), isTrue);
+      expect(result.any((d) => d.id == 'silver_promotion'), isTrue);
+      expect(result.any((d) => d.id == 'gold_promotion'), isFalse);
+    });
+
+    test('checkReputationTier(4) fires Bronze through Platinum', () {
+      final result = svc.checkReputationTier(newTierLevel: 4);
+      for (final id in [
+        'bronze_promotion',
+        'silver_promotion',
+        'gold_promotion',
+        'platinum_promotion',
+      ]) {
+        expect(result.any((d) => d.id == id), isTrue,
+            reason: '$id should unlock at tier 4');
+      }
+      expect(result.any((d) => d.id == 'diamond_promotion'), isFalse);
+    });
+
+    test('checkReputationTier(5) fires Bronze through Diamond', () {
+      final result = svc.checkReputationTier(newTierLevel: 5);
+      expect(result.any((d) => d.id == 'diamond_promotion'), isTrue);
+      expect(result.any((d) => d.id == 'legendary_promotion'), isFalse);
+    });
+
+    test('checkReputationTier is idempotent on repeated calls', () {
+      final first = svc.checkReputationTier(newTierLevel: 3);
+      expect(first, isNotEmpty); // Bronze + Silver + Gold
+      final second = svc.checkReputationTier(newTierLevel: 3);
+      expect(second, isEmpty); // already unlocked
+    });
+
+    test('all 9 milestone achievements exist in catalog', () {
       final ids = svc.allAchievements.map((d) => d.id).toSet();
       expect(ids, contains('first_district_cleared'));
       expect(ids, contains('regional_district_cleared'));
       expect(ids, contains('procedural_explorer'));
       expect(ids, contains('bronze_promotion'));
+      expect(ids, contains('silver_promotion'));
+      expect(ids, contains('gold_promotion'));
+      expect(ids, contains('platinum_promotion'));
+      expect(ids, contains('diamond_promotion'));
       expect(ids, contains('legendary_promotion'));
     });
 
@@ -424,12 +468,35 @@ void main() {
         'regional_district_cleared',
         'procedural_explorer',
         'bronze_promotion',
+        'silver_promotion',
+        'gold_promotion',
+        'platinum_promotion',
+        'diamond_promotion',
         'legendary_promotion',
       ]) {
         final def =
             svc.allAchievements.firstWhere((d) => d.id == id);
         expect(def.category, AchievementCategoryExt.warehouse,
             reason: '$id should be warehouse-categorized');
+      }
+    });
+
+    test('tier reward XP scales with tier level', () {
+      final ids = [
+        'bronze_promotion',
+        'silver_promotion',
+        'gold_promotion',
+        'platinum_promotion',
+        'diamond_promotion',
+        'legendary_promotion',
+      ];
+      int prevXp = 0;
+      for (final id in ids) {
+        final def =
+            svc.allAchievements.firstWhere((d) => d.id == id);
+        expect(def.xpReward, greaterThan(prevXp),
+            reason: '$id XP reward (${def.xpReward}) should exceed prev ($prevXp)');
+        prevXp = def.xpReward;
       }
     });
   });
