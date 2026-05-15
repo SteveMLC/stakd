@@ -233,6 +233,7 @@ class _HomeScreenState extends State<HomeScreen>
                           icon: Icons.precision_manufacturing,
                           isPrimary: false,
                           isSmall: true,
+                          riveted: true,
                           iconColor: const Color(0xFFE91E63), // hot pink
                           onPressed: () => _openMachineryShop(context),
                         ),
@@ -244,6 +245,7 @@ class _HomeScreenState extends State<HomeScreen>
                           icon: Icons.local_shipping,
                           isPrimary: false,
                           isSmall: true,
+                          riveted: true,
                           iconColor: const Color(0xFFFFA726), // forklift orange
                           onPressed: () => _openForkliftShop(context),
                         ),
@@ -263,6 +265,7 @@ class _HomeScreenState extends State<HomeScreen>
                           icon: Icons.emoji_events,
                           isPrimary: false,
                           isSmall: true,
+                          riveted: true,
                           iconColor: const Color(0xFFFFD24A), // trophy gold
                           onPressed: () => _openAchievements(context),
                         ),
@@ -274,6 +277,7 @@ class _HomeScreenState extends State<HomeScreen>
                           icon: Icons.leaderboard,
                           isPrimary: false,
                           isSmall: true,
+                          riveted: true,
                           iconColor: const Color(0xFF66BB6A), // green
                           onPressed: () => _openLeaderboards(context),
                         ),
@@ -481,6 +485,7 @@ class _HomeScreenState extends State<HomeScreen>
                   : Icons.calendar_today,
               isPrimary: false,
               isSmall: true,
+              riveted: true,
               iconColor: _isDailyCompleted
                   ? const Color(0xFF4CAF50) // green when complete
                   : const Color(0xFFFFC107), // accent yellow daily reminder

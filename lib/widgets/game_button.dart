@@ -15,6 +15,12 @@ class GameButton extends StatefulWidget {
   /// for Contracts, pink for Machinery) so the home grid reads as a
   /// menu of distinct destinations rather than identical pills.
   final Color? iconColor;
+  /// When true, paints 4 small corner rivets/bolts on top of the
+  /// button body. Matches the `RivetedPlate` HUD aesthetic from the
+  /// Lovart visual target (2026-05-15). Use for menu pills + Daily
+  /// Contract so the whole home screen reads as a riveted dashboard.
+  /// Defaults to false to preserve existing call-sites.
+  final bool riveted;
 
   const GameButton({
     super.key,
@@ -27,6 +33,7 @@ class GameButton extends StatefulWidget {
     this.backgroundColor,
     this.borderColor,
     this.iconColor,
+    this.riveted = false,
   });
 
   @override
@@ -140,50 +147,96 @@ class _GameButtonState extends State<GameButton>
                         ),
                       ],
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
+              child: Stack(
+                clipBehavior: Clip.none,
                 children: [
-                  if (widget.icon != null) ...[
-                    Icon(
-                      widget.icon,
-                      size: iconSize,
-                      color: widget.isDisabled
-                          ? GameColors.textMuted
-                          : (widget.iconColor ??
-                              (widget.isPrimary
-                                  ? GameColors.text
-                                  : GameColors.accent)),
-                    ),
-                    SizedBox(width: widget.isSmall ? 6 : 8),
-                  ],
-                  // Flexible + FittedBox lets long words ("Leaderboards",
-                  // "Achievements") shrink to fit small buttons instead of
-                  // overflowing — Flutter's own yellow/black stripe debug
-                  // indicator is what we were seeing in the home grid.
-                  Flexible(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        widget.text,
-                        style: TextStyle(
-                          fontSize: fontSize,
-                          fontWeight: widget.isPrimary
-                              ? FontWeight.w700
-                              : FontWeight.w800,
-                          letterSpacing: widget.isPrimary ? 1.0 : 1.0,
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (widget.icon != null) ...[
+                        Icon(
+                          widget.icon,
+                          size: iconSize,
                           color: widget.isDisabled
                               ? GameColors.textMuted
-                              : GameColors.text,
+                              : (widget.iconColor ??
+                                  (widget.isPrimary
+                                      ? GameColors.text
+                                      : GameColors.accent)),
+                        ),
+                        SizedBox(width: widget.isSmall ? 6 : 8),
+                      ],
+                      // Flexible + FittedBox lets long words ("Leaderboards",
+                      // "Achievements") shrink to fit small buttons instead
+                      // of overflowing — Flutter's own yellow/black stripe
+                      // debug indicator is what we were seeing in the home
+                      // grid.
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            widget.text,
+                            style: TextStyle(
+                              fontSize: fontSize,
+                              fontWeight: widget.isPrimary
+                                  ? FontWeight.w700
+                                  : FontWeight.w800,
+                              letterSpacing: widget.isPrimary ? 1.0 : 1.0,
+                              color: widget.isDisabled
+                                  ? GameColors.textMuted
+                                  : GameColors.text,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
+                  // Riveted corner bolts — only painted when caller opts in
+                  // via `riveted: true`. Anchored just inside each corner of
+                  // the button so they read as bolts driven into the plate's
+                  // metal. Same visual vocabulary as `RivetedPlate` in
+                  // `warehouse_decorations.dart`; inlined here to avoid a
+                  // cross-widget import.
+                  if (widget.riveted) ...[
+                    const Positioned(top: 3, left: 4, child: _ButtonRivet()),
+                    const Positioned(top: 3, right: 4, child: _ButtonRivet()),
+                    const Positioned(bottom: 3, left: 4, child: _ButtonRivet()),
+                    const Positioned(bottom: 3, right: 4, child: _ButtonRivet()),
+                  ],
                 ],
               ),
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+/// Tiny ~5dp metal bolt used by the `riveted: true` GameButton variant.
+/// Visually identical to `_PlateRivet` in `warehouse_decorations.dart`
+/// but inlined here so `GameButton` has no cross-widget import.
+class _ButtonRivet extends StatelessWidget {
+  const _ButtonRivet();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 5,
+      height: 5,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const RadialGradient(
+          colors: [Color(0xFF8A93A0), Color(0xFF2A2F38), Color(0xFF101418)],
+          center: Alignment(-0.4, -0.5),
+          radius: 1.3,
+          stops: [0.0, 0.55, 1.0],
+        ),
+        border: Border.all(
+          color: const Color(0xFF000000).withValues(alpha: 0.7),
+          width: 0.4,
+        ),
       ),
     );
   }
