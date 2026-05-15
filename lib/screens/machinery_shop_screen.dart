@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../services/audio_service.dart';
 import '../services/machinery_service.dart';
 import '../services/warehouse_economy_service.dart';
 import '../utils/constants.dart';
@@ -301,6 +302,10 @@ class _MachineryCard extends StatelessWidget {
     final messenger = ScaffoldMessenger.of(context);
     final result = await machinery.purchase(info.id);
     if (!context.mounted) return;
+    if (result == MachineryPurchaseResult.success) {
+      AudioService().playCoin();
+      AudioService().playLevelUp(); // Machine "comes online" = mini level-up
+    }
     final text = switch (result) {
       MachineryPurchaseResult.success =>
         '${info.displayName} online! +${info.incomeBonus.toStringAsFixed(2)}× income permanently.',

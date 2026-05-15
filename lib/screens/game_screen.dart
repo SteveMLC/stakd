@@ -967,6 +967,7 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
 
     // Consume power-up only if we have a valid hint
     powerUpService.usePowerUp(PowerUpType.hint);
+    AudioService().playPowerUp();
 
     setState(() {
       _showingHint = true;

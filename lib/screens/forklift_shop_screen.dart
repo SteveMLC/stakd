@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../services/audio_service.dart';
 import '../services/cosmetic_service.dart';
 import '../services/warehouse_economy_service.dart';
 import '../utils/constants.dart';
@@ -223,6 +224,9 @@ class _ForkliftCard extends StatelessWidget {
     final messenger = ScaffoldMessenger.of(context);
     final result = await cosmetics.purchase(info.skin);
     if (!context.mounted) return;
+    if (result == CosmeticPurchaseResult.success) {
+      AudioService().playCoin();
+    }
     final text = switch (result) {
       CosmeticPurchaseResult.success => '${info.displayName} unlocked and equipped.',
       CosmeticPurchaseResult.alreadyOwned => 'You already own ${info.displayName}.',
