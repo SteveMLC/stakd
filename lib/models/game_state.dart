@@ -471,12 +471,26 @@ class GameState extends ChangeNotifier {
   /// Update combo counter — called on every completed move
   /// Combo increments when block lands on a matching color.
   /// Resets on move to empty tube or wrong color.
+  ///
+  /// **Hydraulic vent exception:** when `HydraulicPressureService.isVenting`
+  /// is true, the combo NEVER resets — the 4-move vent window grants
+  /// the player free experimentation. This is the unique-axis value
+  /// the burst provides (in addition to the 2× cash multiplier). Per
+  /// design: vent = "combo immortality + 2× cash + speedier animation
+  /// for 4 moves," so risky color-change moves are free during it.
   void _updateMoveCombo(int toStackIndex) {
+    // Vent override: combo doesn't reset for the duration of the burst.
+    // Combo INCREMENT path still runs when the player happens to land
+    // on a matching color — vent doesn't penalize good play, only
+    // protects bad play from breaking the run.
+    final ventActive = HydraulicPressureService().isVenting;
+
     final destStack = _stacks[toStackIndex];
     final layers = destStack.layers;
     if (layers.length < 2) {
-      // Moved to empty tube (only 1 layer now) — reset combo
-      _comboCount = 0;
+      // Moved to empty tube (only 1 layer now) — reset combo unless
+      // venting.
+      if (!ventActive) _comboCount = 0;
       return;
     }
     // Check if top layer matches the one below it
@@ -487,9 +501,12 @@ class GameState extends ChangeNotifier {
       if (_comboCount > _maxCombo) {
         _maxCombo = _comboCount;
       }
-    } else {
+    } else if (!ventActive) {
       _comboCount = 0;
     }
+    // else: color mismatch BUT venting → freeze the combo at its
+    // current value (do nothing). When the vent ends, the next
+    // mismatch will reset normally.
   }
 
   /// Calculate chain bonus multiplier

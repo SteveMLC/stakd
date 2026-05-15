@@ -24,6 +24,7 @@ import 'services/contract_service.dart';
 import 'services/cosmetic_service.dart';
 import 'services/income_multiplier_service.dart';
 import 'services/machinery_service.dart';
+import 'services/hydraulic_pressure_service.dart';
 import 'app.dart';
 
 /// Cap how long any single critical service init can block boot. If we
@@ -81,6 +82,8 @@ void main() async {
     _safeInit('CosmeticService', () => CosmeticService().init()),
     _safeInit('MachineryService', () => MachineryService().init()),
     _safeInit('IncomeMultiplierService', () => IncomeMultiplierService().init()),
+    _safeInit(
+        'HydraulicPressureService', () => HydraulicPressureService().init()),
     _safeInit('LeaderboardService', () => LeaderboardService().init()),
     _safeInit('StatsService', () => StatsService().init()),
   ]);
@@ -125,6 +128,7 @@ void main() async {
         ChangeNotifierProvider.value(value: IncomeMultiplierService()),
         ChangeNotifierProvider.value(value: MachineryService()),
         ChangeNotifierProvider.value(value: CosmeticService()),
+        ChangeNotifierProvider.value(value: HydraulicPressureService()),
       ],
       child: const WarehouseSortApp(),
     ),

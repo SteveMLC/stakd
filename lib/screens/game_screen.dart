@@ -18,6 +18,7 @@ import '../services/warehouse_economy_service.dart';
 import '../services/business_tier_service.dart';
 import '../services/contract_service.dart';
 import '../services/income_multiplier_service.dart';
+import '../services/hydraulic_pressure_service.dart';
 import '../data/local_regional_levels.dart';
 import '../utils/constants.dart';
 import '../utils/route_transitions.dart';
@@ -26,6 +27,7 @@ import '../widgets/game_button.dart';
 import '../widgets/completion_overlay.dart';
 import '../widgets/hint_overlay.dart';
 import '../widgets/cash_payout_overlay.dart';
+import '../widgets/hydraulic_pressure_gauge.dart';
 import '../widgets/jam_recovery_modal.dart';
 import '../widgets/multi_grab_hint_overlay.dart';
 import '../widgets/warehouse_hud.dart';
@@ -342,7 +344,15 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
           IncomeMultiplierService().computeMultiplier(warehouseLevel: whLevel);
       final baseCash =
           seed?.baseCashReward ?? (970 + 100 * (_currentLevel - 30));
-      final cashEarned = (baseCash * tierMul * starMul * incomeMul).floor();
+      // Hydraulic Pressure vent multiplier — if the player is mid-burst
+      // when they finish the level, the receipt pays 2×. Single-source-
+      // of-truth lookup so polish work later (e.g. flashing the receipt
+      // when ventMul > 1) stays consistent.
+      final ventMul = HydraulicPressureService().isVenting
+          ? HydraulicPressureService.ventCashMultiplier
+          : 1.0;
+      final cashEarned =
+          (baseCash * tierMul * starMul * incomeMul * ventMul).floor();
       final xpEarned = (cashEarned / 2).floor();
       final levelUp = await WarehouseEconomyService().awardReward(
         ShipmentReward(cash: cashEarned, xp: xpEarned),
@@ -461,6 +471,13 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
     _showingCompletion = false; // SNAPPY FIX: Reset completion lock
     _showingJamModal = false; // Re-arm jam modal for the new level.
 
+    // Hand the Hydraulic Pressure meter the current contract id so it
+    // can either restore banked pressure (same contract) or zero out
+    // (new contract or procedural levels past L30).
+    final contract = ContractService().contractForLevel(_currentLevel);
+    final contractId = contract?.displayName ?? 'procedural';
+    HydraulicPressureService().onLevelStart(contractId);
+
     // Reset hint state
     setState(() {
       _showingHint = false;
@@ -482,6 +499,11 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
     final leaderboardService = LeaderboardService();
     final gameState = context.read<GameState>();
     final moveCount = gameState.moveCount;
+
+    // Bank pressure so it carries into the next level of this contract.
+    // Safe to call even if not initialized — service is a singleton with
+    // sane defaults.
+    await HydraulicPressureService().onLevelComplete();
 
     // Save progress
     await storage.markLevelCompleted(_currentLevel);
@@ -1268,6 +1290,18 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                       // Bottom controls (wrapped in RepaintBoundary)
                       RepaintBoundary(child: _buildBottomControls(gameState, iap)),
                     ],
+                  ),
+
+                  // Hydraulic Pressure gauge — anchored to the left edge
+                  // of the board area. Player taps the VENT button on it
+                  // to trigger a 4-move burst (combo doesn't reset, 2×
+                  // cash on the next clear). Listens to its own
+                  // singleton service so it repaints independently.
+                  const Positioned(
+                    left: 12,
+                    top: 100,
+                    bottom: 100,
+                    child: HydraulicPressureGauge(),
                   ),
 
                   // Power-up selection overlays

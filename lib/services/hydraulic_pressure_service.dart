@@ -221,8 +221,19 @@ class HydraulicPressureService extends ChangeNotifier {
 
   /// Called from the gauge's animation frame to decay pressure when
   /// the player is idle. Safe to call every tick — internally rate-
-  /// limits via `_lastMoveTime`.
+  /// limits via `_lastMoveTime`. Also enforces the 8s wallclock
+  /// fallback on the vent burst (in case the player taps VENT but
+  /// then stops moving entirely).
   void tickIdle(DateTime now) {
+    // Wallclock fallback for vent: if the player burned the meter
+    // but then stopped moving for the full ventDuration, force-end
+    // the burst so cash multiplier doesn't linger forever.
+    final ventEnd = _ventEndTime;
+    if (isVenting && ventEnd != null && !now.isBefore(ventEnd)) {
+      _endVent();
+      notifyListeners();
+      return;
+    }
     if (isVenting) return;
     final last = _lastMoveTime;
     if (last == null) return;
