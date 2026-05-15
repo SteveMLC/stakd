@@ -413,9 +413,13 @@ class _VentButton extends StatelessWidget {
         duration: const Duration(milliseconds: 260),
         curve: Curves.easeOutBack,
         builder: (context, t, child) {
+          // `easeOutBack` overshoots past 1.0 mid-curve, which is fine
+          // for translate/scale but trips `Opacity`'s [0,1] assertion
+          // and floods the log on every vent-button appearance. Clamp
+          // only the opacity channel — the translate keeps the bounce.
           return Transform.translate(
             offset: Offset(0, (1 - t) * 8),
-            child: Opacity(opacity: t, child: child),
+            child: Opacity(opacity: t.clamp(0.0, 1.0), child: child),
           );
         },
         child: Container(

@@ -719,13 +719,23 @@ class _GameBoardState extends State<GameBoard>
 
   int _getStacksPerRow(int total, double maxWidth) {
     final stackWidth = GameSizes.stackWidth + GameSizes.stackSpacing;
-    final maxFit = (maxWidth / stackWidth).floor();
+    final maxFit = (maxWidth / stackWidth).floor().clamp(1, 999);
 
-    // Try to balance rows
-    if (total <= 4) return total;
-    if (total <= 6) return 3;
-    if (total <= 9) return 5;
-    return maxFit.clamp(4, 6);
+    // Mathematically balanced layout that NEVER exceeds the available
+    // width (the prior heuristic returned hardcoded 5/3 even when the
+    // screen could only fit 4, producing a 22-pixel overflow + the
+    // yellow/black "construction stripe" Flutter paints on overflow).
+    //
+    //   rows   = ceil(total / maxFit)
+    //   perRow = ceil(total / rows)
+    //
+    // total=4, fit=4  -> 1 row of 4
+    // total=7, fit=4  -> 2 rows of 4,3
+    // total=9, fit=4  -> 3 rows of 3,3,3 (balanced — no orphan)
+    // total=12, fit=4 -> 3 rows of 4,4,4
+    if (total <= maxFit) return total;
+    final rows = (total / maxFit).ceil();
+    return (total / rows).ceil().clamp(1, maxFit);
   }
 
   /// Small particle burst on block landing (3-5 particles, subtle)
