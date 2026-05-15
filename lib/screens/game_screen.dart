@@ -1549,10 +1549,16 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
           const SizedBox(width: 8),
 
           // Level indicator — branded waybill stub, accent border so
-          // it reads as "current contract" rather than a chip.
+          // it reads as "current contract" rather than a chip. Adds a
+          // tiny district sub-line below "Lv N" so the player keeps
+          // the infinite-scaling district identity in view during play
+          // (e.g. "D3 · COLD STORAGE" under "Lv 12"). District lookup
+          // is via the procedural composer — hand-tuned D1-D6 produce
+          // their curated displayNames; D7+ produce the
+          // "District N — Theme Flavor" composer output.
           Flexible(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: GameColors.surface,
                 borderRadius: BorderRadius.circular(16),
@@ -1570,15 +1576,52 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                     color: GameColors.accent,
                   ),
                   const SizedBox(width: 5),
-                  Text(
-                    'Lv $_currentLevel',
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.4,
-                    ),
-                  ),
+                  Builder(builder: (_) {
+                    final district = DistrictService()
+                        .districtForLevel(_currentLevel);
+                    // Compact district readout: `D{N}` only (the
+                    // contract-select cards already carry the full
+                    // "LOCAL DOCK / COLD STORAGE" display). Tiny
+                    // wrinkle hint suffix if the district has one
+                    // — single character so the badge stays under
+                    // the constrained 75dp top-bar slot.
+                    final wrinkleHint = district != null &&
+                            district.wrinkles.isNotEmpty
+                        ? ' ❄' // ❄ snowflake when frozen+ present
+                        : '';
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Lv $_currentLevel',
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.4,
+                            height: 1.0,
+                          ),
+                        ),
+                        if (district != null) ...[
+                          const SizedBox(height: 1),
+                          Text(
+                            'D${district.number}$wrinkleHint',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 8,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.0,
+                              fontFamily: 'Courier',
+                              color: GameColors.accent
+                                  .withValues(alpha: 0.85),
+                              height: 1.0,
+                            ),
+                          ),
+                        ],
+                      ],
+                    );
+                  }),
                 ],
               ),
             ),
