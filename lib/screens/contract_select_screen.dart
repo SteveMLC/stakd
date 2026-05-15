@@ -47,19 +47,44 @@ class ContractSelectScreen extends StatelessWidget {
             const WarehouseHud(),
             Expanded(
               child: Consumer3<ContractService, BusinessTierService, WarehouseEconomyService>(
-                builder: (context, contracts, tiers, economy, _) => ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                  itemCount: ContractService.contracts.length,
-                  itemBuilder: (context, i) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _ContractCard(
-                      definition: ContractService.contracts[i],
-                      contracts: contracts,
-                      tiers: tiers,
-                      economy: economy,
-                    ),
-                  ),
-                ),
+                builder: (context, contracts, tiers, economy, _) {
+                  final contractCount = ContractService.contracts.length;
+                  // List length = N contracts + 1 trailing "Next
+                  // District" teaser when we're past the curated
+                  // catalog. The teaser previews D{contractCount+1}+
+                  // for long-tail players so they always see a next
+                  // goal even after D6 is cleared.
+                  final district =
+                      DistrictService().nextToUnlock;
+                  final showTeaser =
+                      district.number > contractCount;
+                  final itemCount =
+                      contractCount + (showTeaser ? 1 : 0);
+                  return ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                    itemCount: itemCount,
+                    itemBuilder: (context, i) {
+                      if (i >= contractCount) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _NextDistrictTeaser(
+                            district: district,
+                            economy: economy,
+                          ),
+                        );
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _ContractCard(
+                          definition: ContractService.contracts[i],
+                          contracts: contracts,
+                          tiers: tiers,
+                          economy: economy,
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
             ),
           ]),
@@ -595,6 +620,187 @@ class _CompletedBadge extends StatelessWidget {
           color: GameColors.successGlow, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.6,
         )),
       ]),
+    );
+  }
+}
+
+/// "NEXT UP" teaser card appended to the contract list once the
+/// player has unlocked past the curated D1-D6 catalog. Shows the
+/// next-to-unlock procedural district (theme, wrinkle, cost, level
+/// range) so the long-tail player always sees a next goal — even at
+/// D50, D100, D1000+.
+///
+/// The teaser is intentionally dimmer + smaller than a full contract
+/// card. It reads as a "preview from the dispatch board" rather than
+/// a playable contract. The player still has to clear the current
+/// last district before unlocking the previewed one.
+class _NextDistrictTeaser extends StatelessWidget {
+  final DistrictDefinition district;
+  final WarehouseEconomyService economy;
+
+  const _NextDistrictTeaser({
+    required this.district,
+    required this.economy,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cashEnough = economy.cash.toDouble() >= district.unlockCost;
+    final hasWrinkles = district.wrinkles.isNotEmpty;
+    final costStr = formatCash(district.unlockCost.toInt());
+
+    return Container(
+      decoration: BoxDecoration(
+        color: GameColors.surface.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: GameColors.accent.withValues(alpha: 0.28),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top hazard stripe — same vocabulary as full contract cards
+          // but dimmer (semi-transparent overlay) so it reads as a
+          // "preview" rather than a playable surface.
+          Opacity(
+            opacity: 0.55,
+            child: HazardStripe(height: 4, stripeWidth: 10),
+          ),
+          // Stenciled "NEXT UP" header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            color: const Color(0xFF1A1F26).withValues(alpha: 0.55),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.preview_outlined,
+                  size: 12,
+                  color: GameColors.accent.withValues(alpha: 0.85),
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  'NEXT UP · D${district.number}',
+                  style: TextStyle(
+                    color: GameColors.accent.withValues(alpha: 0.85),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.6,
+                    fontFamily: 'Courier',
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  district.isHandTuned ? 'CURATED' : 'PROCEDURAL',
+                  style: TextStyle(
+                    color: GameColors.textMuted.withValues(alpha: 0.7),
+                    fontSize: 8,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.4,
+                    fontFamily: 'Courier',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Body: district name + level range + unlock cost + wrinkle
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  district.displayName,
+                  style: TextStyle(
+                    color: GameColors.text.withValues(alpha: 0.85),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Lv ${district.firstLevel}–${district.lastLevel}',
+                  style: TextStyle(
+                    color: GameColors.textMuted.withValues(alpha: 0.75),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  district.tagline,
+                  style: TextStyle(
+                    color: GameColors.textMuted.withValues(alpha: 0.65),
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    // Unlock cost — accent yellow if affordable, dim red
+                    // if not (signals to the player how far they are
+                    // from the next goal).
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: cashEnough
+                            ? GameColors.accent.withValues(alpha: 0.15)
+                            : Colors.black.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: cashEnough
+                              ? GameColors.accent.withValues(alpha: 0.55)
+                              : GameColors.textMuted
+                                  .withValues(alpha: 0.4),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.lock_outline,
+                            size: 11,
+                            color: cashEnough
+                                ? GameColors.accent
+                                : GameColors.textMuted,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '\$$costStr',
+                            style: TextStyle(
+                              color: cashEnough
+                                  ? GameColors.accent
+                                  : GameColors.textMuted,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.4,
+                              fontFamily: 'Courier',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (hasWrinkles) ...[
+                      const SizedBox(width: 6),
+                      _Pill(
+                        label:
+                            district.wrinkles.first.toUpperCase(),
+                        color: const Color(0xFF5DADE2), // dock blue
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
