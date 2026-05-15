@@ -64,13 +64,24 @@ def strip_background(src_path: Path, dst_path: Path, session) -> None:
 
 
 def to_webp(src_path: Path, dst_path: Path, size: int, quality: int = 85) -> None:
-    """Resize `src_path` PNG to `size×size`, encode as WebP at `dst_path`."""
+    """Resize `src_path` PNG to fit within `size×size` (preserving aspect
+    ratio for landscape/portrait sources like district backgrounds + the
+    Play Store banner), encode as WebP at `dst_path`. Square sources
+    end up exactly `size×size`; non-square sources downscale by the
+    longer edge so the other edge is < size.
+    """
     img = Image.open(src_path)
     if img.mode != "RGBA":
         img = img.convert("RGBA")
     # LANCZOS is the high-quality downscaler. Bilinear/bicubic produce
     # blurrier edges on hard-line icon art.
-    resized = img.resize((size, size), Image.LANCZOS)
+    scale = size / max(img.width, img.height)
+    if scale < 1.0:
+        new_size = (int(img.width * scale), int(img.height * scale))
+        resized = img.resize(new_size, Image.LANCZOS)
+    else:
+        # Source is already <= target — copy at native dimensions.
+        resized = img
     dst_path.parent.mkdir(parents=True, exist_ok=True)
     resized.save(dst_path, "WEBP", quality=quality, method=6)
 

@@ -10,6 +10,7 @@ import '../services/currency_service.dart';
 import '../services/haptic_service.dart';
 import '../services/warehouse_economy_service.dart';
 import '../utils/constants.dart';
+import '../utils/game_assets.dart';
 import 'warehouse_decorations.dart';
 import 'game_button.dart';
 
@@ -207,7 +208,18 @@ class _JamRecoveryModalState extends State<JamRecoveryModal>
             child: HazardStripe(height: 10, stripeWidth: 14),
           ),
           const SizedBox(height: 18),
-          Icon(Icons.report_problem_rounded, size: 44, color: _amber),
+          // Lovart Wave 2 jam-recovery illustration — red alert beacon
+          // on top of a warehouse with magenta + orange warning glow.
+          // Replaces the bare `Icons.report_problem_rounded` triangle
+          // that read as a generic Material warning.
+          SizedBox(
+            height: 96,
+            child: Image.asset(
+              jamRecoveryAsset,
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.medium,
+            ),
+          ),
           const SizedBox(height: 10),
           const Text(
             'DOCK JAMMED',

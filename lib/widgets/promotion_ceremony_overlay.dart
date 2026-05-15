@@ -395,7 +395,11 @@ class _TierMedallion extends StatelessWidget {
       ),
       child: ClipOval(
         child: Image.asset(
-          tierMedallionAsset,
+          // 2026-05-15: Lovart Wave landed 6 distinct tier medallions
+          // (Bronze through Legendary with phoenix-wing fire halo).
+          // Pick per-tier illustration based on the promoted tier
+          // name so each promotion ceremony feels distinct.
+          medallionForTier(tierName),
           fit: BoxFit.cover,
           filterQuality: FilterQuality.medium,
         ),

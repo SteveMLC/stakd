@@ -5,6 +5,7 @@ import '../services/audio_service.dart';
 import '../services/cosmetic_service.dart';
 import '../services/warehouse_economy_service.dart';
 import '../utils/constants.dart';
+import '../utils/game_assets.dart';
 import '../utils/number_format.dart';
 import '../widgets/game_button.dart';
 import '../widgets/warehouse_decorations.dart';
@@ -115,7 +116,12 @@ class _ForkliftCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              _SkinIcon(color: _accent, dimmed: !actionable, equipped: _isEquipped),
+              _SkinIcon(
+                color: _accent,
+                dimmed: !actionable,
+                equipped: _isEquipped,
+                assetKey: info.assetIconKey,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -256,15 +262,23 @@ class _SkinIcon extends StatelessWidget {
   final Color color;
   final bool dimmed;
   final bool equipped;
+  /// `cosmetic_service.dart` skin key — `forklift_yellow`, `forklift_red`
+  /// etc. Used to render the matching Lovart-generated forklift
+  /// illustration. Falls back to the Material truck icon if no
+  /// asset is wired for this key yet.
+  final String? assetKey;
+
   const _SkinIcon({
     required this.color,
     required this.dimmed,
     this.equipped = false,
+    this.assetKey,
   });
 
   @override
   Widget build(BuildContext context) {
     final tint = dimmed ? color.withValues(alpha: 0.45) : color;
+    final skinAsset = forkliftSkinAsset(assetKey);
     return Container(
       width: 48,
       height: 48,
@@ -287,7 +301,19 @@ class _SkinIcon extends StatelessWidget {
               ]
             : null,
       ),
-      child: Icon(Icons.local_shipping, size: 26, color: tint),
+      child: skinAsset == null
+          ? Icon(Icons.local_shipping, size: 26, color: tint)
+          : Padding(
+              padding: const EdgeInsets.all(4),
+              child: Opacity(
+                opacity: dimmed ? 0.55 : 1.0,
+                child: Image.asset(
+                  skinAsset,
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.medium,
+                ),
+              ),
+            ),
     );
   }
 }

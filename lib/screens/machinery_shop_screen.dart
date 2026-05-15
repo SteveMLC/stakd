@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/game_assets.dart';
 import 'package:provider/provider.dart';
 
 import '../services/audio_service.dart';
@@ -185,6 +186,7 @@ class _MachineryCard extends StatelessWidget {
                 icon: info.icon,
                 color: info.accent,
                 dimmed: !actionable,
+                assetKey: info.id.name,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -396,15 +398,21 @@ class _MachineIcon extends StatelessWidget {
   final IconData icon;
   final Color color;
   final bool dimmed;
+  /// `Machinery` enum `.name` string — used to look up the Lovart-
+  /// generated illustration via `machineryAsset()`. Falls back to
+  /// the Material IconData when no asset is wired for this machine.
+  final String? assetKey;
   const _MachineIcon({
     required this.icon,
     required this.color,
     required this.dimmed,
+    this.assetKey,
   });
 
   @override
   Widget build(BuildContext context) {
     final tint = dimmed ? color.withValues(alpha: 0.45) : color;
+    final assetPath = machineryAsset(assetKey);
     return Container(
       width: 48,
       height: 48,
@@ -413,7 +421,19 @@ class _MachineIcon extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: tint.withValues(alpha: 0.55), width: 1.2),
       ),
-      child: Icon(icon, size: 26, color: tint),
+      child: assetPath == null
+          ? Icon(icon, size: 26, color: tint)
+          : Padding(
+              padding: const EdgeInsets.all(4),
+              child: Opacity(
+                opacity: dimmed ? 0.55 : 1.0,
+                child: Image.asset(
+                  assetPath,
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.medium,
+                ),
+              ),
+            ),
     );
   }
 }

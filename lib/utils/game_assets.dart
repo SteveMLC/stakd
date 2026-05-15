@@ -22,9 +22,145 @@ const String _base192 = 'assets/icons_generated/webp/192';
 const String _base256 = 'assets/icons_generated/webp/256';
 const String _base768 = 'assets/icons_generated/webp/768';
 
-/// Tier-promotion medallion — single illustrated medallion replacing
-/// the `Icons.workspace_premium` star in `_TierMedallion`.
+/// Tier-promotion medallion (LEGACY universal) — kept as a fallback
+/// when no specific per-tier asset matches. Use `medallionForTier`
+/// for the player-facing per-tier illustration.
 const String tierMedallionAsset = '$_base768/tier_medallion.webp';
+
+/// Per-tier illustrated medallion. The Lovart Wave shipped 6 distinct
+/// medallions (Bronze / Silver / Gold / Platinum / Diamond /
+/// Legendary). Tier names past Legendary (Master / Apex / Mythic +
+/// Legendary II, III, ...) cycle back to the Legendary medallion
+/// since they share the "endgame phoenix-wings" visual register.
+///
+/// Accepts the tier display name from
+/// `ReputationService().currentTierName` (case-insensitive). Falls
+/// back to the universal medallion if no match.
+String medallionForTier(String? tierName) {
+  switch ((tierName ?? '').toLowerCase().trim()) {
+    case 'bronze':
+      return '$_base768/medallion_bronze.webp';
+    case 'silver':
+      return '$_base768/medallion_silver.webp';
+    case 'gold':
+      return '$_base768/medallion_gold.webp';
+    case 'platinum':
+      return '$_base768/medallion_platinum.webp';
+    case 'diamond':
+      return '$_base768/medallion_diamond.webp';
+    case 'master':
+    case 'apex':
+    case 'mythic':
+    case 'legendary':
+      return '$_base768/medallion_legendary.webp';
+    default:
+      // Past Legendary the tier name reads as "Legendary II",
+      // "Legendary III", etc — also map to the fire medallion.
+      if ((tierName ?? '').toLowerCase().startsWith('legendary')) {
+        return '$_base768/medallion_legendary.webp';
+      }
+      return tierMedallionAsset;
+  }
+}
+
+/// Forklift cosmetic skin asset — keyed by the `assetIconKey` strings
+/// in `cosmetic_service.dart`. The Lovart Wave landed 4 skins
+/// (yellow/red/gold/cyber); the legacy `forklift_blue` cosmetic now
+/// renders the new `forklift_cyber` asset since it shares the cool/
+/// electric vibe and the underlying gameplay is unchanged.
+String? forkliftSkinAsset(String? assetIconKey) {
+  switch (assetIconKey) {
+    case 'forklift_yellow':
+      return '$_base768/forklift_yellow.webp';
+    case 'forklift_red':
+      return '$_base768/forklift_red.webp';
+    case 'forklift_blue':
+      // Lovart shipped "cyber" instead of plain blue — sleek cyan/
+      // electric futuristic skin. Better fit for the premium tier
+      // than a plain blue paint job would have been.
+      return '$_base768/forklift_cyber.webp';
+    case 'forklift_gold':
+      return '$_base768/forklift_gold.webp';
+    default:
+      return null;
+  }
+}
+
+/// Stencil forklift mascot — used on splash + home placard + ambient.
+const String stencilForkliftAsset = '$_base768/hero_stencil_forklift.webp';
+
+/// Delivery drone — used for late-game wrinkle indicators (planned
+/// D7+ drone mechanic) + general "drone delivery" UI accents.
+const String heroDroneAsset = '$_base768/hero_drone.webp';
+
+/// Foreman character hero — for tutorial dialog ("Foreman's Tip")
+/// + any future onboarding moments.
+const String heroForemanAsset = '$_base768/hero_foreman.webp';
+
+/// Machinery shop icon — maps the `Machinery` enum from
+/// `machinery_service.dart` to its Lovart-generated illustration.
+/// The shop currently renders `info.icon` (Material IconData); call
+/// this from the shop card builder to get a matching asset path.
+/// Returns null if no asset wired yet.
+String? machineryAsset(String? machineryId) {
+  switch (machineryId) {
+    case 'palletJack':
+      return '$_base768/machinery_pallet_jack.webp';
+    case 'conveyorBelt':
+      return '$_base768/machinery_conveyor.webp';
+    case 'hydraulicLift':
+      return '$_base768/machinery_elevator.webp';
+    case 'loadingDock':
+      return '$_base768/machinery_press.webp';
+    case 'sortingRobot':
+      return '$_base768/machinery_sorter.webp';
+    case 'droneFleet':
+      return '$_base768/machinery_drone_fleet.webp';
+    default:
+      return null;
+  }
+}
+
+/// UI / empty-state illustrations from Lovart Wave 2.
+const String emptyLeaderboardAsset = '$_base768/empty_leaderboard.webp';
+const String emptyAchievementsAsset = '$_base768/empty_achievements.webp';
+const String jamRecoveryAsset = '$_base768/jam_recovery.webp';
+const String dailyStreakFlameAsset = '$_base192/daily_streak_flame.webp';
+const String nextCratePreviewAsset = '$_base192/next_crate_preview.webp';
+
+/// District background painter routes — keyed by district theme id
+/// (e.g. `local_dock`, `cold_storage`). Returned at 768² which
+/// covers the playfield bg size cleanly. Returns null when no theme
+/// asset matches (fall back to the procedural _WarehouseDockPainter).
+String? districtBackgroundAsset(String? themeId) {
+  if (themeId == null) return null;
+  // Lovart filenames use the same key + "district_" prefix.
+  // Use the 768 webp for the in-game background tier — clean detail
+  // at the typical playfield size without burning bundle bytes on
+  // the 2048-wide source.
+  final mapped = {
+    'local_dock': 'district_local_dock',
+    'concrete-yellow': 'district_local_dock', // legacy theme alias
+    'cold_storage': 'district_cold_storage',
+    'frost-blue': 'district_cold_storage',
+    'maritime_deep': 'district_maritime_deep',
+    'maritime-blue': 'district_maritime_deep',
+    'air_cargo_night': 'district_air_cargo_night',
+    'hazmat_green': 'district_hazmat_green',
+    'automated_cyan': 'district_automated_cyan',
+    'autonomous_violet': 'district_autonomous_violet',
+    'orbital_starfield': 'district_orbital_starfield',
+    'underground_rust': 'district_underground_rust',
+    'industrial-rust': 'district_underground_rust',
+    'arctic_pale': 'district_arctic_pale',
+    'tropical_jade': 'district_tropical_jade',
+    'desert_sand': 'district_desert_sand',
+    'megacity_neon': 'district_megacity_neon',
+    'volcanic_ember': 'district_volcanic_ember',
+  };
+  final key = mapped[themeId];
+  return key == null ? null : '$_base768/$key.webp';
+}
 
 /// Hero truck illustration — replaces the `_DepartingTruckPainter`
 /// primitive that overflows the completion-overlay receipt frame.
