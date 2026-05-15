@@ -3,6 +3,7 @@ import 'dart:math';
 import '../models/stack_model.dart';
 import '../models/layer_model.dart';
 import '../utils/constants.dart';
+import 'district_service.dart';
 
 /// Encode LevelParams + optional seed for isolate.
 /// `[colors, stacks, emptySlots, depth, shuffleMoves, minDifficultyScore, seed]`
@@ -36,13 +37,79 @@ class LevelGenerator {
 
   /// Generate a level with given parameters
   List<GameStack> generateLevel(int levelNumber) {
-    final params = LevelParams.forLevel(levelNumber);
+    final params = paramsForLevel(levelNumber);
 
     // Use level number as seed for reproducibility
     final levelRandom = Random(levelNumber * 12345 + _seedOffset);
 
     final state = _generateShuffledSolvableState(params, levelRandom);
     return _buildStacksFromState(state, params.depth, params: params);
+  }
+
+  /// District-aware level parameters. Starts with the base
+  /// `LevelParams.forLevel(N)` curve, then asks `DistrictService` what
+  /// wrinkles (if any) apply to this level's district and adjusts the
+  /// generation probabilities accordingly.
+  ///
+  /// Currently implemented wrinkles:
+  ///   - **`frozen`** → bumps `frozenBlockProbability` by +0.05, capped
+  ///     at 0.30. District 3 (Cold Storage) has this hand-tuned; any
+  ///     procedural district past D6 that the composer assigns the
+  ///     `frozen` wrinkle to also lifts.
+  ///
+  /// Other wrinkles (`fragile`, `priority`, `oversized`, `time-bomb`,
+  /// `conveyor-drift`, `gravity-flip`, `double-color`) are recognized
+  /// but currently no-op — they need new mechanics in `GameState` +
+  /// `LevelParams` before the generator can express them. Placeholder
+  /// stubs document the intent.
+  ///
+  /// Levels 1-30 use the hand-tuned curated seeds in
+  /// `local_regional_levels.dart` and don't pass through this method,
+  /// so the wrinkle adjustments only affect procedural levels (31+).
+  /// That keeps the curated launch curve undisturbed.
+  LevelParams paramsForLevel(int levelNumber) {
+    final base = LevelParams.forLevel(levelNumber);
+    final district =
+        DistrictService().districtForLevel(levelNumber);
+    if (district == null || district.wrinkles.isEmpty) return base;
+
+    double frozenProb = base.frozenBlockProbability;
+    // double lockedProb = base.lockedBlockProbability;  // future
+    for (final wrinkle in district.wrinkles) {
+      switch (wrinkle) {
+        case 'frozen':
+          frozenProb = (frozenProb + 0.05).clamp(0.0, 0.30);
+          break;
+        case 'fragile':
+        case 'priority':
+        case 'oversized':
+        case 'time-bomb':
+        case 'conveyor-drift':
+        case 'gravity-flip':
+        case 'double-color':
+          // Stubs — these wrinkles need new GameState mechanics before
+          // the generator can express them. Tracked as Phase C-3
+          // follow-on work. For now they're recognized so the lookup
+          // doesn't throw, but they contribute no probability bump.
+          break;
+        default:
+          // Unknown wrinkle — ignore. Lets future composer additions
+          // land without crashing previously-generated levels.
+          break;
+      }
+    }
+
+    return LevelParams(
+      colors: base.colors,
+      stacks: base.stacks,
+      emptySlots: base.emptySlots,
+      depth: base.depth,
+      shuffleMoves: base.shuffleMoves,
+      minDifficultyScore: base.minDifficultyScore,
+      lockedBlockProbability: base.lockedBlockProbability,
+      maxLockedMoves: base.maxLockedMoves,
+      frozenBlockProbability: frozenProb,
+    );
   }
 
   /// Check if a puzzle state is solved
@@ -210,7 +277,7 @@ class LevelGenerator {
 
   /// Generate a level and verify it's solvable and sufficiently difficult
   List<GameStack> generateSolvableLevel(int levelNumber) {
-    final params = LevelParams.forLevel(levelNumber);
+    final params = paramsForLevel(levelNumber);
     final minDifficulty = params.minDifficultyScore;
 
     List<GameStack>? bestLevel;
