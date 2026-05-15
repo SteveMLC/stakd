@@ -274,28 +274,38 @@ class _LevelBarState extends State<_LevelBar> {
     final level = widget.economy.warehouseLevel;
     final inLevel = widget.economy.xpInCurrentLevel;
     final needed = widget.economy.xpNeededForCurrentLevel;
-    return Column(
+    // Wrap the WH Lv + XP section in a RivetedPlate so it matches the
+    // riveted cash chip aesthetic (visual consistency across the HUD).
+    // Padding is very tight (4dp horizontal) because this element
+    // lives in an Expanded slot of the outer HUD Row alongside cash,
+    // multiplier, and tier badges — the inner Spacer absorbs slack,
+    // and additional plate padding eats into that budget. Inner WH
+    // Lv chip also tightened (font 11→10, padding 6→4) to keep the
+    // outer Row from overflowing when the multiplier pill is visible.
+    return RivetedPlate(
+      padding: const EdgeInsets.fromLTRB(4, 4, 4, 5),
+      child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
               decoration: BoxDecoration(
                 color: GameColors.accent.withValues(alpha: 0.18),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(3),
                 border: Border.all(
                   color: GameColors.accent.withValues(alpha: 0.45),
-                  width: 0.8,
+                  width: 0.7,
                 ),
               ),
               child: Text(
                 'WH Lv $level',
                 style: const TextStyle(
                   color: GameColors.accent,
-                  fontSize: 11,
+                  fontSize: 10,
                   fontWeight: FontWeight.w900,
-                  letterSpacing: 0.6,
+                  letterSpacing: 0.4,
                 ),
               ),
             ),
@@ -304,7 +314,7 @@ class _LevelBarState extends State<_LevelBar> {
               '$inLevel/$needed XP',
               style: const TextStyle(
                 color: GameColors.textMuted,
-                fontSize: 10,
+                fontSize: 9,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -359,6 +369,7 @@ class _LevelBarState extends State<_LevelBar> {
           ),
         ),
       ],
+      ),
     );
   }
 }
