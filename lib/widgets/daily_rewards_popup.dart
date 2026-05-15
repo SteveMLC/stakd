@@ -4,6 +4,7 @@ import '../services/daily_rewards_service.dart';
 import '../services/currency_service.dart';
 import '../services/haptic_service.dart';
 import '../utils/constants.dart';
+import '../utils/number_format.dart';
 import 'particles/confetti_overlay.dart';
 import 'warehouse_decorations.dart';
 
@@ -406,9 +407,11 @@ class _DailyRewardsPopupState extends State<DailyRewardsPopup>
         
         const SizedBox(height: 4),
         
-        // Amount label
+        // Amount label — routed through formatCash so big daily-reward
+        // amounts (Day 7+ tiers post-rebalance) read as "1.5K" rather
+        // than overflowing the small per-day pill.
         Text(
-          isClaimed ? '✓' : '${reward.amount}',
+          isClaimed ? '✓' : formatCash(reward.amount),
           textAlign: TextAlign.center,
           style: TextStyle(
             color: isClaimed

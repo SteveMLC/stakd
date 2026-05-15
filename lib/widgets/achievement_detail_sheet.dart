@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/achievement.dart';
 import '../utils/constants.dart';
+import '../utils/number_format.dart';
 import '../widgets/warehouse_decorations.dart';
 
 /// Bottom sheet showing achievement details, styled as a shipping
@@ -232,7 +233,10 @@ class _AchievementDetailSheetState extends State<AchievementDetailSheet>
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    '+${a.ppReward} PP',
+                    // Route through formatCash so PP totals scale
+                    // cleanly when post-Reputation-tier achievements
+                    // start awarding 100K+ PP.
+                    '+${formatCash(a.ppReward)} PP',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w900,

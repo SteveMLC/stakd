@@ -6,6 +6,7 @@ import '../services/business_tier_service.dart';
 import '../services/contract_service.dart';
 import '../services/warehouse_economy_service.dart';
 import '../utils/constants.dart';
+import '../utils/number_format.dart';
 import '../utils/route_transitions.dart';
 import '../widgets/game_button.dart';
 import '../widgets/warehouse_decorations.dart';
@@ -379,13 +380,20 @@ class _ContractCard extends StatelessWidget {
 
   Future<void> _onPurchaseRegional(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
+    final regionalInfo =
+        BusinessTierService().infoFor(BusinessTier.regional);
     final result = await tiers.purchase(BusinessTier.regional);
     if (!context.mounted) return;
+    // Insufficient-cash message reads the live cost from
+    // BusinessTierService rather than hardcoding $5,000 (was stale
+    // after the 2026-05-14 balance patch dropped Regional to $3,000).
     final text = switch (result) {
       PurchaseResult.success => 'Regional Hub unlocked. Welcome to the big leagues.',
       PurchaseResult.alreadyOwned => 'You already own Regional Hub.',
-      PurchaseResult.warehouseLevelTooLow => 'Reach Warehouse Level 10 to unlock Regional Hub.',
-      PurchaseResult.insufficientCash => 'Need \$5,000 to unlock Regional Hub.',
+      PurchaseResult.warehouseLevelTooLow =>
+        'Reach Warehouse Level ${regionalInfo.minWarehouseLevel} to unlock Regional Hub.',
+      PurchaseResult.insufficientCash =>
+        'Need \$${_cash(regionalInfo.cashCost)} to unlock Regional Hub.',
     };
     messenger.showSnackBar(SnackBar(
       content: Text(text),
@@ -400,16 +408,13 @@ class _ContractCard extends StatelessWidget {
     Navigator.of(context).push(fadeSlideRoute(GameScreen(level: level)));
   }
 
-  static String _cash(int n) {
-    if (n < 1000) return n.toString();
-    final s = n.toString();
-    final buf = StringBuffer();
-    for (var i = 0; i < s.length; i++) {
-      if (i > 0 && (s.length - i) % 3 == 0) buf.write(',');
-      buf.write(s[i]);
-    }
-    return buf.toString();
-  }
+  /// Delegates to the shared `formatCash` helper for K/M/B/T/Qa
+  /// scaling on tier-unlock cost displays. Today only Regional Hub
+  /// ($3K) is gated by cash, but Districts D7+ will gate by
+  /// exponential cash costs (D7=$1.5M, D8=$15M, ...) so this needs
+  /// to scale cleanly when district-unlock prices land in the
+  /// contract-select UI.
+  static String _cash(int n) => formatCash(n);
 }
 
 /// Slow breathing glow used on the "next playable" contract card —
