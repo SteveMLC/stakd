@@ -16,12 +16,13 @@
 #     ├── in_game.png
 #     └── test.log
 #
-# Usage: bash tools/visual_capture.sh [SIM_UUID]
+# Usage: bash tools/visual_capture.sh [SIM_UUID] [TEST_FILE]
 
 set -o pipefail  # NB: `set -u` (nounset) trips on empty bash arrays
                  # when accessed via "${arr[@]}" — disabled intentionally.
 
 SIM_UUID="${1:-8C01668E-EF11-43A9-8448-E276C07C1919}"
+TEST_FILE="${2:-integration_test/visual_capture_test.dart}"
 OUT_ROOT="/tmp/wh_visual_capture"
 RUN_DIR="${OUT_ROOT}/$(date +%Y%m%d-%H%M%S)"
 LOG_PATH="${RUN_DIR}/test.log"
@@ -44,7 +45,7 @@ fi
 echo "[visual_capture] starting integration test..."
 (
   cd "${REPO_ROOT}"
-  flutter test integration_test/visual_capture_test.dart \
+  flutter test "${TEST_FILE}" \
     -d "${SIM_UUID}" --timeout=4x 2>&1
 ) > "${LOG_PATH}" &
 TEST_PID=$!
