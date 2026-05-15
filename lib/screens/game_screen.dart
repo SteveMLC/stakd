@@ -41,6 +41,7 @@ import '../widgets/achievement_toast_overlay.dart';
 import '../widgets/particles/confetti_overlay.dart';
 import '../widgets/color_flash_overlay.dart';
 import '../widgets/warehouse_decorations.dart';
+import '../widgets/promotion_ceremony_overlay.dart';
 import 'settings_screen.dart';
 
 /// Main gameplay screen
@@ -91,6 +92,10 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
   bool _tierPromoted = false;
   String? _newTierName;
   String? _districtDisplayName;
+  // Set to true once the player taps ACKNOWLEDGE on the promotion
+  // ceremony overlay, OR reset whenever a new level starts. Keeps the
+  // overlay from re-firing on rebuild after dismiss.
+  bool _promotionAcknowledged = false;
 
   // Power-up state
   bool _colorBombSelectionMode = false;
@@ -448,6 +453,11 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
         _tierPromoted = districtTierPromoted;
         _newTierName = districtNewTierName;
         _districtDisplayName = districtClearedName;
+        // Reset the ceremony-acknowledged flag so the overlay fires
+        // if this clear caused a promotion. Falls back to false on
+        // non-promotion clears (overlay won't render anyway since the
+        // `_tierPromoted` gate is false).
+        _promotionAcknowledged = false;
       });
       // Cash-flies-to-wallet animation (warehouse meta payout). Includes
       // optional level-up banner when awardReward returned a new level.
@@ -1484,6 +1494,22 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                   if (_showTransit)
                     const Positioned.fill(
                       child: IgnorePointer(child: _ForkliftTransitOverlay()),
+                    ),
+                  // Promotion ceremony overlay — fires on top of the
+                  // SHIPMENT RECEIPT when a District clear pushed the
+                  // player across a Reputation tier boundary. Rare,
+                  // loud. Player must tap ACKNOWLEDGE to continue.
+                  if (gameState.isComplete &&
+                      _tierPromoted &&
+                      !_promotionAcknowledged &&
+                      _newTierName != null)
+                    PromotionCeremonyOverlay(
+                      newTierName: _newTierName!,
+                      reputationMultiplierBonus:
+                          ReputationService().tierMultiplierBonus,
+                      onAcknowledge: () {
+                        setState(() => _promotionAcknowledged = true);
+                      },
                     ),
                   if (iap.isLoading) _buildBlockingOverlay(),
                 ],
