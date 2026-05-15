@@ -1049,11 +1049,15 @@ class _StackWidgetState extends State<_StackWidget>
     }
   }
 
-  /// Check if stack is nearing completion (3+ matching layers)
+  /// Check if stack is nearing completion. 2026-05-15: raised
+  /// threshold from 3+ to 4+ same-colored full-stack so the glow
+  /// fires only when the stack is one move from done — not at every
+  /// level start where the seed happens to deal 3 same-color on top.
+  /// This dropped the "5 stacks glowing simultaneously" noise that
+  /// Winnie's audit flagged as alert-state confusion.
   bool _isNearingCompletion() {
     final layers = widget.stack.layers;
-    if (layers.length < 3) return false;
-    // Check if all layers have the same color
+    if (layers.length < 4) return false;
     final firstColor = layers.first.colorIndex;
     return layers.every((l) => l.colorIndex == firstColor);
   }
@@ -1082,6 +1086,15 @@ class _StackWidgetState extends State<_StackWidget>
 
   bool get _shouldShowMultiGrabIndicator {
     final isMultiGrabActive = widget.isMultiGrabMode && widget.isSelected;
+    // 2026-05-15 fix per Steve's audit: the multi-grab streak badge
+    // used to render on EVERY stack with 2+-of-the-same on top, at
+    // all times. That's not a streak — it's static state — and it
+    // created notification spam on every stack ("🔥4" pulsing on
+    // 5 stacks simultaneously). Now only renders during the actual
+    // long-press gesture (the moment the affordance matters) or
+    // while the player has the stack selected. Idle stacks are
+    // clean.
+    if (!_isLongPressing && !widget.isSelected) return false;
     return _hasMultiGrabOpportunity && !isMultiGrabActive;
   }
 
@@ -1320,7 +1333,12 @@ class _StackWidgetState extends State<_StackWidget>
                                   ? ThemeColors.palette[2]
                                   : nearingCompletion
                                   ? glowColor.withValues(
-                                      alpha: 0.6 + pulseValue * 0.4,
+                                      // Was 0.6-1.0 alpha — read as
+                                      // an alert ring on every stack.
+                                      // Lowered to 0.25-0.45 so it
+                                      // reads as a subtle "almost
+                                      // there!" hint, not a warning.
+                                      alpha: 0.25 + pulseValue * 0.20,
                                     )
                                   // Empty/idle bay: dim amber border
                                   // instead of invisible `emptySlotColor`
@@ -1414,13 +1432,18 @@ class _StackWidgetState extends State<_StackWidget>
                                   !widget.isRecentlyCleared &&
                                   !isMultiGrabActive)
                                 BoxShadow(
+                                  // Softened from 0.2-0.5 alpha + spread 3
+                                  // to 0.10-0.20 alpha + spread 1.5 so the
+                                  // "stack near completion" hint glows
+                                  // subtly instead of forming a saturated
+                                  // halo around every stack.
                                   color: glowColor.withValues(
                                     alpha:
-                                        (0.2 + pulseValue * 0.3) *
+                                        (0.10 + pulseValue * 0.10) *
                                         completionProgress,
                                   ),
-                                  blurRadius: 8 + completionProgress * 8,
-                                  spreadRadius: completionProgress * 3,
+                                  blurRadius: 6 + completionProgress * 4,
+                                  spreadRadius: completionProgress * 1.5,
                                 ),
                               BoxShadow(
                                 color: Colors.black.withValues(alpha: 0.35),

@@ -32,7 +32,9 @@ import '../widgets/cash_payout_overlay.dart';
 import '../widgets/hydraulic_pressure_gauge.dart';
 import '../widgets/jam_recovery_modal.dart';
 import '../widgets/multi_grab_hint_overlay.dart';
-import '../widgets/warehouse_hud.dart';
+// WarehouseHud import dropped 2026-05-15 — the mid-puzzle meta HUD
+// no longer renders during gameplay (per Kimi UX audit). Cash + WH
+// level + XP + tier badge now live on home + completion overlay.
 import '../widgets/tutorial_overlay.dart';
 import '../widgets/power_up_bar.dart';
 import '../widgets/power_up_effects.dart';
@@ -1343,12 +1345,17 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                       // Top bar (wrapped in RepaintBoundary to avoid repaints during drag/animation)
                       RepaintBoundary(child: _buildTopBar(gameState)),
 
-                      // Warehouse meta HUD: cash + WH level + XP + tier badge.
-                      const RepaintBoundary(
-                        child: WarehouseHud(
-                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        ),
-                      ),
+                      // 2026-05-15 (Kimi audit): the cash + WH level +
+                      // XP + tier-badge "Warehouse meta HUD" was eating
+                      // ~50dp of vertical real estate mid-puzzle with
+                      // 4 competing number systems players don't act
+                      // on. Per industry pattern (Royal Match / Toon
+                      // Blast / Candy Crush): mid-puzzle HUD carries
+                      // ONLY actionable info (time, moves, pause).
+                      // Cash + WH-Lv + XP + tier now surface only on
+                      // home screen (identity) + completion overlay
+                      // (sequenced reward reveal). Mid-puzzle =
+                      // flow state.
 
                       // Game board
                       Expanded(
