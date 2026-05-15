@@ -129,49 +129,57 @@ class _ChainTextPopupState extends State<ChainTextPopup>
     super.dispose();
   }
 
+  /// Warehouse-vocab chain labels — replaces generic "MEGA CHAIN!!!"
+  /// progression with manifest/dispatch language that escalates as a
+  /// dock-floor alarm would. "CASCADE" reads like a chain of shipments
+  /// firing in sequence; "BACKLOG BLITZ" + "RUSH HOUR" signal the
+  /// warehouse is operating at peak load.
   String _getChainText() {
     switch (widget.chainLevel) {
       case 2:
-        return '2x CHAIN!';
+        return 'CASCADE x2';
       case 3:
-        return '3x CHAIN!!';
+        return 'RAPID FIRE x3';
       case 4:
-        return 'MEGA CHAIN!!!';
+        return 'BACKLOG BLITZ x4';
       default:
         if (widget.chainLevel >= 5) {
-          return 'INSANE ${widget.chainLevel}x!!!';
+          return 'RUSH HOUR x${widget.chainLevel}';
         }
-        return '${widget.chainLevel}x';
+        return 'CASCADE x${widget.chainLevel}';
     }
   }
 
+  /// Warehouse palette escalation — anchors every chain level to the
+  /// safety-yellow accent + steel + amber dispatch alert vocabulary
+  /// rather than the prior gold→orange→red→rainbow trajectory. Higher
+  /// chains read as "dock-floor emergency alert" intensity rather than
+  /// generic "rainbow celebration."
   List<Color> _getGradientColors() {
     switch (widget.chainLevel) {
       case 2:
         return [
-          const Color(0xFFFFD700), // Gold
-          const Color(0xFFFFA500), // Orange
+          GameColors.accent,             // safety yellow
+          const Color(0xFFFFA000),       // amber
         ];
       case 3:
         return [
-          const Color(0xFFFF8C00), // Dark Orange
-          const Color(0xFFFF4500), // Red-Orange
+          GameColors.accent,
+          const Color(0xFFFF6F00),       // deeper amber
         ];
       case 4:
         return [
-          const Color(0xFFFF4500), // Red-Orange
-          const Color(0xFFFF0000), // Red
+          const Color(0xFFFF6F00),
+          const Color(0xFFE53935),       // dispatch alert red
         ];
       default:
         if (widget.chainLevel >= 5) {
-          // Rainbow gradient for 5+
+          // Full alert: safety yellow → red → yellow strobe band
           return [
-            const Color(0xFFFF0000),
-            const Color(0xFFFF7F00),
-            const Color(0xFFFFFF00),
-            const Color(0xFF00FF00),
-            const Color(0xFF0000FF),
-            const Color(0xFF9400D3),
+            GameColors.accent,
+            const Color(0xFFE53935),
+            GameColors.accent,
+            const Color(0xFFE53935),
           ];
         }
         return [GameColors.accent, GameColors.accent];
@@ -181,14 +189,16 @@ class _ChainTextPopupState extends State<ChainTextPopup>
   Color _getGlowColor() {
     switch (widget.chainLevel) {
       case 2:
-        return const Color(0xFFFFD700);
+        return GameColors.accent;
       case 3:
         return const Color(0xFFFF8C00);
       case 4:
-        return const Color(0xFFFF4500);
+        return const Color(0xFFE53935);
       default:
         if (widget.chainLevel >= 5) {
-          return Colors.white;
+          // Alternates accent ↔ red on the strobe pulse via
+          // _glowController.value (which is already pulsing for L3+).
+          return GameColors.accent;
         }
         return GameColors.accent;
     }
@@ -225,16 +235,23 @@ class _ChainTextPopupState extends State<ChainTextPopup>
                     vertical: 14,
                   ),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
+                    // Brushed-steel 3-stop gradient anchors the popup
+                    // to the warehouse panel vocabulary (same gradient
+                    // used in HUD, settings rows, leaderboard rows).
+                    gradient: const LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
                       colors: [
-                        Colors.black.withValues(alpha: 0.85),
-                        Colors.black.withValues(alpha: 0.75),
+                        Color(0xFF3A4250),
+                        Color(0xFF1A1F26),
+                        Color(0xFF14181E),
                       ],
+                      stops: [0.0, 0.55, 1.0],
                     ),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(6),
                     border: Border.all(
                       color: _getGlowColor().withValues(alpha: glowIntensity),
-                      width: 3,
+                      width: widget.chainLevel >= 4 ? 2.5 : 2.0,
                     ),
                     boxShadow: [
                       BoxShadow(
@@ -255,30 +272,52 @@ class _ChainTextPopupState extends State<ChainTextPopup>
                         ),
                     ],
                   ),
-                  child: ShaderMask(
-                    shaderCallback: (bounds) {
-                      return LinearGradient(
-                        colors: gradientColors,
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ).createShader(bounds);
-                    },
-                    child: Text(
-                      _getChainText(),
-                      style: TextStyle(
-                        fontSize: _getFontSize(),
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        letterSpacing: 2,
-                        shadows: [
-                          Shadow(
-                            color: Colors.black.withValues(alpha: 0.5),
-                            blurRadius: 4,
-                            offset: const Offset(2, 2),
-                          ),
-                        ],
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      // Tiny corner rivets — sells "stamped metal plate"
+                      // vocabulary. Two on the top corners only so the
+                      // popup reads as a wall-mounted dispatch notice.
+                      Positioned(
+                        top: -1,
+                        left: -1,
+                        child: _ChainRivet(color: _getGlowColor()),
                       ),
-                    ),
+                      Positioned(
+                        top: -1,
+                        right: -1,
+                        child: _ChainRivet(color: _getGlowColor()),
+                      ),
+                      // Foreground text — Courier monospace stencil,
+                      // gradient-masked via ShaderMask for the accent
+                      // → amber → red escalation.
+                      ShaderMask(
+                        shaderCallback: (bounds) {
+                          return LinearGradient(
+                            colors: gradientColors,
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ).createShader(bounds);
+                        },
+                        child: Text(
+                          _getChainText(),
+                          style: TextStyle(
+                            fontSize: _getFontSize(),
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            letterSpacing: 2.4,
+                            fontFamily: 'Courier',
+                            shadows: [
+                              Shadow(
+                                color: Colors.black.withValues(alpha: 0.6),
+                                blurRadius: 5,
+                                offset: const Offset(2, 2),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -286,6 +325,30 @@ class _ChainTextPopupState extends State<ChainTextPopup>
           ),
         );
       },
+    );
+  }
+}
+
+/// Tiny corner rivet — a small darker circle with a highlight pip,
+/// sells the "metal plate" vocabulary on the chain popup corners.
+class _ChainRivet extends StatelessWidget {
+  final Color color;
+  const _ChainRivet({required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 6,
+      height: 6,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const RadialGradient(
+          colors: [Color(0xFF6A7280), Color(0xFF14181E)],
+          center: Alignment(-0.4, -0.5),
+          radius: 1.2,
+        ),
+        border: Border.all(color: color.withValues(alpha: 0.6), width: 0.5),
+      ),
     );
   }
 }
@@ -364,21 +427,23 @@ class _ChainParticleBurstState extends State<ChainParticleBurst>
   void _initializeParticles() {
     // More particles for higher chains
     final particleCount = 20 + (widget.chainLevel * 8);
-    
-    // Rainbow colors for high chains, themed colors for lower
+
+    // Warehouse palette progression — replaces the prior generic
+    // rainbow/gold/orange/red sparkles. Low chains spark off in
+    // accent yellow + brushed steel (dock confetti); high chains add
+    // a dispatch-alert red into the mix so the burst reads as a
+    // warehouse-floor emergency strobe rather than a celebration arc.
     final colors = widget.chainLevel >= 4
-        ? [
-            const Color(0xFFFF0000),
-            const Color(0xFFFF7F00),
-            const Color(0xFFFFFF00),
-            const Color(0xFF00FF00),
-            const Color(0xFF00BFFF),
-            const Color(0xFF9400D3),
+        ? const [
+            GameColors.accent,             // safety yellow
+            Color(0xFFFF6F00),             // deep amber
+            Color(0xFFE53935),             // dispatch alert red
+            Color(0xFFB0BEC5),             // brushed steel highlight
           ]
-        : [
-            const Color(0xFFFFD700),
-            const Color(0xFFFFA500),
-            const Color(0xFFFF8C00),
+        : const [
+            GameColors.accent,
+            Color(0xFFFFA000),
+            Color(0xFF8B95A1),             // dock concrete grey
           ];
 
     for (int i = 0; i < particleCount; i++) {
