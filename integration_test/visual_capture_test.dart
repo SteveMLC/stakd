@@ -226,4 +226,40 @@ void main() {
     // We don't assert anything — this is a capture-only test. The
     // mvp_walkthrough_test handles correctness assertions.
   });
+
+  testWidgets('walk to achievements screen', (tester) async {
+    await _bootServices();
+    await tester.pumpWidget(_pumpedApp());
+
+    // Splash → home settle.
+    for (var i = 0; i < 16; i++) {
+      await tester.pump(const Duration(milliseconds: 250));
+    }
+
+    // Dismiss Daily Rewards if it popped.
+    final claim = find.textContaining('CLAIM');
+    if (claim.evaluate().isNotEmpty) {
+      await tester.tap(claim.first, warnIfMissed: false);
+      await _pumpFor(tester, 2);
+    }
+
+    // Tap Achievements pill.
+    final achievementsBtn = find.text('Achievements');
+    if (achievementsBtn.evaluate().isNotEmpty) {
+      await tester.tap(achievementsBtn.first, warnIfMissed: false);
+      await _pumpFor(tester, 3);
+    }
+
+    // ------------------ achievements screen with custom badges -----
+    await _holdForCapture(tester, 'achievements_screen', seconds: 4);
+
+    // Tap one of the category filter pills to verify per-category
+    // rendering also works.
+    final speedFilter = find.text('Speed');
+    if (speedFilter.evaluate().isNotEmpty) {
+      await tester.tap(speedFilter.first, warnIfMissed: false);
+      await _pumpFor(tester, 2);
+    }
+    await _holdForCapture(tester, 'achievements_speed', seconds: 3);
+  });
 }

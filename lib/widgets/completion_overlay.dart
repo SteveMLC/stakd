@@ -2,6 +2,7 @@ import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../utils/constants.dart';
+import '../utils/game_assets.dart';
 import '../utils/number_format.dart';
 import '../services/haptic_service.dart';
 import '../services/audio_service.dart';
@@ -321,6 +322,21 @@ class _CompletionOverlayState extends State<CompletionOverlay>
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
+                            // Hero truck illustration — FLUX-generated
+                            // yellow delivery box truck loaded with
+                            // crates. Replaces the prior primitive
+                            // forklift that overflowed the receipt
+                            // frame. Sized to fit comfortably above
+                            // the star row without crowding it.
+                            SizedBox(
+                              height: 96,
+                              child: Image.asset(
+                                heroTruckAsset,
+                                fit: BoxFit.contain,
+                                filterQuality: FilterQuality.medium,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
                             // Top: Stars
                             _buildStarRating(),
                             // Record badges (compact inline)
