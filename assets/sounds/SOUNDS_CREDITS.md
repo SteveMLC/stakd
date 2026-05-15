@@ -1,100 +1,84 @@
-# Stakd - Sound Effects Credits
+# Warehouse Sort — Sound Effects Credits
 
-All sound effects in this directory are licensed under **CC0 (Public Domain)** or equivalent royalty-free licenses, allowing commercial use without attribution (though attribution is appreciated).
+All sound effects in this directory are generated via the
+**ElevenLabs Sound Effects API** (commercial license) on 2026-05-15.
+Each was generated from a warehouse-specific text prompt — no
+upstream attribution requirement, but the prompts used to seed each
+generation are preserved below for reproducibility.
 
-## Sound Files
+## Sound files
 
-### 1. tap.mp3 (32ms)
-- **Source:** Kenney UI Sound Pack
-- **Original File:** click5.wav
-- **Author:** Kenney.nl
-- **License:** CC0 (Public Domain)
-- **Link:** https://opengameart.org/content/51-ui-sound-effects-buttons-switches-and-clicks
-- **Description:** Soft click for stack selection
-- **Processing:** Converted from WAV to MP3, mono, 44.1kHz
+### tap.mp3 (~9 KB)
+- **Prompt:** "Sharp metallic stamp on clipboard, single quick tap, crisp office sound, dry, no reverb"
+- **Duration:** 0.5s
+- **Use:** stack selection, button presses
 
-### 2. slide.mp3 (57ms)
-- **Source:** Kenney UI Sound Pack
-- **Original File:** rollover2.wav
-- **Author:** Kenney.nl
-- **License:** CC0 (Public Domain)
-- **Link:** https://opengameart.org/content/51-ui-sound-effects-buttons-switches-and-clicks
-- **Description:** Quick whoosh for layer movement
-- **Processing:** Converted from WAV to MP3, mono, 44.1kHz
+### slide.mp3 (~9 KB)
+- **Prompt:** "Wooden crate sliding smoothly across a metal conveyor belt, short whoosh with scraping wood texture"
+- **Duration:** 0.5s
+- **Use:** layer movement between bays
 
-### 3. clear.mp3 (300ms)
-- **Source:** WobbleBoxx Workshop - Level Up/Power Up Pack
-- **Original File:** Coin01.aif
-- **Author:** WobbleBoxx Workshop
-- **License:** CC0 (Public Domain)
-- **Link:** https://opengameart.org/content/level-up-power-up-coin-get-13-sounds
-- **Description:** Sparkle chime for stack completion
-- **Processing:** Converted from AIF to MP3, mono, 44.1kHz, trimmed to 300ms
+### clear.mp3 (~10 KB)
+- **Prompt:** "Single satisfying freight elevator ding bell, warehouse industrial chime, bright clear tone"
+- **Duration:** 0.6s
+- **Use:** stack completion / clear
 
-### 4. win.mp3 (1000ms)
-- **Source:** WobbleBoxx Workshop - Level Up/Power Up Pack
-- **Original File:** Rise02.aif
-- **Author:** WobbleBoxx Workshop
-- **License:** CC0 (Public Domain)
-- **Link:** https://opengameart.org/content/level-up-power-up-coin-get-13-sounds
-- **Description:** Triumphant fanfare for level complete
-- **Processing:** Converted from AIF to MP3, mono, 44.1kHz, trimmed to 1000ms
+### win.mp3 (~25 KB)
+- **Prompt:** "Warehouse air horn blast followed by a small crowd cheering and applause, celebratory, victorious"
+- **Duration:** 1.5s
+- **Use:** level complete
 
-### 5. error.mp3 (28ms)
-- **Source:** Kenney UI Sound Pack
-- **Original File:** switch13.wav
-- **Author:** Kenney.nl
-- **License:** CC0 (Public Domain)
-- **Link:** https://opengameart.org/content/51-ui-sound-effects-buttons-switches-and-clicks
-- **Description:** Soft buzz for invalid move
-- **Processing:** Converted from WAV to MP3, mono, 44.1kHz, trimmed to 100ms
+### error.mp3 (~14 KB)
+- **Prompt:** "Forklift reverse backup beeper, exactly three short electronic beep chirps, industrial warning"
+- **Duration:** 0.8s
+- **Use:** invalid move
 
-## Attribution (Optional but Appreciated)
+### coin.mp3 (~10 KB)
+- **Prompt:** "Cash register ka-ching, classic till bell with coin clatter, satisfying reward sound"
+- **Duration:** 0.6s
+- **Use:** cash payout, bonus
 
-While not required by CC0 license, you may credit:
-- "Sound effects by Kenney.nl" - https://kenney.nl
-- "Sound effects by WobbleBoxx Workshop" - https://opengameart.org/users/wobbleboxx
+### levelup.mp3 (~29 KB)
+- **Prompt:** "Industrial fanfare, rising klaxon horn sweep into triumphant brass stinger, warehouse celebration"
+- **Duration:** 1.8s
+- **Use:** warehouse level up, tier promotion
 
-## Technical Specifications
+### powerup.mp3 (~14 KB)
+- **Prompt:** "Pneumatic piston whoosh hiss followed by a bright bell ding, mechanical power-up, factory air valve"
+- **Duration:** 0.8s
+- **Use:** power-up activation
 
-- **Format:** MP3
-- **Sample Rate:** 44.1kHz (CD quality)
-- **Channels:** Mono (reduces file size for mobile/web)
-- **Bitrate:** 128kbps
-- **Total Size:** ~28KB (all 5 files)
+### forklift_idle.mp3 (~20 KB) — NEW
+- **Prompt:** "Idle forklift engine humming, low diesel rumble, smooth steady mechanical loop, no movement"
+- **Duration:** 1.2s (loopable)
+- **Use:** menu ambient background
 
-## Alternative Sources (For Future Reference)
+### klaxon.mp3 (~17 KB) — NEW
+- **Prompt:** "Heavy industrial warning klaxon alarm, single one-shot blast, deep loud factory alert horn"
+- **Duration:** 1.0s
+- **Use:** level fail / jam alert
 
-If you need to replace or find additional sounds, these sources are excellent:
+### crate_thump.mp3 (~9 KB) — NEW
+- **Prompt:** "Heavy wooden crate landing hard on a stack of crates, single thump, solid wood impact, no echo"
+- **Duration:** 0.5s
+- **Use:** crate landing on stack
 
-### Free Sound Libraries (CC0/Royalty-Free):
-- **Freesound.org** - Massive community library, filter by CC0
-  - https://freesound.org/search/?q=&f=license:%22Creative+Commons+0%22
-- **Mixkit** - High-quality game sounds, free for commercial use
-  - https://mixkit.co/free-sound-effects/game/
-- **OpenGameArt.org** - Game-specific assets, many CC0
-  - https://opengameart.org/art-search-advanced?keys=&field_art_type_tid%5B%5D=13
-- **Pixabay Sound Effects** - Growing library, all free for commercial use
-  - https://pixabay.com/sound-effects/
-- **Zapsplat** - Requires free account, excellent quality
-  - https://www.zapsplat.com/sound-effect-categories/
+### music.mp3 (~587 KB)
+- **Source:** Legacy ambient pad (carry-over from prior identity).
+- **TODO:** replace with warehouse-themed ambient music (low
+  conveyor whirr + distant forklift hum).
 
-### AI Generation (If Custom Sounds Needed):
-- **ElevenLabs Sound Effects** - AI-generated sound effects from text prompts
-  - https://elevenlabs.io/sound-effects
-  - Example prompts: "soft click button tap", "quick whoosh swipe", "sparkle chime success"
-- **AudioGen / MusicGen** - Open-source AI audio generation
-- **Riffusion** - AI music/sound generation
+## Generation script
 
-## Notes
+`tools/generate_audio.sh` — paste-ready bash script with prompts
+inline. Requires `ELEVENLABS_API_KEY` env var. Reproducible: same
+prompts + same API will produce equivalent (not identical) outputs.
 
-- All sounds have been optimized for casual puzzle game use
-- Mono audio is preferred for UI sounds (smaller file size, no stereo needed)
-- Durations are close to requirements but may vary slightly based on natural sound length
-- Consider testing sounds in-game and adjusting volume levels as needed
-- For mobile games, keep total audio assets under 1MB to minimize app size
+## Cost
+
+11 sound effects × ~$0.04 per generation = ~$0.50 total.
 
 ---
 
-**Last Updated:** February 6, 2026  
-**Processed by:** OpenClaw AI Assistant
+**Generated:** 2026-05-15 via ElevenLabs SFX API.
+**Replaced:** Stakd-era Kenney.nl + WobbleBoxx CC0 stock sounds.

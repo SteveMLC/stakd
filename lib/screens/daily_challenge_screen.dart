@@ -9,6 +9,7 @@ import '../services/daily_challenge_service.dart';
 import '../services/leaderboard_service.dart';
 import '../services/level_generator.dart';
 import '../utils/constants.dart';
+import '../utils/game_assets.dart';
 import '../widgets/game_board.dart';
 import '../widgets/name_entry_dialog.dart';
 
@@ -184,9 +185,22 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
               style: const TextStyle(fontSize: 16, color: GameColors.textMuted),
             ),
             const SizedBox(height: 12),
-            Text(
-              '🔥 $_streak day streak',
-              style: const TextStyle(fontSize: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image.asset(
+                  dailyStreakFlameAsset,
+                  width: 22,
+                  height: 22,
+                  filterQuality: FilterQuality.medium,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '$_streak day streak',
+                  style: const TextStyle(fontSize: 16),
+                ),
+              ],
             ),
           ],
         ),
@@ -361,9 +375,22 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
   }
 
   Widget _buildStatCard(String emoji, String value, String label) {
+    // Streak-flame card uses the Lovart-generated daily_streak_flame
+    // illustration instead of the raw 🔥 emoji (which can render as
+    // a question-mark glyph on some iOS sim versions + is less
+    // characterful than the Lovart cartoon flame).
+    final isFlame = emoji == '🔥';
     return Column(
       children: [
-        Text(emoji, style: const TextStyle(fontSize: 24)),
+        if (isFlame)
+          Image.asset(
+            dailyStreakFlameAsset,
+            width: 28,
+            height: 28,
+            filterQuality: FilterQuality.medium,
+          )
+        else
+          Text(emoji, style: const TextStyle(fontSize: 24)),
         const SizedBox(height: 4),
         Text(
           value,

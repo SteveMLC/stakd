@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/leaderboard_entry.dart';
 import '../services/leaderboard_service.dart';
 import '../utils/constants.dart';
+import '../utils/game_assets.dart';
 import '../widgets/game_button.dart';
 import '../widgets/warehouse_decorations.dart';
 import '../widgets/name_entry_dialog.dart';
@@ -259,9 +260,15 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              type.icon,
-              style: const TextStyle(fontSize: 64),
+            // Lovart Wave 2 empty-state hero: cartoon foreman shrugging
+            // next to an empty podium. Replaces the bare 64pt emoji.
+            SizedBox(
+              height: 160,
+              child: Image.asset(
+                emptyLeaderboardAsset,
+                fit: BoxFit.contain,
+                filterQuality: FilterQuality.medium,
+              ),
             ),
             const SizedBox(height: 16),
             const Text(

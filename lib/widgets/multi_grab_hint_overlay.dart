@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../utils/constants.dart';
+import '../utils/game_assets.dart';
 
 class MultiGrabHintOverlay extends StatefulWidget {
   final VoidCallback onDismiss;
@@ -79,10 +80,24 @@ class _MultiGrabHintOverlayState extends State<MultiGrabHintOverlay>
                               ),
                             ),
                           ),
-                          const Icon(
-                            Icons.touch_app,
-                            size: 46,
-                            color: GameColors.accent,
+                          // 2026-05-15: Lovart hero_foreman bust
+                          // (yellow hard-hat foreman with pointing
+                          // finger + clipboard) replaces the bare
+                          // Icons.touch_app glyph. The foreman IS
+                          // the gesture — his pointing index finger
+                          // conveys "long-press" while his
+                          // character cements the "Foreman's Tip"
+                          // branding.
+                          ClipOval(
+                            child: SizedBox(
+                              width: 88,
+                              height: 88,
+                              child: Image.asset(
+                                heroForemanAsset,
+                                fit: BoxFit.cover,
+                                filterQuality: FilterQuality.medium,
+                              ),
+                            ),
                           ),
                         ],
                       );
