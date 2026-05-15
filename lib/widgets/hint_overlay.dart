@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../utils/constants.dart';
+import 'warehouse_decorations.dart';
 
 /// Animated hint overlay showing an arrow from source to destination stack
 class HintOverlay extends StatefulWidget {
@@ -147,6 +148,112 @@ class _HintOverlayState extends State<HintOverlay>
                   color: GameColors.accent,
                 ),
                 size: Size.infinite,
+              );
+            },
+          ),
+          // "DISPATCH ROUTE" label floating near the arc apex. Fades
+          // in as the arrow finishes drawing (progress > 0.7) so the
+          // animation reads in sequence: glow → arrow draws → label
+          // stamps in → arrowhead lands. Pinned at the bezier control
+          // point so it sits on the route's high arc.
+          AnimatedBuilder(
+            animation: _arrowController,
+            builder: (context, child) {
+              final labelProgress =
+                  ((_drawProgress.value - 0.7) / 0.3).clamp(0.0, 1.0);
+              if (labelProgress <= 0) return const SizedBox.shrink();
+
+              // Compute the bezier control point (apex of the arc) so
+              // the label sits roughly above the route's peak.
+              final midX = (_startPos.dx + _endPos.dx) / 2;
+              final midY = (_startPos.dy + _endPos.dy) / 2;
+              final dx = _endPos.dx - _startPos.dx;
+              final dy = _endPos.dy - _startPos.dy;
+              final length = math.sqrt(dx * dx + dy * dy);
+              double labelX = midX;
+              double labelY = midY;
+              if (length > 0) {
+                final perpX = -dy / length;
+                final perpY = dx / length;
+                labelX = midX + perpX * _arcHeight;
+                labelY = midY + perpY * _arcHeight;
+              }
+
+              return Positioned(
+                left: labelX - 56, // half label width
+                top: labelY - 12,  // half label height
+                child: IgnorePointer(
+                  child: Opacity(
+                    opacity: labelProgress,
+                    child: Transform.translate(
+                      offset: Offset(0, -6 * (1 - labelProgress)),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.65),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: GameColors.accent
+                                .withValues(alpha: 0.85),
+                            width: 1.0,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: GameColors.accent
+                                  .withValues(alpha: 0.35),
+                              blurRadius: 8,
+                              spreadRadius: 0.5,
+                            ),
+                          ],
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.alt_route,
+                              size: 11,
+                              color: GameColors.accent,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              'DISPATCH ROUTE',
+                              style: TextStyle(
+                                color: GameColors.accent,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.6,
+                                fontFamily: 'Courier',
+                                height: 1.0,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+          // Top hazard-stripe band at very top of overlay so the hint
+          // surface reads as a "dispatch broadcast" overlay rather
+          // than a floating arrow.
+          AnimatedBuilder(
+            animation: _arrowController,
+            builder: (context, child) {
+              final bandT = (_drawProgress.value * 2).clamp(0.0, 1.0);
+              return Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: IgnorePointer(
+                  child: Opacity(
+                    opacity: bandT * 0.6,
+                    child: const HazardStripe(
+                        height: 3, stripeWidth: 8),
+                  ),
+                ),
               );
             },
           ),
