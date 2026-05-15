@@ -149,13 +149,24 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Center(
-              child: Text(
-                '$unlockedCount/$totalCount 🏆',
-                style: TextStyle(
-                  color: const Color(0xFFFFD700), // Gold
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '$unlockedCount/$totalCount',
+                    style: const TextStyle(
+                      color: Color(0xFFFFD700), // Gold
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(
+                    Icons.emoji_events,
+                    size: 18,
+                    color: Color(0xFFFFD700),
+                  ),
+                ],
               ),
             ),
           ),
@@ -190,7 +201,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
         children: [
           _buildStatItem('Unlocked', '${_achievementService.unlockedCount}/${_achievementService.totalCount}', Icons.stars),
           _buildStatItem('Total XP', '+$_totalXPEarned', Icons.flash_on),
-          _buildStatItem('Total Gems', '+$_totalCoinsEarned 🪙', Icons.diamond),
+          _buildStatItem('Total Gems', '+$_totalCoinsEarned', Icons.diamond),
         ],
       ),
     );
@@ -417,7 +428,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
                             ),
                             const SizedBox(width: 12),
                             Text(
-                              '+${def.coinReward} 🪙',
+                              '+${def.coinReward}',
                               style: TextStyle(
                                 color: const Color(0xFFFFD700),
                                 fontSize: 12,

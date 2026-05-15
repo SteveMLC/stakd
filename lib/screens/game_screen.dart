@@ -1897,11 +1897,17 @@ class _AddTubeButton extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Text(
-              '100🪙',
+              '100',
               style: TextStyle(
                 color: GameColors.textMuted,
                 fontSize: 11,
               ),
+            ),
+            const SizedBox(width: 2),
+            Icon(
+              Icons.monetization_on,
+              size: 11,
+              color: GameColors.accent.withValues(alpha: 0.75),
             ),
           ],
         ),
