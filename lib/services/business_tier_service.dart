@@ -63,7 +63,13 @@ class BusinessTierService extends ChangeNotifier {
       displayName: 'Regional Hub',
       shortName: 'Regional',
       tagline: 'Bigger trucks. Faster turns.',
-      cashCost: 5000,
+      // Lowered $5,000 → $3,000 (2026-05-14 balance patch). The prior
+      // cost gated casual players at L15 hard — audit Player A walk
+      // showed them stalled at ~$2,166 cash against a $5K wall with
+      // no path forward except replay grind. $3K lands ~1-2 clears
+      // past their natural WH Lv 10 unlock so Regional reads as a
+      // goal they're approaching, not a wall they hit.
+      cashCost: 3000,
       minWarehouseLevel: 10,
       earningsMultiplier: 1.5,
     ),

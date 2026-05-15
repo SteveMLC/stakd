@@ -20,6 +20,9 @@ void main() {
     });
 
     test('catalog has 4 skins with correct gates', () {
+      // Restaggered 2026-05-14: previously all 3 paid skins gated at
+      // WH Lv 15. Now Red @ 8, Blue @ 15, Gold @ 25 — three separate
+      // unlock beats through early/mid game instead of one big gate.
       expect(CosmeticService.catalog.length, 4);
       final yellow = CosmeticService().infoFor(ForkliftSkin.yellowStandard);
       expect(yellow.cashCost, 0);
@@ -27,16 +30,20 @@ void main() {
 
       final red = CosmeticService().infoFor(ForkliftSkin.redSport);
       expect(red.cashCost, 500);
-      expect(red.minWarehouseLevel, 15);
+      expect(red.minWarehouseLevel, 8);
 
       final blue = CosmeticService().infoFor(ForkliftSkin.blueHeavy);
       expect(blue.cashCost, 1500);
+      expect(blue.minWarehouseLevel, 15);
 
       final gold = CosmeticService().infoFor(ForkliftSkin.goldPremium);
       expect(gold.cashCost, 5000);
+      expect(gold.minWarehouseLevel, 25);
     });
 
     test('checkPurchase: warehouseLevelTooLow gates rare skins', () {
+      // Red Sport gates at WH Lv 8 post-restagger; WH 5 should still
+      // be too low.
       expect(
         CosmeticService().checkPurchase(ForkliftSkin.redSport, 99999, 5),
         CosmeticPurchaseResult.warehouseLevelTooLow,

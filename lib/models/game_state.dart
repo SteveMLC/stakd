@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'stack_model.dart';
 import 'layer_model.dart';
 import '../utils/constants.dart';
+import '../services/hydraulic_pressure_service.dart';
 
 /// Move record for undo functionality (supports single or multi-layer)
 class Move {
@@ -395,6 +396,20 @@ class GameState extends ChangeNotifier {
 
     // Check for completed stacks
     _checkForCompletedStacks();
+
+    // Hydraulic Pressure meter — fires AFTER combo + chain math so the
+    // service sees the post-move state. Additive notification only:
+    // does NOT touch any existing combo/chain/scoring logic.
+    final now = DateTime.now();
+    final bayJustCompleted = _recentlyCleared.isNotEmpty;
+    HydraulicPressureService().onMove(
+      now: now,
+      comboStep: _comboCount,
+      wasBayCompleted: bayJustCompleted,
+    );
+    if (_currentChainLevel >= 2) {
+      HydraulicPressureService().onChain(_currentChainLevel);
+    }
 
     // Check win condition
     _checkWinCondition();

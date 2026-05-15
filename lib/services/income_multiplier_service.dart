@@ -42,6 +42,14 @@ class IncomeMultiplierService extends ChangeNotifier {
   static const int warehouseLevelBonusStartsAt = 5;
   static const double maxWarehouseLevelBonus = 2.00; // = WH Lv 45
   static const double maxMachineryBonus = 2.50; // = all 6 machines owned
+  // Added 2026-05-14 balance patch. When the income-bump achievement
+  // set was extended from 7 → 13 IDs, no one re-capped the bump
+  // source. Endgame multiplier silently climbed from documented 6.5×
+  // to actual 10.75×. This cap locks the design-doc ceiling at 6.5×
+  // (1.0 + 1.5 + 0.5 + 2.0 + 2.0 + 2.5 = 9.5× theoretical, ~6.5×
+  // typical late-game). Districts/Reputation will own the post-cap
+  // infinite-scaling axis.
+  static const double maxAchievementBonus = 2.00; // = 8 achievement bumps
 
   /// Achievement IDs that grant a permanent income bump.
   /// Curated set: tied to milestones the player feels proud about.
@@ -112,7 +120,8 @@ class IncomeMultiplierService extends ChangeNotifier {
         perTierPurchaseBonus;
 
     final achievementBonus =
-        _unlockedBumps.length * perAchievementBumpBonus;
+        (_unlockedBumps.length * perAchievementBumpBonus)
+            .clamp(0.0, maxAchievementBonus);
 
     final levelsPastStart =
         (warehouseLevel - warehouseLevelBonusStartsAt).clamp(0, 999);
@@ -156,7 +165,8 @@ class IncomeMultiplierService extends ChangeNotifier {
       ),
       (
         label: '${_unlockedBumps.length} achievement bumps',
-        bonus: _unlockedBumps.length * perAchievementBumpBonus,
+        bonus: (_unlockedBumps.length * perAchievementBumpBonus)
+            .clamp(0.0, maxAchievementBonus),
       ),
       (
         label: '$levelsPastStart WH levels past Lv5',

@@ -27,7 +27,10 @@ void main() {
       expect(local.earningsMultiplier, 1.0);
 
       final regional = BusinessTierService().infoFor(BusinessTier.regional);
-      expect(regional.cashCost, 5000);
+      // Lowered $5,000 → $3,000 (2026-05-14 balance patch) to unwall
+      // casual-pace players at L15 (audit showed them stalled at
+      // ~$2,166 against the prior $5K gate).
+      expect(regional.cashCost, 3000);
       expect(regional.minWarehouseLevel, 10);
       expect(regional.earningsMultiplier, 1.5);
     });
@@ -83,7 +86,7 @@ void main() {
       expect(result, PurchaseResult.success);
       expect(tiers.isOwned(BusinessTier.regional), isTrue);
       expect(tiers.selectedTier, BusinessTier.regional);
-      expect(economy.cash, 1000); // 6000 - 5000
+      expect(economy.cash, 3000); // 6000 - 3000 (post-balance-patch cost)
     });
 
     test('purchase refuses when warehouse level too low', () async {

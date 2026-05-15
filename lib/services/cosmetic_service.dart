@@ -59,12 +59,18 @@ class CosmeticService extends ChangeNotifier {
       minWarehouseLevel: 1,
       assetIconKey: 'forklift_yellow',
     ),
+    // Cosmetic restagger (2026-05-14 balance patch). All three skins
+    // previously unlocked at WH Lv 15 — a single hype moment wasting
+    // the goal-density potential of three distinct cosmetics. Now
+    // staggered Red @ 8 / Blue @ 15 / Gold @ 25 so the player sees
+    // a fresh forklift hit the shop roughly every 7 warehouse levels
+    // through the early-to-mid game.
     ForkliftSkinInfo(
       skin: ForkliftSkin.redSport,
       displayName: 'Red Sport',
       description: 'Faster turns. Sharper looks.',
       cashCost: 500,
-      minWarehouseLevel: 15,
+      minWarehouseLevel: 8,
       assetIconKey: 'forklift_red',
     ),
     ForkliftSkinInfo(
@@ -80,7 +86,7 @@ class CosmeticService extends ChangeNotifier {
       displayName: 'Gold Premium',
       description: 'Pure flex. Maximum payout aura.',
       cashCost: 5000,
-      minWarehouseLevel: 15,
+      minWarehouseLevel: 25,
       assetIconKey: 'forklift_gold',
     ),
   ];
