@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/achievement_service.dart';
 import '../utils/constants.dart';
+import '../utils/game_assets.dart';
 import '../widgets/warehouse_decorations.dart';
 
 class AchievementsScreen extends StatefulWidget {
@@ -348,11 +349,23 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
                     ) : null,
                   ),
                   child: Center(
-                    child: Text(
-                      isHidden ? '❓' : _getCategoryEmoji(def.category),
-                      style: TextStyle(
-                        fontSize: 24,
-                        color: isUnlocked ? null : GameColors.textMuted.withValues(alpha: 0.5),
+                    // Custom illustrated category badge (FLUX-generated).
+                    // 48dp container with 6dp padding → ~36dp art area
+                    // matches the medal's circular silhouette nicely.
+                    // Hidden achievements use the dedicated badge_hidden
+                    // medal (dark slate + crate question mark) rather
+                    // than the legacy ❓ glyph.
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Opacity(
+                        opacity: isUnlocked ? 1.0 : 0.45,
+                        child: Image.asset(
+                          isHidden
+                              ? 'assets/icons_generated/webp/192/badge_hidden.webp'
+                              : achievementCategoryAsset(def.category),
+                          fit: BoxFit.contain,
+                          filterQuality: FilterQuality.medium,
+                        ),
                       ),
                     ),
                   ),

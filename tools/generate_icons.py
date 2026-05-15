@@ -82,6 +82,72 @@ STYLES: dict[str, tuple[str, str]] = {
         "no text, no letters, no logos, "
         "mobile game asset icon style"
     ),
+    "award_medallion": (
+        # prefix — hero celebration piece for the promotion ceremony
+        "Premium mobile game tier-promotion medallion, ",
+        # suffix
+        ", round metal medallion award with embossed central emblem, "
+        "ornate ridged outer rim like a freight-yard certification stamp, "
+        "polished brushed-steel surface with warm rim lighting, "
+        "subtle hazard-yellow accent ring, soft inner glow, "
+        "centered composition, square 1:1 aspect ratio, "
+        "deep navy background, dramatic spotlight, "
+        "no text, no letters, no roman numerals, "
+        "celebratory premium award asset"
+    ),
+    "achievement_badge": (
+        # prefix — small category medal icon for achievements_screen.dart
+        "Mobile game achievement category badge, ",
+        # suffix
+        ", round shield-shaped medal with bright colorful enamel center, "
+        "thick brushed-steel rim border, soft inner highlight, "
+        "single iconic central symbol illustrated cleanly, "
+        "subtle gold star accent at the top of the rim, "
+        "centered composition, square 1:1 aspect ratio, "
+        "deep navy background with soft vignette, "
+        "no text, no letters, "
+        "polished mobile game UI badge style"
+    ),
+    "wrinkle_glyph": (
+        # prefix — tiny HUD pictogram for active-wrinkle district indicators
+        "Mobile game tiny HUD pictogram icon, ",
+        # suffix
+        ", single iconic symbol centered, "
+        "thick crisp outline, bright hazard-yellow accent on dark plate, "
+        "flat vector design, high contrast for small-size legibility, "
+        "centered composition, square 1:1 aspect ratio, "
+        "deep navy background with subtle steel-plate texture, "
+        "no text, no letters, no logos, "
+        "warehouse-sign pictogram style"
+    ),
+    "hero_truck": (
+        # prefix — main completion-overlay shipment truck illustration
+        "Mobile warehouse game hero illustration, ",
+        # suffix
+        ", yellow delivery box truck in 3/4 view, "
+        "loaded with colorful wooden shipping crates visible in the bed, "
+        "playful tilted cab and rounded silhouette, hazard accents, "
+        "soft motion lines suggesting departure, "
+        "cheerful mobile game asset, "
+        "warm soft lighting, subtle ground shadow, "
+        "centered composition, square 1:1 aspect ratio, "
+        "muted cream warehouse-floor background with subtle vignette, "
+        "no text, no letters, no logos, "
+        "polished mobile game illustration style"
+    ),
+    "stamp_seal": (
+        # prefix — flat ink-stamp decal for receipt footer
+        "Mobile warehouse game flat ink stamp design, ",
+        # suffix
+        ", red circular customs ink stamp with concentric ring border, "
+        "central iconic shipping silhouette, slight grunge texture, "
+        "stamped onto warm paper background, "
+        "soft drop shadow, slightly tilted angle, "
+        "centered composition, square 1:1 aspect ratio, "
+        "ivory paper background, "
+        "no text, no letters, no numbers, "
+        "vintage customs-stamp aesthetic"
+    ),
 }
 
 
@@ -153,6 +219,56 @@ PROMPTS: dict[str, tuple[str, str]] = {
         "a bright pumpkin-orange open shipping crate bursting with "
         "sports balls — basketball, soccer ball, baseball, "
         "spilling out playfully"),
+
+    # ---- Wave 2D: tier-promotion medallion (hero, replaces Material star
+    # icon on the rarest celebration moment) -----------------------------
+    "tier_medallion": ("award_medallion",
+        "a round freight-yard certification medallion with an embossed "
+        "warehouse silhouette in the center, laurel branches curving "
+        "around the lower rim"),
+
+    # ---- Wave 2D: 7 achievement category badges --------------------------
+    "badge_mastery": ("achievement_badge",
+        "a green shield medal with an embossed bullseye target as the "
+        "central symbol, precision-mastery vibe"),
+    "badge_speed": ("achievement_badge",
+        "an orange shield medal with an embossed lightning bolt as the "
+        "central symbol, racing-speed vibe"),
+    "badge_streak": ("achievement_badge",
+        "a red shield medal with an embossed flame fire icon as the "
+        "central symbol, hot-streak vibe"),
+    "badge_warehouse": ("achievement_badge",
+        "a brown shield medal with an embossed warehouse building icon "
+        "as the central symbol, foundational vibe"),
+    "badge_variety": ("achievement_badge",
+        "a teal shield medal with an embossed artist palette as the "
+        "central symbol, creative variety vibe"),
+    "badge_special": ("achievement_badge",
+        "a purple shield medal with an embossed magic sparkle star as "
+        "the central symbol, mysterious special vibe"),
+    "badge_hidden": ("achievement_badge",
+        "a dark slate shield medal with an embossed question mark inside "
+        "a wooden crate as the central symbol, secret vibe"),
+
+    # ---- Wave 2D: 4 wrinkle HUD pictograms --------------------------------
+    "wrinkle_frozen": ("wrinkle_glyph",
+        "a single bold snowflake pictogram with crystalline geometry"),
+    "wrinkle_priority": ("wrinkle_glyph",
+        "a single bold exclamation triangle warning pictogram"),
+    "wrinkle_fragile": ("wrinkle_glyph",
+        "a single bold cracked-wine-glass pictogram"),
+    "wrinkle_oversized": ("wrinkle_glyph",
+        "a single bold double-tall stacked-boxes pictogram"),
+
+    # ---- Wave 2D: hero truck for completion overlay ----------------------
+    "hero_truck": ("hero_truck",
+        "a friendly yellow delivery truck departing the dock with a few "
+        "crates visible in the open trailer"),
+
+    # ---- Wave 2D: receipt customs stamp ----------------------------------
+    "receipt_stamp": ("stamp_seal",
+        "the central icon is a tiny silhouetted truck on a road over a "
+        "tiny silhouetted warehouse"),
 }
 
 

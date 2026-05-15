@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../services/audio_service.dart';
 import '../services/reputation_service.dart';
 import '../utils/constants.dart';
+import '../utils/game_assets.dart';
 import 'warehouse_decorations.dart';
 
 /// Full-screen tier-promotion ceremony. Fires on top of the SHIPMENT
@@ -357,9 +358,14 @@ class _PromotionCeremonyOverlayState extends State<PromotionCeremonyOverlay>
   }
 }
 
-/// Brushed-steel medallion containing the new tier name. Painted from
-/// primitives (no asset dependency) so it scales infinitely with the
-/// tier ladder. Reads as a riveted dock-floor award plaque.
+/// Hero tier-promotion medallion — replaces the brushed-steel circle +
+/// `Icons.workspace_premium` star primitive with a single illustrated
+/// freight-yard certification medallion (FLUX-generated, 768² source).
+///
+/// Kept the outer accent-yellow glow shadow so the celebration moment
+/// still pulses with rarity — but the medallion art now carries its
+/// own brass rim, brushed-steel disk, embossed warehouse silhouette,
+/// and laurel branches so no Flutter-painted frame is needed.
 class _TierMedallion extends StatelessWidget {
   final String tierName;
   const _TierMedallion({required this.tierName});
@@ -371,20 +377,10 @@ class _TierMedallion extends StatelessWidget {
       height: 140,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: const RadialGradient(
-          colors: [
-            Color(0xFF6A7280),
-            Color(0xFF3A4250),
-            Color(0xFF1A1F26),
-          ],
-          center: Alignment(-0.3, -0.5),
-          radius: 1.2,
-        ),
-        border: Border.all(
-          color: GameColors.accent,
-          width: 3.0,
-        ),
         boxShadow: [
+          // Accent-yellow rarity glow (the visual signal that says
+          // "this is the rarest moment in the game"). Kept from the
+          // prior primitive medallion.
           BoxShadow(
             color: GameColors.accent.withValues(alpha: 0.6),
             blurRadius: 24,
@@ -397,39 +393,12 @@ class _TierMedallion extends StatelessWidget {
           ),
         ],
       ),
-      child: Stack(
-        children: [
-          // Inner accent ring — a thinner second border for the
-          // "stamped metal" depth feel.
-          Positioned.fill(
-            child: Padding(
-              padding: const EdgeInsets.all(8),
-              child: Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: GameColors.accent.withValues(alpha: 0.4),
-                    width: 1.2,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          // Center stamp: tier short-name (first letter or short label).
-          Center(
-            child: Icon(
-              Icons.workspace_premium,
-              color: GameColors.accent,
-              size: 64,
-              shadows: [
-                Shadow(
-                  color: GameColors.accent.withValues(alpha: 0.8),
-                  blurRadius: 10,
-                ),
-              ],
-            ),
-          ),
-        ],
+      child: ClipOval(
+        child: Image.asset(
+          tierMedallionAsset,
+          fit: BoxFit.cover,
+          filterQuality: FilterQuality.medium,
+        ),
       ),
     );
   }

@@ -42,6 +42,7 @@ import '../widgets/particles/confetti_overlay.dart';
 import '../widgets/color_flash_overlay.dart';
 import '../widgets/warehouse_decorations.dart';
 import '../widgets/promotion_ceremony_overlay.dart';
+import '../utils/game_assets.dart';
 import 'settings_screen.dart';
 
 /// Main gameplay screen
@@ -696,6 +697,33 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
 
   void _goToSettings() {
     Navigator.of(context).push(fadeSlideRoute(const SettingsScreen()));
+  }
+
+  /// Map a wrinkle id to a 1-char fallback glyph when we don't yet have
+  /// an illustrated pictogram for it. Keeps the district badge from
+  /// rendering empty on new wrinkles the asset catalog hasn't caught up
+  /// to (e.g. conveyor-drift, gravity-flip, double-color, time-bomb
+  /// before their dedicated Flux gens).
+  String _wrinkleFallbackGlyph(String wrinkleId) {
+    switch (wrinkleId) {
+      case 'frozen':
+        return '❄';
+      case 'priority':
+      case 'time-bomb':
+        return '⏱';
+      case 'fragile':
+        return '⚠';
+      case 'oversized':
+        return '⬛';
+      case 'conveyor-drift':
+        return '↔';
+      case 'gravity-flip':
+        return '↕';
+      case 'double-color':
+        return '◐';
+      default:
+        return '✦';
+    }
   }
 
   void _showHint() {
@@ -1598,10 +1626,11 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                     // wrinkle hint suffix if the district has one
                     // — single character so the badge stays under
                     // the constrained 75dp top-bar slot.
-                    final wrinkleHint = district != null &&
+                    final firstWrinkle = district != null &&
                             district.wrinkles.isNotEmpty
-                        ? ' ❄' // ❄ snowflake when frozen+ present
-                        : '';
+                        ? district.wrinkles.first
+                        : null;
+                    final wrinkleAsset = wrinkleGlyphAsset(firstWrinkle);
                     return Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1618,18 +1647,54 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                         ),
                         if (district != null) ...[
                           const SizedBox(height: 1),
-                          Text(
-                            'D${district.number}$wrinkleHint',
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 8,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1.0,
-                              fontFamily: 'Courier',
-                              color: GameColors.accent
-                                  .withValues(alpha: 0.85),
-                              height: 1.0,
-                            ),
+                          // Compact district readout — `D{N}` text +
+                          // optional illustrated wrinkle pictogram for
+                          // an active wrinkle (frozen / priority /
+                          // fragile / oversized / etc). Falls back to
+                          // a Unicode snowflake when no asset matches
+                          // the wrinkle id yet so brand-new wrinkles
+                          // don't render empty.
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'D${district.number}',
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.0,
+                                  fontFamily: 'Courier',
+                                  color: GameColors.accent
+                                      .withValues(alpha: 0.85),
+                                  height: 1.0,
+                                ),
+                              ),
+                              if (wrinkleAsset != null) ...[
+                                const SizedBox(width: 3),
+                                Image.asset(
+                                  wrinkleAsset,
+                                  width: 10,
+                                  height: 10,
+                                  filterQuality: FilterQuality.medium,
+                                ),
+                              ] else if (firstWrinkle != null) ...[
+                                // Fallback: no asset yet for this wrinkle
+                                // id — use a tiny accent glyph so the
+                                // district badge still signals active
+                                // modifier.
+                                Text(
+                                  ' ${_wrinkleFallbackGlyph(firstWrinkle)}',
+                                  style: TextStyle(
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.w900,
+                                    color: GameColors.accent
+                                        .withValues(alpha: 0.85),
+                                    height: 1.0,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ],
                       ],
