@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import '../utils/constants.dart';
 
+/// Home-screen streak badge — reskinned 2026-05-14 from the pre-rebrand
+/// 🔥 "X days streak!" pill into an "ON-DUTY" timeclock stamp. Reads as
+/// a warehouse attendance card stamped at the dock entry, anchored to
+/// the brushed-steel / hazard-yellow / Courier vocabulary used across
+/// the rest of the app.
 class DailyStreakBadge extends StatefulWidget {
   final int streak;
   final bool highlight;
@@ -70,7 +75,7 @@ class _DailyStreakBadgeState extends State<DailyStreakBadge>
 
   @override
   Widget build(BuildContext context) {
-    final streakLabel = widget.streak == 1 ? 'day' : 'days';
+    final dayLabel = widget.streak == 1 ? 'DAY' : 'DAYS';
 
     return AnimatedBuilder(
       animation: _controller,
@@ -79,32 +84,100 @@ class _DailyStreakBadgeState extends State<DailyStreakBadge>
         return Transform.scale(
           scale: widget.highlight ? _scaleAnimation.value : 1.0,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
+              // Brushed-steel 3-stop gradient anchored to the warehouse
+              // vocabulary (same gradient used in HUD, settings rows,
+              // chain popup pill, leaderboard rows).
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
                 colors: [
-                  GameColors.accent.withValues(alpha: 0.9),
-                  GameColors.palette[1].withValues(alpha: 0.9),
+                  Color(0xFF3A4250),
+                  Color(0xFF252B36),
+                  Color(0xFF1A1F26),
                 ],
+                stops: [0.0, 0.55, 1.0],
               ),
-              borderRadius: BorderRadius.circular(999),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: GameColors.accent.withValues(alpha: 0.65 + glow),
+                width: 1.2,
+              ),
               boxShadow: glow > 0
                   ? [
                       BoxShadow(
                         color: GameColors.accent.withValues(alpha: glow),
-                        blurRadius: 18,
-                        spreadRadius: 2,
+                        blurRadius: 14,
+                        spreadRadius: 1.5,
                       ),
                     ]
                   : null,
             ),
-            child: Text(
-              '\u{1F525} ${widget.streak} $streakLabel streak!',
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                color: GameColors.text,
-                letterSpacing: 0.3,
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Time-clock glyph — the icon a dock supervisor would
+                // tap to log a shift, anchors the "attendance card"
+                // vocabulary.
+                Icon(
+                  Icons.schedule_outlined,
+                  size: 14,
+                  color: GameColors.accent.withValues(alpha: 0.95),
+                ),
+                const SizedBox(width: 8),
+                // Two-line stamped value: header strip + big number.
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'ON-DUTY',
+                      style: TextStyle(
+                        color: GameColors.accent,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 2.0,
+                        fontFamily: 'Courier',
+                        height: 1.0,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          '${widget.streak}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                            fontFamily: 'Courier',
+                            letterSpacing: 0.5,
+                            height: 1.0,
+                          ),
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          dayLabel,
+                          style: TextStyle(
+                            color: GameColors.textMuted
+                                .withValues(alpha: 0.85),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                            fontFamily: 'Courier',
+                            letterSpacing: 1.4,
+                            height: 1.0,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         );
