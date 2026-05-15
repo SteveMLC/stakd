@@ -22,6 +22,7 @@ import 'services/warehouse_economy_service.dart';
 import 'services/business_tier_service.dart';
 import 'services/contract_service.dart';
 import 'services/cosmetic_service.dart';
+import 'services/district_service.dart';
 import 'services/income_multiplier_service.dart';
 import 'services/machinery_service.dart';
 import 'services/hydraulic_pressure_service.dart';
@@ -86,6 +87,7 @@ void main() async {
     _safeInit(
         'HydraulicPressureService', () => HydraulicPressureService().init()),
     _safeInit('ReputationService', () => ReputationService().init()),
+    _safeInit('DistrictService', () => DistrictService().init()),
     _safeInit('LeaderboardService', () => LeaderboardService().init()),
     _safeInit('StatsService', () => StatsService().init()),
   ]);
@@ -132,6 +134,7 @@ void main() async {
         ChangeNotifierProvider.value(value: CosmeticService()),
         ChangeNotifierProvider.value(value: HydraulicPressureService()),
         ChangeNotifierProvider.value(value: ReputationService()),
+        ChangeNotifierProvider.value(value: DistrictService()),
       ],
       child: const WarehouseSortApp(),
     ),
