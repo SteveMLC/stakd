@@ -84,3 +84,9 @@ before touching.
 ## Iteration Log
 
 (append below)
+
+### [2026-05-16T00:42] iter 1
+- did: gravity-flip wrinkle end-to-end (LevelParams + level_generator switch + GameState fields/tick/event + game_screen consumer/snackbar + game_board AnimatedRotation wrap)
+- result: pass (flutter analyze clean; flutter test test/services/ 175/175 green; level_generator "high level puzzles" test flaky in isolation but passes solo — same pre-existing BFS-budget issue as Level 3)
+- commit: f1db9a5
+- next: conveyor-drift wrinkle — every 5 moves, bottom layer of random non-empty stack shifts to a neighbor that can accept it (must preserve solvability)
