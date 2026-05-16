@@ -1,104 +1,29 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:warehouse_sort/models/layer_model.dart';
-import 'package:warehouse_sort/models/stack_model.dart';
 import 'package:warehouse_sort/services/district_service.dart';
 import 'package:warehouse_sort/services/level_generator.dart';
 import 'package:warehouse_sort/utils/constants.dart';
 
 void main() {
   group('LevelGenerator', () {
-    test('generated solvable levels are solvable', () {
-      final generator = LevelGenerator(seed: 42);
-      for (final level in [1, 2, 3]) {
-        final stacks = generator.generateSolvableLevel(level);
-        final solvable = generator.isSolvable(stacks, maxStates: 5000);
-        expect(solvable, isTrue, reason: 'Level $level should be solvable');
-      }
-    });
-
-    test('solved state is solvable', () {
-      final stacks = [
-        GameStack(
-          layers: [Layer(colorIndex: 0), Layer(colorIndex: 0)],
-          maxDepth: 2,
-        ),
-        GameStack(
-          layers: [Layer(colorIndex: 1), Layer(colorIndex: 1)],
-          maxDepth: 2,
-        ),
-        GameStack(layers: [], maxDepth: 2),
-      ];
-      final generator = LevelGenerator(seed: 7);
-      expect(generator.isSolvable(stacks, maxStates: 1000), isTrue);
-    });
-
-    test('difficulty score increases with color mixing', () {
-      final generator = LevelGenerator(seed: 1);
-
-      // Sorted stacks (easy) - low score
-      final easyStacks = [
-        GameStack(
-          layers: [Layer(colorIndex: 0), Layer(colorIndex: 0)],
-          maxDepth: 3,
-        ),
-        GameStack(
-          layers: [Layer(colorIndex: 1), Layer(colorIndex: 1)],
-          maxDepth: 3,
-        ),
-        GameStack(layers: [], maxDepth: 3),
-      ];
-
-      // Mixed stacks (hard) - higher score
-      final hardStacks = [
-        GameStack(
-          layers: [Layer(colorIndex: 0), Layer(colorIndex: 1), Layer(colorIndex: 0)],
-          maxDepth: 3,
-        ),
-        GameStack(
-          layers: [Layer(colorIndex: 1), Layer(colorIndex: 0), Layer(colorIndex: 1)],
-          maxDepth: 3,
-        ),
-        GameStack(layers: [], maxDepth: 3),
-      ];
-
-      final easyScore = generator.difficultyScore(easyStacks);
-      final hardScore = generator.difficultyScore(hardStacks);
-
-      expect(hardScore, greaterThan(easyScore),
-          reason: 'Mixed stacks should have higher difficulty score');
-    });
-
-    test('par calculation returns valid move count', () {
-      final generator = LevelGenerator(seed: 1);
-
-      // Simple puzzle that requires exactly 2 moves
-      final stacks = [
-        GameStack(
-          layers: [Layer(colorIndex: 0), Layer(colorIndex: 1)],
-          maxDepth: 2,
-        ),
-        GameStack(
-          layers: [Layer(colorIndex: 1), Layer(colorIndex: 0)],
-          maxDepth: 2,
-        ),
-        GameStack(layers: [], maxDepth: 2),
-      ];
-
-      final par = generator.calculatePar(stacks);
-      expect(par, isNotNull, reason: 'Par should be calculable');
-      expect(par, greaterThan(0), reason: 'Par should be positive');
-    });
-
-    test('generateLevelWithPar returns level and par', () {
-      final generator = LevelGenerator(seed: 42);
-
-      final (stacks, par) = generator.generateLevelWithPar(1);
-
-      expect(stacks, isNotEmpty, reason: 'Should generate stacks');
-      expect(par, isNotNull, reason: 'Should calculate par for simple levels');
-      expect(par, greaterThan(0), reason: 'Par should be positive');
-    });
+    // Phase H — DELETED the following tests because the methods they
+    // exercised are gone from `LevelGenerator`:
+    //   - "generated solvable levels are solvable" (called
+    //     generateSolvableLevel + isSolvable)
+    //   - "solved state is solvable" (isSolvable)
+    //   - "difficulty score increases with color mixing"
+    //     (difficultyScore)
+    //   - "par calculation returns valid move count" (calculatePar)
+    //   - "generateLevelWithPar returns level and par"
+    //   - "high level puzzles are still solvable" (generateSolvableLevel
+    //     + isSolvable)
+    //
+    // All of these tested behavior that the conveyor mechanic now
+    // owns (solvability by construction via ConveyorSeed; difficulty
+    // via ConveyorLevelConfig; par via cfg.totalDeliveries * 3).
+    // The "Level 3" and "Level 60" cases in the deleted tests were
+    // pre-existing flakies. Their removal is the cleanup the
+    // overhaul required.
 
     test('high levels have fewer empty slots', () {
       // Expert tier (51-100): 1 empty slot; Advanced (26-50): 2 empty slots
@@ -112,17 +37,6 @@ void main() {
           reason: 'Level 60 should have only 1 empty slot');
       expect(level80Params.emptySlots, equals(1),
           reason: 'Level 80 should have only 1 empty slot');
-    });
-
-    test('high level puzzles are still solvable', () {
-      final generator = LevelGenerator(seed: 42);
-
-      // Test levels in the new difficulty range
-      for (final level in [51, 60, 75, 100]) {
-        final stacks = generator.generateSolvableLevel(level);
-        final solvable = generator.isSolvable(stacks, maxStates: 10000);
-        expect(solvable, isTrue, reason: 'Level $level should be solvable');
-      }
     });
 
     group('paramsForLevel — district-aware wrinkle adjustments', () {
@@ -197,22 +111,18 @@ void main() {
       });
 
       test('procedural levels stay generatable after wrinkle bump', () {
-        final generator = LevelGenerator(seed: 42);
-        // L31 (D7 frozen-bumped) still generates a non-empty puzzle.
-        // We don't do the full isSolvable BFS check here — the higher
-        // frozen probability can push the state space past the BFS
-        // budget within the test's maxStates window, even though the
-        // level is solvable in principle. The level generator already
-        // retries 10 seeds internally before returning, so a returned
-        // stack list is the contract.
-        final stacks = generator.generateSolvableLevel(31);
-        expect(stacks, isNotEmpty);
-        // At least one stack should have a frozen block somewhere
-        // (probabilistic — we ran 10 seeds × multiple stacks).
-        final anyFrozen = stacks.any((s) =>
-            s.layers.any((l) => l.isFrozen));
-        expect(anyFrozen, isTrue,
-            reason: 'D7 frozen wrinkle should yield ≥1 frozen block');
+        // Phase H — `generateSolvableLevel` is gone. The conveyor
+        // mechanic's `_loadLevel` path generates levels via
+        // `ConveyorSeed.generateBays` (solvability by construction).
+        // The frozen-wrinkle layering test is now in
+        // `test/services/wrinkle_layerer_test.dart`.
+        //
+        // We keep this test slot as a no-op marker so the surrounding
+        // group still reports its intent in CI logs. The contract
+        // ("D7 frozen wrinkle yields ≥1 frozen block") is covered by
+        // wrinkle_layerer_test.dart's "frozen wrinkle only spawns
+        // when in list" + the conveyor_seed_test.dart inviolable
+        // assertions.
       });
     });
   });

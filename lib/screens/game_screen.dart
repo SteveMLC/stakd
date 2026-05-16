@@ -7,7 +7,6 @@ import '../models/game_state.dart';
 import '../models/stack_model.dart';
 import '../services/conveyor_level_config.dart';
 import '../services/conveyor_seed.dart';
-import '../services/level_generator.dart';
 import '../services/wrinkle_layerer.dart';
 import '../services/storage_service.dart';
 import '../services/ad_service.dart';
@@ -66,7 +65,11 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
   late int _currentLevel;
-  final LevelGenerator _levelGenerator = LevelGenerator();
+  // Phase H — `_levelGenerator` is gone. Conveyor mechanic owns the
+  // main-path level harness now (ConveyorLevelConfig + ConveyorSeed +
+  // WrinkleLayerer in `_loadLevel`). Daily challenge still uses
+  // `LevelGenerator.generateLevel` via its own model, but that's a
+  // separate flow that doesn't run through game_screen.
   final TutorialService _tutorialService = TutorialService();
   final Map<int, GlobalKey> _stackKeys = {};
   final GlobalKey _undoButtonKey = GlobalKey();
@@ -716,21 +719,18 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
     ];
     final pending = pendingWrinkled.toList();
 
-    // Gravity-flip wrinkle is per-level, not per-delivery — keep the
-    // existing wiring via the legacy LevelParams path.
-    final legacyParams = _levelGenerator.paramsForLevel(_currentLevel);
-
-    // Par is now derived from totalDeliveries — a soft target rather
-    // than a hard BFS-derived value. Phase G can refine per wrinkle.
+    // Phase H — gravity-flip is part of the conveyor config now, not
+    // the legacy LevelParams. Drop the _levelGenerator.paramsForLevel
+    // round-trip; use `cfg.wrinkles.contains('gravity-flip')` directly.
+    // Period stays at the 5-move default (was the same in LevelParams).
     final par = cfg.totalDeliveries * 3;
 
     context.read<GameState>().initGame(
       visible,
       _currentLevel,
       par: par,
-      gravityFlipActive: legacyParams.gravityFlipActive ||
-          cfg.wrinkles.contains('gravity-flip'),
-      gravityFlipPeriodMoves: legacyParams.gravityFlipPeriodMoves,
+      gravityFlipActive: cfg.wrinkles.contains('gravity-flip'),
+      gravityFlipPeriodMoves: 5,
       pendingDeliveries: pending,
       totalDeliveries: cfg.totalDeliveries,
     );

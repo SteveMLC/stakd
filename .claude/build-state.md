@@ -154,3 +154,40 @@ Difficulty = M. Always solvable in ≤M forward moves. No BFS needed.
 - result: pass (analyze clean; 194/194 services+models green; no new tests this iter — Phase D.3 will add overlay widget tests once the slide animations land).
 - commit: 43a5d78
 - next: Phase D.3 — capture pre-swap bay state in GameState (add `lastShippedStack: GameStack?` getter + setter inside `shipBayAndPullNext`); build proper bay-slide-off animation (crates fade + container slides right); build arrival slide-in for the new delivery.
+
+### [2026-05-16T11:30] iter — Phase D.3
+- did: GameState now captures `_lastShippedStack` BEFORE swapping the slot. Overlay reads it and renders a ghost slide-off (600px right, 400ms easeInCubic, fade) BELOW the cash popup in the Stack ordering. New `_ShippedGhostWidget` mirrors the bay's crate column with the same gradients the live `_StackWidget` uses so the player visually watches their completed cargo leave the dock.
+- result: pass (analyze clean; 195/195 tests green; added 1 conveyor-state test for the capture-before-swap contract).
+- commit: 10cbeaa
+- next: Phase E — single-row layout enforcement for conveyor mode.
+
+### [2026-05-16T11:35] iter — Phase E (initial, reverted)
+- did: forced single-row layout in `_getStacksPerRow` when `gameState.conveyorMode == true`.
+- result: pass but WRONG direction. Steve clarified at 11:38 that the conveyor mechanic does NOT mean a single-line belt — multi-row grids (3×2 etc.) are desired. Reverted in next commit.
+- commit: 489016e (revert in 12bb18d).
+
+### [2026-05-16T11:40] iter — Phase E (corrected — multi-row)
+- did: reverted single-row force; bumped `ConveyorLevelConfig` mid+ bands to 6 visible bays so 3×2 grid is the canonical multi-row layout (L16-100+). Updated tests + spec §5.1 to reflect per-slot conveyor-track model.
+- result: pass (analyze clean; 29 conveyor tests green).
+- commit: 12bb18d
+- next: Phase F — wire conveyor mechanic into `_loadLevel` + add level-config table.
+
+### [2026-05-16T11:45] iter — Phase F
+- did: new `lib/services/conveyor_level_config.dart` with 6-band difficulty table + 10 unit tests. `_loadLevel` in game_screen.dart now generates `totalDeliveries` worth of bays via `ConveyorSeed.generateBays` (deterministic per-level RNG), passes first N to visible + rest to `pendingDeliveries`, sets `conveyorMode = true`. New win check in `_checkWinCondition` short-circuits to `conveyorLevelComplete` when conveyor is on.
+- result: pass (analyze clean; 205/205 tests green).
+- commit: TBD-after-commit
+- next: Phase G — route 7 wrinkles as post-seed additives via a new `WrinkleLayerer`.
+
+### [2026-05-16T11:50] iter — Phase G
+- did: new `lib/services/wrinkle_layerer.dart` with `applyToBay` and `applyToBays` methods. Per-bay caps + mutual exclusion (fragile/priority/time-bomb on the same crate). Probabilities scale with the per-level wrinkle list. 9 unit tests. Wired into `_loadLevel` so every bay (visible + pending) gets the post-seed pass before reaching GameState. `gravity-flip` stays per-level (board behavior).
+- result: pass (analyze clean; 214/214 tests green).
+- commit: TBD-after-commit
+- next: Phase H — delete dead `LevelGenerator` methods + flaky BFS tests + STOP_REASON.
+
+### [2026-05-16T11:55] iter — Phase H
+- did: Deleted from `LevelGenerator`: `difficultyScore`, `calculatePar`, `isSolvable`, `_stateToKey`, `generateSolvableLevel`, `generateLevelWithPar`, `applySpecialBlocks`. Simplified `generateDailyChallenge` to a single shuffled-solvable build (drop the difficulty filter loop). Dropped the `_levelGenerator` field from game_screen.dart entirely — `cfg.wrinkles.contains('gravity-flip')` replaces the `paramsForLevel` round-trip. Deleted 6 flaky tests from `level_generator_test.dart` (Level 3 + Level 60 BFS-budget cases, and 4 tests for now-deleted methods).
+- result: pass (analyze clean; 214/214 tests green; no flaky tests left in the suite).
+- commit: TBD-after-commit
+- next: STOP_REASON line below.
+
+STOP_REASON: conveyor-mechanic-shipped-end-to-end

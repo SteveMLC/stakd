@@ -167,6 +167,7 @@ class LevelGenerator {
   }
 
   /// Check if a puzzle state is solved
+  // ignore: unused_element
   bool _isSolved(List<GameStack> stacks) {
     for (final stack in stacks) {
       if (stack.isEmpty) continue;
@@ -175,257 +176,29 @@ class LevelGenerator {
     return true;
   }
 
-  /// Calculate difficulty score based on color transitions and mixing
-  /// Higher score = more difficult puzzle
-  int difficultyScore(List<GameStack> stacks) {
-    int score = 0;
+  // Phase H — DELETED (2026-05-16): difficultyScore, calculatePar,
+  // isSolvable, _stateToKey, generateSolvableLevel, generateLevelWithPar.
+  // The conveyor mechanic owns the main-path level harness via
+  // ConveyorSeed (solvability by construction, no BFS validation).
+  // Daily challenge still uses generateLevel + generateDailyChallenge.
 
-    for (final stack in stacks) {
-      if (stack.isEmpty || stack.layers.length <= 1) continue;
 
-      // Count color transitions within each stack
-      int transitions = 0;
-      Set<int> uniqueColors = {};
-      int buriedSingletons = 0;
-
-      for (int i = 0; i < stack.layers.length; i++) {
-        final color = stack.layers[i].colorIndex;
-        uniqueColors.add(color);
-        if (i > 0 && color != stack.layers[i - 1].colorIndex) {
-          transitions++;
-          if (i >= 2) {
-            final prevPrev = stack.layers[i - 2].colorIndex;
-            final prev = stack.layers[i - 1].colorIndex;
-            if (prevPrev != prev && prev != color) {
-              buriedSingletons++;
-            }
-          }
-        }
-      }
-
-      // More transitions = harder
-      score += transitions * 2;
-
-      // Buried singletons are much harder
-      score += buriedSingletons * 3;
-
-      // Stacks with many unique colors are harder to solve
-      if (uniqueColors.length >= 3) {
-        score += (uniqueColors.length - 2) * 2;
-      }
-
-      if (stack.layers.length >= 4 && uniqueColors.length >= 2) {
-        score += stack.layers.length - 3;
-      }
-    }
-
-    // Penalize "almost solved" states
-    int completedStacks = stacks.where((s) => s.isComplete).length;
-    int nearlyComplete = stacks
-        .where(
-          (s) =>
-              s.layers.length >= 3 &&
-              s.layers.every((l) => l.colorIndex == s.layers.first.colorIndex),
-        )
-        .length;
-
-    score -= completedStacks * 4;
-    score -= nearlyComplete * 2;
-
-    return score.clamp(0, 100);
-  }
-
-  /// Calculate minimum moves to solve (Par) using BFS
-  /// Returns null if unsolvable within maxStates
-  int? calculatePar(List<GameStack> stacks, {int maxStates = 15000}) {
-    if (_isSolved(stacks)) return 0;
-
-    final visited = <String, int>{};
-    final queue = <(List<GameStack>, int)>[
-      (stacks.map((s) => s.copy()).toList(), 0),
-    ];
-
-    while (queue.isNotEmpty && visited.length < maxStates) {
-      final (current, moves) = queue.removeAt(0);
-      final stateKey = _stateToKey(current);
-
-      if (visited.containsKey(stateKey)) continue;
-      visited[stateKey] = moves;
-
-      if (_isSolved(current)) return moves;
-
-      // Generate all valid next states
-      for (int from = 0; from < current.length; from++) {
-        if (current[from].isEmpty) continue;
-        for (int to = 0; to < current.length; to++) {
-          if (from == to) continue;
-          if (current[to].canAccept(current[from].topLayer!)) {
-            final next = current.map((s) => s.copy()).toList();
-            final layer = next[from].topLayer!;
-            next[from] = next[from].withTopLayerRemoved();
-            next[to] = next[to].withLayerAdded(layer);
-
-            final nextKey = _stateToKey(next);
-            if (!visited.containsKey(nextKey)) {
-              queue.add((next, moves + 1));
-            }
-          }
-        }
-      }
-    }
-
-    // If we found a solution during traversal
-    for (final entry in visited.entries) {
-      if (entry.value > 0) {
-        // Check if any visited state is solved
-        // (optimization: we return early on solve, so this shouldn't be needed)
-      }
-    }
-
-    return null; // Unsolvable within limit
-  }
-
-  /// Verify that a level is solvable using BFS
-  bool isSolvable(List<GameStack> stacks, {int maxStates = 10000}) {
-    final visited = <String>{};
-    final queue = <List<GameStack>>[stacks.map((s) => s.copy()).toList()];
-
-    while (queue.isNotEmpty && visited.length < maxStates) {
-      final current = queue.removeAt(0);
-      final stateKey = _stateToKey(current);
-
-      if (visited.contains(stateKey)) continue;
-      visited.add(stateKey);
-
-      if (_isSolved(current)) return true;
-
-      // Generate all valid next states
-      for (int from = 0; from < current.length; from++) {
-        if (current[from].isEmpty) continue;
-        for (int to = 0; to < current.length; to++) {
-          if (from == to) continue;
-          if (current[to].canAccept(current[from].topLayer!)) {
-            final next = current.map((s) => s.copy()).toList();
-            final layer = next[from].topLayer!;
-            next[from] = next[from].withTopLayerRemoved();
-            next[to] = next[to].withLayerAdded(layer);
-
-            final nextKey = _stateToKey(next);
-            if (!visited.contains(nextKey)) {
-              queue.add(next);
-            }
-          }
-        }
-      }
-    }
-
-    return false;
-  }
-
-  /// Convert state to string key for visited set
-  String _stateToKey(List<GameStack> stacks) {
-    return stacks
-        .map((s) => s.layers.map((l) => l.colorIndex.toString()).join(','))
-        .join('|');
-  }
-
-  /// Generate a level and verify it's solvable and sufficiently difficult
-  List<GameStack> generateSolvableLevel(int levelNumber) {
-    final params = paramsForLevel(levelNumber);
-    final minDifficulty = params.minDifficultyScore;
-
-    List<GameStack>? bestLevel;
-    int bestScore = -1;
-
-    // Try multiple seeds to find a level that's both solvable and difficult enough
-    for (int attempt = 0; attempt < 10; attempt++) {
-      final seedMultiplier = attempt == 0 ? 12345 : 12345 + attempt * 67890;
-      final altRandom = Random(levelNumber * seedMultiplier + _seedOffset);
-      final state = _generateShuffledSolvableState(params, altRandom);
-      final level = _buildStacksFromState(state, params.depth, params: params);
-
-      // Check difficulty score
-      final score = difficultyScore(level);
-      if (score >= minDifficulty) {
-        // Good enough - use this level
-        return level;
-      }
-
-      // Track best attempt in case we can't meet threshold
-      if (score > bestScore) {
-        bestScore = score;
-        bestLevel = level;
-      }
-    }
-
-    // Return best attempt if no level met the threshold
-    return bestLevel ?? generateLevel(levelNumber);
-  }
-
-  /// Generate an endless Zen puzzle with difficulty preset
-  List<GameStack> generateZenPuzzle(String difficulty) {
-    final params = switch (difficulty) {
-      'easy' => ZenParams.easy,
-      'medium' => ZenParams.medium,
-      'hard' => ZenParams.hard,
-      'ultra' => ZenParams.ultra,
-      _ => ZenParams.medium,
-    };
-
-    return generatePuzzleWithParams(params);
-  }
-
-  /// [maxAttempts] and [maxSolvableStates] can be lowered for Zen for faster generation.
-  List<GameStack> generatePuzzleWithParams(
-    LevelParams params, {
-    int maxAttempts = 15,
-    int maxSolvableStates = 5000,
-  }) {
-    List<GameStack>? bestLevel;
-    int bestScore = -1;
-
-    for (int attempt = 0; attempt < maxAttempts; attempt++) {
-      final random = Random(DateTime.now().millisecondsSinceEpoch + attempt);
-      final state = _generateShuffledSolvableState(
-        params,
-        random,
-        maxAttempts: 1,
-        maxSolvableStates: maxSolvableStates,
-      );
-      final level = _buildStacksFromState(state, params.depth, params: params);
-
-      final score = difficultyScore(level);
-      if (score >= params.minDifficultyScore) {
-        return level;
-      }
-
-      if (score > bestScore) {
-        bestScore = score;
-        bestLevel = level;
-      }
-    }
-
-    // Fallback: generate a shuffled puzzle even if it doesn't meet difficulty threshold
-    return bestLevel ?? generateLevel(1);
-  }
-
-  /// Generate a level with par information
-  (List<GameStack>, int?) generateLevelWithPar(int levelNumber) {
-    final level = generateSolvableLevel(levelNumber);
-    final par = calculatePar(level);
-    return (level, par);
-  }
-
-  /// Generate the daily challenge level (deterministic by date)
+  /// Generate the daily challenge level (deterministic by date).
+  ///
+  /// Phase H — the old loop-and-pick-best-by-difficultyScore was
+  /// replaced by a single shuffled-solvable build using the same
+  /// reverse-walk that powered the legacy generator. Difficulty
+  /// filtering is gone (the conveyor mechanic's difficulty curve
+  /// lives in `ConveyorLevelConfig`, not here). Daily challenge is
+  /// intentionally a fixed-shape Level-20-difficulty puzzle.
   List<GameStack> generateDailyChallenge({DateTime? date}) {
     final challengeDate = (date ?? DateTime.now().toUtc());
     final seed = _dateSeed(challengeDate) + _seedOffset;
 
-    // Daily challenge: moderate difficulty, must generate reliably
     final baseParams = LevelParams.forLevel(20);
-    final colors = baseParams.colors.clamp(3, 5); // cap at 5 colors
-    final emptySlots = max(2, baseParams.emptySlots); // keep 2 empty slots
-    final depth = min(4, baseParams.depth); // cap at depth 4
+    final colors = baseParams.colors.clamp(3, 5);
+    final emptySlots = max(2, baseParams.emptySlots);
+    final depth = min(4, baseParams.depth);
 
     final params = LevelParams(
       colors: colors,
@@ -435,35 +208,9 @@ class LevelGenerator {
       shuffleMoves: baseParams.shuffleMoves + 12,
     );
 
-    final minDifficulty = params.minDifficultyScore;
-
-    List<GameStack>? bestLevel;
-    int bestScore = -1;
-
-    for (int attempt = 0; attempt < 10; attempt++) {
-      final levelRandom = Random(seed + attempt * 997);
-      final state = _generateShuffledSolvableState(params, levelRandom);
-      final level = _buildStacksFromState(state, params.depth, params: params);
-
-      final score = difficultyScore(level);
-      if (score >= minDifficulty) {
-        return level;
-      }
-
-      if (score > bestScore) {
-        bestScore = score;
-        bestLevel = level;
-      }
-    }
-
-    return bestLevel ?? generateLevel(1);
-  }
-
-  /// Generate the daily challenge level with par information
-  (List<GameStack>, int?) generateDailyChallengeWithPar({DateTime? date}) {
-    final level = generateDailyChallenge(date: date);
-    final par = calculatePar(level);
-    return (level, par);
+    final levelRandom = Random(seed);
+    final state = _generateShuffledSolvableState(params, levelRandom);
+    return _buildStacksFromState(state, params.depth, params: params);
   }
 
   /// Generate a shuffled, always-solvable starting state.
@@ -485,6 +232,7 @@ class LevelGenerator {
     int maxAttempts = 10,
     // Kept for API compatibility — no longer used now that we
     // skip the BFS solvability check entirely.
+    // ignore: unused_element_parameter
     int maxSolvableStates = 2000,
   }) {
     final solved = _createSolvedState(
@@ -703,155 +451,19 @@ class LevelGenerator {
         )
         .toList();
 
-    // Apply special blocks (locked/frozen) after building solvable state
-    if (params != null) {
-      applySpecialBlocks(stacks, params);
-    }
-
+    // Phase H — Wrinkle additives moved to `WrinkleLayerer`. The
+    // main game path (`game_screen._loadLevel`) calls that directly.
+    // Daily challenge uses `generateLevel`/`generateDailyChallenge`
+    // which routes through here and now returns pure-color bays.
+    // Phase G+ daily-challenge wrinkles, if desired, would call
+    // WrinkleLayerer on the output of generateDailyChallenge.
     return stacks;
   }
 
-  /// Apply locked, frozen, fragile, priority, and time-bomb blocks to
-  /// an already-generated puzzle. Caps per-puzzle: max 1 locked, max 2
-  /// frozen, max 2 fragile, max 1 priority, max 1 time-bomb. Never locks
-  /// a block at the bottom of a mixed-color stack. Lock timer capped at
-  /// 3 moves.
-  void applySpecialBlocks(List<GameStack> stacks, LevelParams params) {
-    if (params.lockedBlockProbability <= 0 &&
-        params.frozenBlockProbability <= 0 &&
-        params.fragileBlockProbability <= 0 &&
-        params.priorityBlockProbability <= 0 &&
-        params.timeBombBlockProbability <= 0 &&
-        params.doubleColorBlockProbability <= 0) {
-      return;
-    }
+  // Phase H — applySpecialBlocks DELETED. WrinkleLayerer owns
+  // post-seed wrinkle additives now; the conveyor mechanic routes
+  // through it directly. Daily challenge produces pure-color bays.
 
-    final random = Random();
-    int lockedCount = 0;
-    int frozenCount = 0;
-    int fragileCount = 0;
-    int priorityCount = 0;
-    int timeBombCount = 0;
-    int doubleColorCount = 0;
-    const maxLocked = 1;
-    const maxFrozen = 2;
-    const maxFragile = 2;
-    const maxPriority = 1;
-    const maxTimeBomb = 1;
-    const maxDoubleColor = 2;
-
-    for (int s = 0; s < stacks.length; s++) {
-      final stack = stacks[s];
-      if (stack.isEmpty) continue;
-
-      // Check if this stack has mixed colors
-      final colors = stack.layers.map((l) => l.colorIndex).toSet();
-      final isMixed = colors.length > 1;
-
-      final newLayers = <Layer>[];
-      for (int i = 0; i < stack.layers.length; i++) {
-        final layer = stack.layers[i];
-        final isBottom = (i == 0);
-        final isTop = (i == stack.layers.length - 1);
-
-        // Locked blocks: prefer bottom positions, but skip if mixed stack bottom
-        if (lockedCount < maxLocked &&
-            params.lockedBlockProbability > 0 &&
-            isBottom &&
-            !isMixed &&
-            random.nextDouble() < params.lockedBlockProbability) {
-          final lockedFor = (random.nextInt(3) + 1).clamp(1, 3);
-          newLayers.add(
-            Layer.locked(colorIndex: layer.colorIndex, lockedFor: lockedFor),
-          );
-          lockedCount++;
-        }
-        // Frozen blocks: can be anywhere
-        else if (frozenCount < maxFrozen &&
-            params.frozenBlockProbability > 0 &&
-            random.nextDouble() < params.frozenBlockProbability) {
-          newLayers.add(Layer.frozen(colorIndex: layer.colorIndex));
-          frozenCount++;
-        }
-        // Fragile blocks: prefer TOP positions so the player has to
-        // think about where to drop them. Only spawn on stacks that
-        // would actually require movement (mixed colors). Cash penalty
-        // on wrong-color drop attempts is wired in GameState.
-        else if (fragileCount < maxFragile &&
-            params.fragileBlockProbability > 0 &&
-            isTop &&
-            isMixed &&
-            random.nextDouble() < params.fragileBlockProbability) {
-          newLayers.add(Layer.fragile(colorIndex: layer.colorIndex));
-          fragileCount++;
-        }
-        // Priority blocks: rare (max 1 per puzzle), prefer TOP of a
-        // mixed-color stack so the player has to actually ship the
-        // crate, not just leave it buried. The countdown is the
-        // params.priorityDeadlineMoves so districts can dial pace.
-        else if (priorityCount < maxPriority &&
-            params.priorityBlockProbability > 0 &&
-            isTop &&
-            isMixed &&
-            random.nextDouble() < params.priorityBlockProbability) {
-          newLayers.add(Layer.priority(
-            colorIndex: layer.colorIndex,
-            deadline: params.priorityDeadlineMoves,
-          ));
-          priorityCount++;
-        }
-        // Time-bomb: harshest timed wrinkle, max 1 per puzzle, also
-        // prefers TOP of a mixed stack. 6-move default deadline + $80
-        // detonation penalty makes it the "you have to deal with this
-        // RIGHT NOW" beat. Guarded to not co-spawn with priority on
-        // the same crate so the player can read at-a-glance which
-        // urgent crate is which.
-        else if (timeBombCount < maxTimeBomb &&
-            params.timeBombBlockProbability > 0 &&
-            isTop &&
-            isMixed &&
-            !layer.isPriority &&
-            random.nextDouble() < params.timeBombBlockProbability) {
-          newLayers.add(Layer.timeBomb(
-            colorIndex: layer.colorIndex,
-            deadline: params.timeBombDeadlineMoves,
-          ));
-          timeBombCount++;
-        }
-        // Double-color crate — uses BlockType.multiColor which is
-        // already wired into stack matching logic. The second color
-        // is picked from the palette excluding the layer's own color,
-        // so the crate can stack onto two different single-color
-        // sources. Spawns anywhere in mixed stacks (not just top)
-        // since double-color is a per-puzzle texture, not a
-        // top-only urgency mechanic.
-        else if (doubleColorCount < maxDoubleColor &&
-            params.doubleColorBlockProbability > 0 &&
-            isMixed &&
-            random.nextDouble() < params.doubleColorBlockProbability) {
-          final ownColor = layer.colorIndex;
-          int secondColor =
-              (ownColor + 1 + random.nextInt(params.colors - 1)) %
-                  params.colors;
-          if (secondColor == ownColor) {
-            secondColor = (secondColor + 1) % params.colors;
-          }
-          newLayers.add(Layer.multiColor(
-            colors: [ownColor, secondColor],
-          ));
-          doubleColorCount++;
-        } else {
-          newLayers.add(layer);
-        }
-      }
-
-      stacks[s] = GameStack(
-        layers: newLayers,
-        maxDepth: stack.maxDepth,
-        id: stack.id,
-      );
-    }
-  }
 
   int _dateSeed(DateTime date) {
     final year = date.year.toString().padLeft(4, '0');
