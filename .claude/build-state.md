@@ -110,8 +110,18 @@ Difficulty = M. Always solvable in ≤M forward moves. No BFS needed.
 - commit: f1db9a5
 - next: conveyor-drift wrinkle — every 5 moves, bottom layer of random non-empty stack shifts to a neighbor that can accept it (must preserve solvability)
 
-### [2026-05-16T08:50] PIVOT — Priority 1 Conveyor Overhaul
-- did: Steve's vision recorded; docs/conveyor-mechanic-spec.md drafted; old wrinkle-iter cron killed; new phase plan A-H in place.
-- result: spec landed; iter cron paused pending re-arm with new prompt.
-- commit: (pending — committing along with spec doc)
+### [2026-05-16T08:50] PIVOT — Priority 1 Conveyor Overhaul + Phase A
+- did: Steve's vision recorded; docs/conveyor-mechanic-spec.md drafted (535 lines); old wrinkle-iter cron 5ff6f4e1 killed; new phase plan A-H in place.
+- result: spec landed; build-state.md updated to reflect the pivot.
+- commit: 36f5a72
 - next: Phase B — write `lib/services/conveyor_seed.dart` with reverse-construction algorithm + unit tests asserting "no pre-solved bay at construction time" for level 1..100.
+
+### [2026-05-16T08:58] iter — Phase B
+- did: `lib/services/conveyor_seed.dart` (~170 lines) + `test/services/conveyor_seed_test.dart` (7 tests covering all 6 difficulty bands from spec section 4.3). Algorithm: reverse-construction. Inviolable #1 (no pre-solved bay) asserted across 100 seeds × 6 bands = 600 generations.
+- result: pass (flutter analyze clean; 7/7 new tests green; full service suite 175+7=182/182 green; no regressions to existing wrinkles).
+- commit: 483dc1c
+- next: Phase C — introduce `ConveyorLevel` to GameState. Add `visibleBays`, `pendingDeliveries`, `baysShipped`, `totalDeliveries`. Update `initGame` to accept a ConveyorLevel optionally (additive; old callers unchanged). Add `_onBayShipped(bayIndex)` data-flow method that pulls next from queue and replaces. NO VFX yet — animations are Phase D. NO new win condition yet — Phase F. Keep old `_loadLevel` path working unchanged through this iter.
+
+### [2026-05-16T09:00] cron re-arm
+- new cron: 3f6a2a4e (15-min cadence). Prompt: conveyor-overhaul iteration loop. Phases B-H queued.
+- old cron 5ff6f4e1 deleted (wrinkle-iter prompt was obsolete).
