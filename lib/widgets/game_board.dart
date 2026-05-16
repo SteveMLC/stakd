@@ -842,6 +842,15 @@ class _GameBoardState extends State<GameBoard>
   }
 
   int _getStacksPerRow(int total, double maxWidth) {
+    // Phase E — when conveyor mode is on, the level config promises
+    // numVisibleBays ≤ 5 which always fits in a single row at iPhone
+    // 17 width (430pt / (60+12) = 5.97 → 5). Force single-row here
+    // defensively so any future bigger bay-width or smaller-screen
+    // device doesn't accidentally wrap conveyor mode into a 3×2 grid
+    // that breaks the carousel feel.
+    if (widget.gameState.conveyorMode) {
+      return total.clamp(1, 999);
+    }
     final stackWidth = GameSizes.stackWidth + GameSizes.stackSpacing;
     final maxFit = (maxWidth / stackWidth).floor().clamp(1, 999);
 
