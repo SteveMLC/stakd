@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../models/game_state.dart';
+import '../models/stack_model.dart';
+import '../services/conveyor_level_config.dart';
+import '../services/conveyor_seed.dart';
 import '../services/level_generator.dart';
 import '../services/storage_service.dart';
 import '../services/ad_service.dart';
@@ -660,16 +663,67 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
   }
 
   void _loadLevel() {
-    final (stacks, par) = _levelGenerator.generateLevelWithPar(_currentLevel);
-    // Read district-level wrinkle flags (gravity-flip, etc.) off the
-    // resolved params so GameState can drive the per-move toggles.
-    final params = _levelGenerator.paramsForLevel(_currentLevel);
+    // Phase F — conveyor mode is the only level harness from now on.
+    // Look up the level's difficulty config from the table, generate
+    // `totalDeliveries` worth of mini-puzzles via reverse-construction,
+    // split them into (visible, pending) for the conveyor queue, and
+    // hand all of it to GameState.initGame.
+    final cfg = ConveyorLevelConfig.forLevel(_currentLevel);
+    // Level-stable RNG seed so the same level number always generates
+    // the same conveyor of deliveries (good for daily-challenge type
+    // reproducibility + supports replay-from-state).
+    final rngBase = _currentLevel * 1000003;
+    final allBays = <GameStack>[];
+    for (var i = 0; i < cfg.totalDeliveries; i++) {
+      allBays.add(
+        ConveyorSeed.generateBays(
+          numColors: cfg.numColors,
+          bayDepth: cfg.bayDepth,
+          numEmptyBays: cfg.numEmptyBays,
+          scrambleMoves: cfg.scrambleMovesPerBay,
+          rng: math.Random(rngBase + i),
+        ).first,
+      );
+    }
+    // First `numVisibleBays` go to the on-screen window; remaining
+    // bays queue up to slide in as visible bays ship off. We also
+    // pad the visible row with empty workspace bays from the very
+    // first generated seed (so the player has movement space).
+    final firstSeedFullWorkspace = ConveyorSeed.generateBays(
+      numColors: cfg.numColors,
+      bayDepth: cfg.bayDepth,
+      numEmptyBays: cfg.numEmptyBays,
+      scrambleMoves: cfg.scrambleMovesPerBay,
+      rng: math.Random(rngBase - 1),
+    );
+    // Replace the first numVisibleBays of `allBays` into the
+    // workspace structure — keep first N delivery bays as the
+    // "mixed" slots, pad with empty workspace bays from the seed.
+    final visible = <GameStack>[
+      ...allBays.take(cfg.numVisibleBays),
+      ...firstSeedFullWorkspace
+          .where((b) => b.layers.isEmpty)
+          .take(cfg.numEmptyBays),
+    ];
+    final pending = allBays.skip(cfg.numVisibleBays).toList();
+
+    // Gravity-flip wrinkle is per-level, not per-delivery — keep the
+    // existing wiring via the legacy LevelParams path.
+    final legacyParams = _levelGenerator.paramsForLevel(_currentLevel);
+
+    // Par is now derived from totalDeliveries — a soft target rather
+    // than a hard BFS-derived value. Phase G can refine per wrinkle.
+    final par = cfg.totalDeliveries * 3;
+
     context.read<GameState>().initGame(
-      stacks,
+      visible,
       _currentLevel,
       par: par,
-      gravityFlipActive: params.gravityFlipActive,
-      gravityFlipPeriodMoves: params.gravityFlipPeriodMoves,
+      gravityFlipActive: legacyParams.gravityFlipActive ||
+          cfg.wrinkles.contains('gravity-flip'),
+      gravityFlipPeriodMoves: legacyParams.gravityFlipPeriodMoves,
+      pendingDeliveries: pending,
+      totalDeliveries: cfg.totalDeliveries,
     );
     _levelStartTime = DateTime.now();
     _completionDuration = null;

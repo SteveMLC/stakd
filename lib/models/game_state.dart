@@ -845,6 +845,14 @@ class GameState extends ChangeNotifier {
 
   /// Check if all non-empty stacks are complete
   void _checkWinCondition() {
+    // Phase F — when conveyor mode is on, the level is won when the
+    // delivery queue is drained AND every visible bay is empty or
+    // single-color-complete. The conveyorLevelComplete getter
+    // encapsulates that check (see field definition above).
+    if (_conveyorMode) {
+      _isComplete = conveyorLevelComplete;
+      return;
+    }
     final nonEmptyStacks = _stacks.where((s) => !s.isEmpty).toList();
     if (nonEmptyStacks.isEmpty) {
       _isComplete = true;
