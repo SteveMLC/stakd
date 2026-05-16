@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:math';
 import 'dart:ui' show Offset;
 import 'package:flutter/foundation.dart';
@@ -153,6 +154,11 @@ class GameState extends ChangeNotifier {
     int? par,
     bool gravityFlipActive = false,
     int gravityFlipPeriodMoves = 5,
+    // Conveyor mechanic (Phase C). Pass a non-empty queue + total
+    // count to opt in to delivery-queue mode. Default empty/zero means
+    // the legacy "sort everything on screen at once" flow runs.
+    Iterable<GameStack>? pendingDeliveries,
+    int totalDeliveries = 0,
   }) {
     _stacks = stacks;
     _currentLevel = level;
@@ -184,6 +190,23 @@ class GameState extends ChangeNotifier {
     _gravityFlipped = false;
     _movesSinceFlip = 0;
     _gravityFlippedThisFrame = false;
+    // Conveyor-mode init. Opt-in when caller passes deliveries.
+    _pendingDeliveries.clear();
+    _baysShipped = 0;
+    _bayShippedSlotThisFrame = null;
+    if (pendingDeliveries != null && pendingDeliveries.isNotEmpty) {
+      _pendingDeliveries.addAll(pendingDeliveries);
+      _conveyorMode = true;
+      // totalDeliveries = visible bays already on screen + pending
+      // queue if caller didn't override.
+      _totalDeliveries = totalDeliveries > 0
+          ? totalDeliveries
+          : (_stacks.where((b) => b.layers.isNotEmpty).length +
+              _pendingDeliveries.length);
+    } else {
+      _conveyorMode = false;
+      _totalDeliveries = 0;
+    }
     _resetPowerUpTracking();
     notifyListeners();
   }
@@ -342,6 +365,81 @@ class GameState extends ChangeNotifier {
   bool get gravityFlippedThisFrame => _gravityFlippedThisFrame;
   void consumeGravityFlipEvent() {
     _gravityFlippedThisFrame = false;
+  }
+
+  // ── Conveyor mechanic (Phase C — data model only) ─────────────────────
+  // Per `docs/conveyor-mechanic-spec.md`. A level is now a queue of
+  // mini-deliveries instead of a static board. `_stacks` holds the
+  // currently visible bays (4-5 of them); `_pendingDeliveries` is the
+  // FIFO queue of bays that will slide in as visible bays get cleared.
+  // `_baysShipped` tracks player progress through the queue;
+  // `_totalDeliveries` is the level's target.
+  //
+  // **Backward-compat in Phase C:** when `_conveyorMode` is false
+  // (which is the default + the only mode the game uses today), all
+  // conveyor state is dormant and the existing `_checkWinCondition`
+  // logic runs unchanged. Phase F flips the switch to use the conveyor
+  // win check; Phase C just stages the data + the ship-and-pull method.
+  bool _conveyorMode = false;
+  final Queue<GameStack> _pendingDeliveries = Queue<GameStack>();
+  int _baysShipped = 0;
+  int _totalDeliveries = 0;
+
+  bool get conveyorMode => _conveyorMode;
+  int get pendingDeliveryCount => _pendingDeliveries.length;
+  int get baysShipped => _baysShipped;
+  int get totalDeliveries => _totalDeliveries;
+  int get baysRemaining => _totalDeliveries - _baysShipped;
+
+  /// One-shot event flag: a bay just shipped this frame (for VFX hooks
+  /// in Phase D). Cleared by `consumeBayShippedEvent`.
+  int? _bayShippedSlotThisFrame;
+  int? get bayShippedSlotThisFrame => _bayShippedSlotThisFrame;
+  void consumeBayShippedEvent() {
+    _bayShippedSlotThisFrame = null;
+  }
+
+  /// Ship the bay at [slotIndex] (must be fully-sorted single-color
+  /// full-depth) and slide the next pending delivery into its slot.
+  /// Returns true if a bay was actually shipped; false otherwise (slot
+  /// wasn't shipping-ready or no pending deliveries left).
+  ///
+  /// Phase C: data-flow only. Phase D wires the VFX. Phase F wires the
+  /// win check. Phase C callers should pre-check `conveyorMode` to
+  /// avoid running this path when the old level harness is active.
+  bool shipBayAndPullNext(int slotIndex) {
+    if (!_conveyorMode) return false;
+    if (slotIndex < 0 || slotIndex >= _stacks.length) return false;
+    final bay = _stacks[slotIndex];
+    if (!bay.isComplete) return false;
+
+    _baysShipped++;
+    _bayShippedSlotThisFrame = slotIndex;
+
+    if (_pendingDeliveries.isEmpty) {
+      // No more deliveries — leave the slot empty so the player has
+      // workspace until the level wins.
+      _stacks[slotIndex] = GameStack(
+        layers: const <Layer>[],
+        maxDepth: bay.maxDepth,
+      );
+    } else {
+      // Slide the next pending delivery into this slot.
+      _stacks[slotIndex] = _pendingDeliveries.removeFirst();
+    }
+
+    notifyListeners();
+    return true;
+  }
+
+  /// True when the conveyor-mode level is fully shipped: every delivery
+  /// has been completed and no in-progress bay is on screen. Phase F
+  /// wires this into the win check.
+  bool get conveyorLevelComplete {
+    if (!_conveyorMode) return false;
+    if (_baysShipped < _totalDeliveries) return false;
+    // Player must have shipped or emptied every visible bay.
+    return _stacks.every((b) => b.isEmpty || b.isComplete);
   }
 
   /// Attempt to move a layer between stacks
