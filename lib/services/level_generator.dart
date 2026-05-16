@@ -79,6 +79,7 @@ class LevelGenerator {
     int priorityDeadline = base.priorityDeadlineMoves;
     double timeBombProb = base.timeBombBlockProbability;
     int timeBombDeadline = base.timeBombDeadlineMoves;
+    double doubleColorProb = base.doubleColorBlockProbability;
     // double lockedProb = base.lockedBlockProbability;  // future
     for (final wrinkle in district.wrinkles) {
       switch (wrinkle) {
@@ -109,10 +110,18 @@ class LevelGenerator {
           timeBombProb = (timeBombProb + 0.07).clamp(0.0, 0.12);
           timeBombDeadline = 6;
           break;
+        case 'double-color':
+          // Procedural districts ("double-color" wrinkle): spawns
+          // multi-color crates that count as MATCHING for any of their
+          // two colors. Uses the existing `BlockType.multiColor`
+          // machinery in layer_model + the matching logic in
+          // stack_model.canAccept. ~0.10 prob cap so the puzzle gets
+          // 1-2 multi-color crates, not a fully chaotic board.
+          doubleColorProb = (doubleColorProb + 0.10).clamp(0.0, 0.18);
+          break;
         case 'oversized':
         case 'conveyor-drift':
         case 'gravity-flip':
-        case 'double-color':
           // Stubs — these wrinkles need new GameState mechanics before
           // the generator can express them. Tracked as Phase C-3
           // follow-on work. For now they're recognized so the lookup
@@ -140,6 +149,7 @@ class LevelGenerator {
       priorityDeadlineMoves: priorityDeadline,
       timeBombBlockProbability: timeBombProb,
       timeBombDeadlineMoves: timeBombDeadline,
+      doubleColorBlockProbability: doubleColorProb,
     );
   }
 
@@ -698,7 +708,8 @@ class LevelGenerator {
         params.frozenBlockProbability <= 0 &&
         params.fragileBlockProbability <= 0 &&
         params.priorityBlockProbability <= 0 &&
-        params.timeBombBlockProbability <= 0) {
+        params.timeBombBlockProbability <= 0 &&
+        params.doubleColorBlockProbability <= 0) {
       return;
     }
 
@@ -708,11 +719,13 @@ class LevelGenerator {
     int fragileCount = 0;
     int priorityCount = 0;
     int timeBombCount = 0;
+    int doubleColorCount = 0;
     const maxLocked = 1;
     const maxFrozen = 2;
     const maxFragile = 2;
     const maxPriority = 1;
     const maxTimeBomb = 1;
+    const maxDoubleColor = 2;
 
     for (int s = 0; s < stacks.length; s++) {
       final stack = stacks[s];
@@ -791,6 +804,29 @@ class LevelGenerator {
             deadline: params.timeBombDeadlineMoves,
           ));
           timeBombCount++;
+        }
+        // Double-color crate — uses BlockType.multiColor which is
+        // already wired into stack matching logic. The second color
+        // is picked from the palette excluding the layer's own color,
+        // so the crate can stack onto two different single-color
+        // sources. Spawns anywhere in mixed stacks (not just top)
+        // since double-color is a per-puzzle texture, not a
+        // top-only urgency mechanic.
+        else if (doubleColorCount < maxDoubleColor &&
+            params.doubleColorBlockProbability > 0 &&
+            isMixed &&
+            random.nextDouble() < params.doubleColorBlockProbability) {
+          final ownColor = layer.colorIndex;
+          int secondColor =
+              (ownColor + 1 + random.nextInt(params.colors - 1)) %
+                  params.colors;
+          if (secondColor == ownColor) {
+            secondColor = (secondColor + 1) % params.colors;
+          }
+          newLayers.add(Layer.multiColor(
+            colors: [ownColor, secondColor],
+          ));
+          doubleColorCount++;
         } else {
           newLayers.add(layer);
         }

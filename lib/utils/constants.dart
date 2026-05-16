@@ -153,6 +153,7 @@ class LevelParams {
   final int priorityDeadlineMoves; // Default countdown for spawned priorities
   final double timeBombBlockProbability; // 0.0 to 1.0: chance of time-bomb blocks
   final int timeBombDeadlineMoves; // Default countdown for spawned time-bombs
+  final double doubleColorBlockProbability; // 0.0 to 1.0: chance of multi-color blocks
 
   const LevelParams({
     required this.colors,
@@ -169,6 +170,7 @@ class LevelParams {
     this.priorityDeadlineMoves = 8,
     this.timeBombBlockProbability = 0.0,
     this.timeBombDeadlineMoves = 6,
+    this.doubleColorBlockProbability = 0.0,
   });
 
   /// Get parameters for a given level number with progressive difficulty
