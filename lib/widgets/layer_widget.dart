@@ -380,6 +380,70 @@ class LayerWidget extends StatelessWidget {
                 ),
               ),
             ),
+          // Time-bomb crate — red overlay + countdown badge. Active
+          // bomb (countdown > 0): red wash + numeric badge. Detonated
+          // (countdown == 0): deeper red + 💥 marker.
+          if (layer.isTimeBomb)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(
+                      GameSizes.stackBorderRadius - 2,
+                    ),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: layer.isTimeBombDetonated
+                          ? const [
+                              Color(0x88E53935),
+                              Color(0x55B71C1C),
+                            ]
+                          : const [
+                              Color(0x66FF3030),
+                              Color(0x44C0392B),
+                            ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          if (layer.isTimeBomb)
+            Positioned(
+              top: 2,
+              left: 3,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.85),
+                  borderRadius: BorderRadius.circular(7),
+                  border: Border.all(
+                    color: layer.isTimeBombDetonated
+                        ? const Color(0xFFFFD700)
+                        : const Color(0xFFFF4757),
+                    width: 1.0,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      layer.isTimeBombDetonated
+                          ? '💥'
+                          : '${layer.timeBombCountdown}',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        height: 1.0,
+                        color: layer.isTimeBombDetonated
+                            ? const Color(0xFFFFD700)
+                            : const Color(0xFFFFE08A),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );

@@ -284,6 +284,29 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
       }
     }
 
+    // Time-bomb detonation event: harder-edged version of priority.
+    // Klaxon SFX (heavier than playError) + medium haptic + snackbar
+    // that signals "you blew it." Cash deduction is batched to payout
+    // via `gameState.timeBombPenaltyAccrued` ($80).
+    if (gameState.timeBombDetonatedThisFrame) {
+      gameState.consumeTimeBombDetonatedEvent();
+      haptics.mediumImpact();
+      AudioService().playKlaxon();
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Time-bomb detonated — \$80 docked from your payout.',
+            ),
+            duration: Duration(milliseconds: 2000),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Color(0xCC8B1F1F),
+          ),
+        );
+      }
+    }
+
     if (!_tutorialService.isActive) return;
 
     // Detect stack selection
@@ -417,19 +440,24 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
       final ventMul = HydraulicPressureService().isVenting
           ? HydraulicPressureService.ventCashMultiplier
           : 1.0;
-      // Apply fragile + priority crate penalties accrued during this
-      // puzzle (D8 / D9 wrinkles). Each shattered fragile docks $25,
-      // each expired priority docks $40 — capped to never go below 0
-      // so a really bad run still pays out something (the player still
-      // earned the clear). Reads from the `gameState` arg (not
+      // Apply fragile + priority + time-bomb crate penalties accrued
+      // during this puzzle (D8 / D9 / proc time-bomb wrinkles). Each
+      // shattered fragile docks $25, each expired priority docks $40,
+      // each detonated time-bomb docks $80 — capped to never go below
+      // 0 so a really bad run still pays out something (the player
+      // still earned the clear). Reads from the `gameState` arg (not
       // `context.read`) to dodge the use_build_context_synchronously
       // lint after the awaited storage/coins/achievement calls above.
       final fragilePenalty = gameState.fragilePenaltyAccrued;
       final priorityPenalty = gameState.priorityPenaltyAccrued;
+      final timeBombPenalty = gameState.timeBombPenaltyAccrued;
       final rawCash =
           (baseCash * tierMul * starMul * incomeMul * ventMul).floor();
-      final cashEarned =
-          (rawCash - fragilePenalty - priorityPenalty).clamp(0, 1 << 31);
+      final cashEarned = (rawCash -
+              fragilePenalty -
+              priorityPenalty -
+              timeBombPenalty)
+          .clamp(0, 1 << 31);
       final xpEarned = (cashEarned / 2).floor();
       final levelUp = await WarehouseEconomyService().awardReward(
         ShipmentReward(cash: cashEarned, xp: xpEarned),

@@ -77,6 +77,8 @@ class LevelGenerator {
     double fragileProb = base.fragileBlockProbability;
     double priorityProb = base.priorityBlockProbability;
     int priorityDeadline = base.priorityDeadlineMoves;
+    double timeBombProb = base.timeBombBlockProbability;
+    int timeBombDeadline = base.timeBombDeadlineMoves;
     // double lockedProb = base.lockedBlockProbability;  // future
     for (final wrinkle in district.wrinkles) {
       switch (wrinkle) {
@@ -98,8 +100,16 @@ class LevelGenerator {
           priorityProb = (priorityProb + 0.10).clamp(0.0, 0.16);
           priorityDeadline = 8;
           break;
-        case 'oversized':
         case 'time-bomb':
+          // Procedural districts D11+ ("time-bomb" wrinkle): same shape
+          // as priority but with tighter deadline (6 moves) and bigger
+          // detonation penalty (\$80 vs priority's \$40). Spawns at
+          // a lower rate so a puzzle gets at most 1 bomb — two
+          // simultaneous bombs would be unfair given the tight window.
+          timeBombProb = (timeBombProb + 0.07).clamp(0.0, 0.12);
+          timeBombDeadline = 6;
+          break;
+        case 'oversized':
         case 'conveyor-drift':
         case 'gravity-flip':
         case 'double-color':
@@ -128,6 +138,8 @@ class LevelGenerator {
       fragileBlockProbability: fragileProb,
       priorityBlockProbability: priorityProb,
       priorityDeadlineMoves: priorityDeadline,
+      timeBombBlockProbability: timeBombProb,
+      timeBombDeadlineMoves: timeBombDeadline,
     );
   }
 
@@ -676,15 +688,17 @@ class LevelGenerator {
     return stacks;
   }
 
-  /// Apply locked, frozen, fragile, and priority blocks to an
-  /// already-generated puzzle. Caps: max 1 locked, max 2 frozen, max 2
-  /// fragile, max 1 priority per puzzle. Never locks a block at the
-  /// bottom of a mixed-color stack. Lock timer capped at 3 moves.
+  /// Apply locked, frozen, fragile, priority, and time-bomb blocks to
+  /// an already-generated puzzle. Caps per-puzzle: max 1 locked, max 2
+  /// frozen, max 2 fragile, max 1 priority, max 1 time-bomb. Never locks
+  /// a block at the bottom of a mixed-color stack. Lock timer capped at
+  /// 3 moves.
   void applySpecialBlocks(List<GameStack> stacks, LevelParams params) {
     if (params.lockedBlockProbability <= 0 &&
         params.frozenBlockProbability <= 0 &&
         params.fragileBlockProbability <= 0 &&
-        params.priorityBlockProbability <= 0) {
+        params.priorityBlockProbability <= 0 &&
+        params.timeBombBlockProbability <= 0) {
       return;
     }
 
@@ -693,10 +707,12 @@ class LevelGenerator {
     int frozenCount = 0;
     int fragileCount = 0;
     int priorityCount = 0;
+    int timeBombCount = 0;
     const maxLocked = 1;
     const maxFrozen = 2;
     const maxFragile = 2;
     const maxPriority = 1;
+    const maxTimeBomb = 1;
 
     for (int s = 0; s < stacks.length; s++) {
       final stack = stacks[s];
@@ -757,6 +773,24 @@ class LevelGenerator {
             deadline: params.priorityDeadlineMoves,
           ));
           priorityCount++;
+        }
+        // Time-bomb: harshest timed wrinkle, max 1 per puzzle, also
+        // prefers TOP of a mixed stack. 6-move default deadline + $80
+        // detonation penalty makes it the "you have to deal with this
+        // RIGHT NOW" beat. Guarded to not co-spawn with priority on
+        // the same crate so the player can read at-a-glance which
+        // urgent crate is which.
+        else if (timeBombCount < maxTimeBomb &&
+            params.timeBombBlockProbability > 0 &&
+            isTop &&
+            isMixed &&
+            !layer.isPriority &&
+            random.nextDouble() < params.timeBombBlockProbability) {
+          newLayers.add(Layer.timeBomb(
+            colorIndex: layer.colorIndex,
+            deadline: params.timeBombDeadlineMoves,
+          ));
+          timeBombCount++;
         } else {
           newLayers.add(layer);
         }

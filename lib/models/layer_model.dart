@@ -24,6 +24,15 @@ class Layer {
   ///        on the board but rendered as "missed shipment")
   final int priorityCountdown;
 
+  /// Time-bomb block countdown. Same semantics as priorityCountdown
+  /// but with a tighter deadline + harsher cash penalty when it
+  /// detonates. Visual is a red bomb overlay vs priority's orange
+  /// ribbon, and the expired state renders a 💥 detonation marker.
+  ///   -1 = not a time-bomb (default)
+  ///   >0 = N moves remaining before detonation
+  ///    0 = already detonated (penalty deducted, marker shown)
+  final int timeBombCountdown;
+
   Layer({
     required this.colorIndex,
     String? id,
@@ -33,6 +42,7 @@ class Layer {
     this.isFrozen = false,
     this.isFragile = false,
     this.priorityCountdown = -1,
+    this.timeBombCountdown = -1,
   }) : id = id ?? UniqueKey().toString();
 
   /// Convenience: is this a priority block (timer >= 0)?
@@ -40,6 +50,12 @@ class Layer {
 
   /// Convenience: has the priority timer hit zero already?
   bool get isPriorityExpired => priorityCountdown == 0;
+
+  /// Convenience: is this a time-bomb block (countdown >= 0)?
+  bool get isTimeBomb => timeBombCountdown >= 0;
+
+  /// Convenience: has the time-bomb already detonated?
+  bool get isTimeBombDetonated => timeBombCountdown == 0;
 
   /// Get the primary color for this layer
   Color get color => GameColors.getColor(colorIndex);
@@ -82,6 +98,7 @@ class Layer {
     bool? isFrozen,
     bool? isFragile,
     int? priorityCountdown,
+    int? timeBombCountdown,
   }) {
     return Layer(
       colorIndex: colorIndex ?? this.colorIndex,
@@ -92,6 +109,7 @@ class Layer {
       isFrozen: isFrozen ?? this.isFrozen,
       isFragile: isFragile ?? this.isFragile,
       priorityCountdown: priorityCountdown ?? this.priorityCountdown,
+      timeBombCountdown: timeBombCountdown ?? this.timeBombCountdown,
     );
   }
 
@@ -101,6 +119,16 @@ class Layer {
   Layer decrementPriority() {
     if (priorityCountdown > 0) {
       return copyWith(priorityCountdown: priorityCountdown - 1);
+    }
+    return this;
+  }
+
+  /// Decrement the time-bomb countdown by one move. Same no-op semantics
+  /// as `decrementPriority` — only ticks when 1..n; stays at 0 once
+  /// detonated.
+  Layer decrementTimeBomb() {
+    if (timeBombCountdown > 0) {
+      return copyWith(timeBombCountdown: timeBombCountdown - 1);
     }
     return this;
   }
@@ -136,6 +164,7 @@ class Layer {
     'isFrozen': isFrozen,
     'isFragile': isFragile,
     'priorityCountdown': priorityCountdown,
+    'timeBombCountdown': timeBombCountdown,
   };
 
   factory Layer.fromJson(Map<String, Object?> json) {
@@ -151,6 +180,7 @@ class Layer {
       isFrozen: (json['isFrozen'] as bool?) ?? false,
       isFragile: (json['isFragile'] as bool?) ?? false,
       priorityCountdown: (json['priorityCountdown'] as int?) ?? -1,
+      timeBombCountdown: (json['timeBombCountdown'] as int?) ?? -1,
     );
   }
 
@@ -227,6 +257,25 @@ class Layer {
       colorIndex: colorIndex,
       id: id,
       priorityCountdown: deadline,
+    );
+  }
+
+  /// Factory: Create a time-bomb layer.
+  /// Harder-edged sibling of priority — tighter deadline + bigger
+  /// penalty. Renders with a red bomb overlay + countdown; on
+  /// detonation the crate flips to a 💥 marker and the player takes
+  /// a \$80 hit at payout. Used by the "time-bomb" wrinkle (procedural
+  /// districts D11+).
+  factory Layer.timeBomb({
+    required int colorIndex,
+    required int deadline,
+    String? id,
+  }) {
+    assert(deadline >= 1, 'Time-bomb deadline must be at least 1 move');
+    return Layer(
+      colorIndex: colorIndex,
+      id: id,
+      timeBombCountdown: deadline,
     );
   }
 }

@@ -171,6 +171,8 @@ class GameState extends ChangeNotifier {
     _fragileBrokeThisFrame = false;
     _priorityPenaltyAccrued = 0;
     _priorityExpiredThisFrame = false;
+    _timeBombPenaltyAccrued = 0;
+    _timeBombDetonatedThisFrame = false;
     _resetPowerUpTracking();
     notifyListeners();
   }
@@ -299,6 +301,18 @@ class GameState extends ChangeNotifier {
   bool get priorityExpiredThisFrame => _priorityExpiredThisFrame;
   void consumePriorityExpiredEvent() {
     _priorityExpiredThisFrame = false;
+  }
+
+  /// Pending cash penalty from time-bomb crates that detonated. Same
+  /// payout-time pattern as priority but $80 per detonation (vs $40).
+  int _timeBombPenaltyAccrued = 0;
+  int get timeBombPenaltyAccrued => _timeBombPenaltyAccrued;
+
+  /// One-shot event flag for the UI when a time-bomb just detonated.
+  bool _timeBombDetonatedThisFrame = false;
+  bool get timeBombDetonatedThisFrame => _timeBombDetonatedThisFrame;
+  void consumeTimeBombDetonatedEvent() {
+    _timeBombDetonatedThisFrame = false;
   }
 
   /// Attempt to move a layer between stacks
@@ -449,6 +463,11 @@ class GameState extends ChangeNotifier {
     // still solvable, but the player takes a cash hit on this clear.
     _tickPriorityCountdowns();
 
+    // Time-bomb countdowns tick the same way but with a harsher $80
+    // detonation penalty. Detonated bombs render the 💥 marker in
+    // layer_widget and stay on the board (so solvability isn't broken).
+    _tickTimeBombCountdowns();
+
     // Check for completed stacks
     _checkForCompletedStacks();
 
@@ -537,6 +556,47 @@ class GameState extends ChangeNotifier {
 
     if (anyExpiredThisTick) {
       _priorityExpiredThisFrame = true;
+    }
+  }
+
+  /// Tick all time-bomb countdowns. Same shape as priority but with a
+  /// $80 detonation penalty (vs $40 for priority). A detonated bomb
+  /// stays on the board with a 💥 marker — no further deductions on
+  /// subsequent moves.
+  void _tickTimeBombCountdowns() {
+    const timeBombPenalty = 80;
+    bool anyDetonatedThisTick = false;
+
+    for (int i = 0; i < _stacks.length; i++) {
+      final stack = _stacks[i];
+      bool changed = false;
+      final newLayers = <Layer>[];
+
+      for (final layer in stack.layers) {
+        if (layer.timeBombCountdown > 0) {
+          final next = layer.decrementTimeBomb();
+          newLayers.add(next);
+          changed = true;
+          if (next.timeBombCountdown == 0) {
+            _timeBombPenaltyAccrued += timeBombPenalty;
+            anyDetonatedThisTick = true;
+          }
+        } else {
+          newLayers.add(layer);
+        }
+      }
+
+      if (changed) {
+        _stacks[i] = GameStack(
+          layers: newLayers,
+          maxDepth: stack.maxDepth,
+          id: stack.id,
+        );
+      }
+    }
+
+    if (anyDetonatedThisTick) {
+      _timeBombDetonatedThisFrame = true;
     }
   }
 
