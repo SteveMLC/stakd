@@ -125,3 +125,14 @@ Difficulty = M. Always solvable in ≤M forward moves. No BFS needed.
 ### [2026-05-16T09:00] cron re-arm
 - new cron: 3f6a2a4e (15-min cadence). Prompt: conveyor-overhaul iteration loop. Phases B-H queued.
 - old cron 5ff6f4e1 deleted (wrinkle-iter prompt was obsolete).
+
+### [2026-05-16T09:18] iter — Phase C (inline, cron didn't auto-fire)
+- did: Phase C end-to-end inline (cron 3f6a2a4e didn't fire on 09:15 mark — Steve called it out; switched to synchronous work). Added `_conveyorMode` + `_pendingDeliveries: Queue<GameStack>` + `_baysShipped` + `_totalDeliveries` + `_bayShippedSlotThisFrame` event flag to GameState. Extended `initGame` with optional `pendingDeliveries` and `totalDeliveries` params (additive — legacy callers unchanged). Added `shipBayAndPullNext(slotIndex)` data-flow method + `conveyorLevelComplete` getter (Phase F wires it into the win check).
+- result: pass (flutter analyze clean; 11 new conveyor-state tests green; full services+models suite 175+7+11 = 193/193 green; no regressions).
+- commit: 813963a
+- next: Phase D — ship-off + arrival VFX. Wire `shipBayAndPullNext` into `_checkForCompletedStacks` so completed bays auto-trigger the flow. Build ship-off slide animation (bay slides right + crates fade), cash payout popup (floats to HUD), arrival slide-in animation (new bay slides from right with crate drop-in). All keyed off `bayShippedSlotThisFrame` event in game_board.dart.
+
+### [2026-05-16T09:20] cron diagnostic
+- stale cron 00452a02 (from yesterday afternoon, never properly killed) deleted.
+- 3f6a2a4e remains armed. Hypothesis: session-only crons require sustained REPL idle window (no recent user messages) which the active conversation pattern isn't giving. Steve's other working sessions may be using persistent scheduled-tasks (the gated mcp__scheduled-tasks__create_scheduled_task path) which has different fire semantics.
+- Mitigation: continue doing the work synchronously while we figure out scheduling. Each iter still commits + state-logs so any future fire (cron or session restart) can pick up cleanly.
