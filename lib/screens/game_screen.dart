@@ -8,6 +8,7 @@ import '../models/stack_model.dart';
 import '../services/conveyor_level_config.dart';
 import '../services/conveyor_seed.dart';
 import '../services/level_generator.dart';
+import '../services/wrinkle_layerer.dart';
 import '../services/storage_service.dart';
 import '../services/ad_service.dart';
 import '../services/audio_service.dart';
@@ -699,13 +700,21 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
     // Replace the first numVisibleBays of `allBays` into the
     // workspace structure — keep first N delivery bays as the
     // "mixed" slots, pad with empty workspace bays from the seed.
+    // Phase G: apply WrinkleLayerer post-seed additives to each
+    // delivery bay using cfg.wrinkles. Empty workspace bays stay
+    // empty (no wrinkles on empty bays).
+    final wrinkleRng = math.Random(rngBase + 0xBEEF);
+    final visibleMixed = allBays.take(cfg.numVisibleBays).map((b) =>
+        WrinkleLayerer.applyToBay(b, cfg.wrinkles, rng: wrinkleRng));
+    final pendingWrinkled = allBays.skip(cfg.numVisibleBays).map((b) =>
+        WrinkleLayerer.applyToBay(b, cfg.wrinkles, rng: wrinkleRng));
     final visible = <GameStack>[
-      ...allBays.take(cfg.numVisibleBays),
+      ...visibleMixed,
       ...firstSeedFullWorkspace
           .where((b) => b.layers.isEmpty)
           .take(cfg.numEmptyBays),
     ];
-    final pending = allBays.skip(cfg.numVisibleBays).toList();
+    final pending = pendingWrinkled.toList();
 
     // Gravity-flip wrinkle is per-level, not per-delivery — keep the
     // existing wiring via the legacy LevelParams path.
