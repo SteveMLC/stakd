@@ -22,6 +22,7 @@ import 'particles/confetti_overlay.dart';
 import 'combo_popup.dart';
 import 'color_flash_overlay.dart';
 import 'chain_text_popup.dart';
+import 'conveyor_events_overlay.dart';
 
 /// Game board widget - displays all stacks and handles interactions
 class GameBoard extends StatefulWidget {
@@ -586,6 +587,40 @@ class _GameBoardState extends State<GameBoard>
                         );
                       },
                     ),
+                    // Conveyor mechanic VFX overlay (Phase D.2). Renders
+                    // the floating cash popup when a bay ships off and
+                    // a new delivery slides in. Gated on
+                    // `gameState.conveyorMode`; in legacy mode it just
+                    // sits as a no-op since `bayShippedSlotThisFrame`
+                    // never fires.
+                    Positioned.fill(
+                      child: ConveyorEventsOverlay(
+                        gameState: widget.gameState,
+                        slotCenterResolver: (slot) {
+                          final key = _stackKeys[slot];
+                          final box =
+                              key?.currentContext?.findRenderObject()
+                                  as RenderBox?;
+                          if (box == null) return null;
+                          final boardBox =
+                              context.findRenderObject() as RenderBox?;
+                          if (boardBox == null) return null;
+                          // Convert stack global pos → local to this
+                          // game_board Stack so the Positioned offsets
+                          // line up with the bays.
+                          final stackGlobal =
+                              box.localToGlobal(Offset.zero);
+                          final boardGlobal =
+                              boardBox.localToGlobal(Offset.zero);
+                          final local = stackGlobal - boardGlobal;
+                          return Offset(
+                            local.dx + GameSizes.stackWidth / 2,
+                            local.dy + box.size.height / 2,
+                          );
+                        },
+                      ),
+                    ),
+
                     // Drag-and-drop overlay — _DragOverlay returns a
                     // Positioned, so it must be a direct Stack child. Any
                     // RenderObjectWidget wrapper (RepaintBoundary, etc.)

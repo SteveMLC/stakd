@@ -1,67 +1,227 @@
-# Warehouse Sort — Overnight Polish Loop
+# Warehouse Sort — Conveyor Mechanic Overhaul Loop
 
-Ultrathink. You are iterating autonomously on a Flutter mobile game. Each iteration is a fresh Claude session — assume no memory of prior runs. Source of truth is `git log` + this prompt + the repo's current state.
+**You are an autonomous polish-loop iteration.** Each run is a fresh Claude
+session in `/Users/venomspike/.openclaw/workspace/repos/warehouse_sort`.
+You have one job: pick ONE focused phase from the conveyor-mechanic spec,
+ship it, commit it, end. Do not chat, do not ask, do not loop. ULTRATHINK.
 
-## Orient
+## 0a. Orient (read these BEFORE deciding what to do)
 
-0a. Study `git log --oneline -15` in `/Users/venomspike/.openclaw/workspace/repos/warehouse_sort` to see what previous iterations shipped. Note the latest SHA.
+```
+cd /Users/venomspike/.openclaw/workspace/repos/warehouse_sort
+git log --oneline -10
+cat docs/conveyor-mechanic-spec.md   # design source of truth (~535 lines)
+cat .claude/build-state.md            # current phase + last iter outcome
+flutter analyze 2>&1 | tail -5        # must come back "No issues found"
+```
 
-0b. The reference design Steve wants the game to match is captured in two Lovart screenshots described in `/tmp/wh_sort_audit/POST_ITER5_VERIFIED.png` (post-iter-5 sim baseline). The Lovart vibe: glass-tube bays, LOADING DOCK target panel at top with color-target slots + checkmarks, hydraulic steel-blue pressure gauge on right edge, unified inline action bar at bottom (restart / undo / +tube / BURST / RE-ROUTE / CRANE / HINT in one chrome panel), 3-zone top HUD (back-left, Lv-chip-center, settings-right).
+## 0b. Phase position as of 2026-05-16 11:00 EDT
 
-0c. Application source is in `lib/*`. Tests in `test/*`. Scheduled-task SKILL.md lives at `/Users/venomspike/.claude/scheduled-tasks/warehouse-sort-polish-loop/SKILL.md` for reference.
+- ✅ Phase A — spec doc (commit `36f5a72`)
+- ✅ Phase B — `ConveyorSeed` reverse-construction generator + 7 tests (`483dc1c`)
+- ✅ Phase C — GameState `ConveyorLevel` data model + 11 tests (`813963a`)
+- ✅ Phase D.1 — auto-ship wiring in `completeMove()` (`c67b7dd`)
+- ⏳ **D.2** — actual VFX in `game_board.dart` (THIS RUN, if D.2 not yet shipped)
+- ⏳ E — replace 3×2 grid with horizontal carousel of N visible bays
+- ⏳ F — new `_loadLevel` routes through ConveyorSeed; win check uses `conveyorLevelComplete`; level-config table per spec §4.3
+- ⏳ G — re-route 7 working wrinkles as per-delivery additives
+- ⏳ H — delete old `LevelGenerator.generateLevelWithPar` + flaky BFS tests
 
-0d. **Don't assume not implemented.** Six wrinkles already ship working: frozen + locked (native crate flags), fragile (commit `970335a`), priority (`af12000`), time-bomb (`1547954`), double-color (`5ee365e`). Three stubs remain in `lib/services/level_generator.dart`'s switch (`paramsForLevel`): **gravity-flip, conveyor-drift, oversized**.
+Phase order is STRICT. Run `git log --grep="Phase [B-H]"` to confirm which
+phase is the latest committed. Pick the NEXT one after that. If your check
+shows D.2 is already committed, work on E. If E is done, work on F. Etc.
 
-## This Iteration
+## 1. Do the work — ONE focused commit per run
 
-1. Pick ONE target. Prefer in this order:
-   - **A.** Implement the next remaining wrinkle stub (gravity-flip → conveyor-drift → oversized).
-   - **B.** If all wrinkles are done, find ONE high-impact visual gap vs the Lovart reference by comparing your screenshot output to `/tmp/wh_sort_audit/POST_ITER5_VERIFIED.png` and the references Steve described.
-   - **C.** If A and B feel covered, harden tests or fix any new analyzer warnings.
+Detailed phase guidance lives in `docs/conveyor-mechanic-spec.md` sections 5-8
++ the implementation phase table in section 8. Re-read those each run when
+you reach a new phase.
 
-2. For wrinkle work, follow the existing template — see fragile (`lib/models/layer_model.dart` `Layer.fragile()` + `_fragilePenaltyAccrued` in `game_state.dart` + `_FragileCrackPainter` in `layer_widget.dart` + event handling in `game_screen.dart`'s `_handleGameStateChange`).
+### Phase D.2 (most-likely-next) detailed guidance
 
-   - **gravity-flip:** add a `_gravityFlipped` bool on `GameState` that toggles every 5 moves when the wrinkle is active. In `game_board.dart`, wrap the stacks Column in `Transform(transform: Matrix4.identity()..scale(1.0, -1.0)..translate(0.0, -boardHeight))` when the flag is true. Snackbar + medium haptic on each flip. New `LevelParams.gravityFlipActive: bool = false`. Wire the case in `paramsForLevel`'s switch.
-   - **conveyor-drift:** every 5 moves, the bottom layer of a random non-empty stack shifts to the bottom of a neighbor. New `GameState._applyConveyorDrift()` from `completeMove()` when wrinkle active. CRITICAL: must NEVER break solvability — pick a destination whose existing layers can accept the moved layer (top color matches or empty).
-   - **oversized:** add `slotSpan: int = 1` to Layer (default 1; oversized = 2). Update `GameStack.isFull` / `canAccept` / `withLayerAdded` to multiply by span. Render in `game_board.dart`'s layer builder by passing `height: GameSizes.layerHeight * 2` for span=2. Depth math is load-bearing — read all stack_model.dart tests carefully before touching.
+Wire VFX in `lib/widgets/game_board.dart` keyed off
+`gameState.bayShippedSlotThisFrame` (data flow already done in Phase D.1).
 
-3. Make ONE focused change. Commit locally with a descriptive message ending with `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>`. NEVER push.
+Three animation pieces:
 
-4. Validation (backpressure):
-   - `cd /Users/venomspike/.openclaw/workspace/repos/warehouse_sort && flutter analyze` must come back clean (no warnings except possibly the pre-existing zen-garden one if it resurfaces).
-   - If you touched `lib/models/` or `lib/services/`: `flutter test test/services/ --no-pub --timeout=4x` must keep its current 175+ green count.
-   - If you touched `lib/services/level_generator.dart`: also run `flutter test test/level_generator_test.dart` (note: the "generated solvable levels are solvable" test is pre-existing flaky on Level 3 with the 5000-state BFS budget; ignore that specific failure).
+1. **Ship-off slide.** When `bayShippedSlotThisFrame == slot`, that slot's
+   widget slides right +800px over 400ms `Curves.easeInCubic` and the crate
+   layers inside fade alpha 1.0 → 0.0 simultaneously. Use an
+   `AnimationController` per stack OR a global `AnimatedPositioned` swap.
+2. **Cash popup.** A floating `"+\$XX"` text spawns at the bay's center and
+   tweens up-and-left toward the HUD cash counter over 600ms while scaling
+   1.0 → 1.4 then back to 1.0. Use existing payout amount from
+   `WarehouseEconomyService.basePayoutForBay(stack)` or hard-code `100` for
+   v1.
+3. **Arrival slide-in.** Once the ship-off completes, a fresh bay container
+   slides in from off-screen-right at `+800px → 0px` over 400ms
+   `Curves.easeOutCubic`. Then crates "drop in" from y=-60 → 0 with 50ms
+   stagger per crate and `Curves.elasticOut` bounce.
 
-5. Append a one-paragraph summary to `/tmp/wh_sort_audit/cron_log.md`: what shipped, the new commit SHA, the verification screenshot path if you took one, and any blockers.
+SFX already wired in `AudioService`: `playWin` (success chord),
+`playCratePickup` (clack). Haptic: `haptics.successPattern()` for ship,
+`haptics.lightTap()` per crate drop.
 
-## Completion signal
+Consume the one-shot event flag via `gameState.consumeBayShippedEvent()`
+once the animation begins so it doesn't double-fire on rebuild.
 
-When all five stubs are converted to live mechanics AND `flutter analyze` is clean AND `flutter test test/services/` is 175+/175+ green, emit the literal token:
+**Backward compat: ALL of this is gated on `gameState.conveyorMode == true`.**
+When false (today's gameplay), the existing recently-cleared particle burst
+runs unchanged.
 
+### Phase E detailed guidance
+
+Today's `board_grid.dart` arranges N stacks via a `Wrap` or 3×2 grid based on
+device width. New layout = single horizontal row of `numVisibleBays` (4 or 5
+per spec §4.3). Wrap each slot in `AnimatedPositioned` so when a bay ships
+off, the remaining bays slide left to close the gap (~250ms easeOutCubic
+per spec §5.3).
+
+`loading_dock_banner.dart` already shows colors of the visible bays; verify
+that when bays change (ship + new arrive), the banner updates accordingly.
+
+### Phase F detailed guidance
+
+`game_screen.dart:_loadLevel` currently calls
+`_levelGenerator.generateLevelWithPar(level)`. Replace with a new helper
+that:
+
+1. Looks up `ConveyorLevelConfig` for the level number per spec §4.3 table
+   (numVisibleBays, numColors, bayDepth, numEmptyBays, scrambleMovesPerBay,
+   totalDeliveries, wrinkles).
+2. Generates `totalDeliveries` worth of bays via repeated
+   `ConveyorSeed.generateBays(...)` calls.
+3. First `numVisibleBays` become the on-screen bays; rest go in
+   `pendingDeliveries` queue.
+4. Calls `gameState.initGame(visibleBays, level, pendingDeliveries: queue,
+   totalDeliveries: cfg.totalDeliveries)`.
+
+Win check in `_checkWinCondition` switches to
+`if (gameState.conveyorMode) { return gameState.conveyorLevelComplete; }`
+fallback to old check otherwise.
+
+### Phase G detailed guidance
+
+The seven working wrinkles (frozen/locked/fragile/priority/time-bomb/
+double-color/gravity-flip) need to layer ON TOP of clean ConveyorSeed
+output. Today they're embedded in the old generator's `applySpecialBlocks`.
+Move that pass into a new
+`lib/services/wrinkle_layerer.dart` that takes a List<GameStack> + a
+`ConveyorLevelConfig.wrinkles` list and returns the modified list.
+
+The `gravity-flip` wrinkle is per-level not per-delivery; it stays on
+`LevelParams` / `_gravityFlipActive`.
+
+### Phase H detailed guidance
+
+Delete:
+- The old `LevelGenerator.generateLevelWithPar` and its callees
+  (`generateSolvableLevel`, the BFS, the difficulty-score heuristic).
+- The flaky tests in `test/level_generator_test.dart` that depend on
+  the BFS budget (the "generated solvable levels are solvable" and "high
+  level puzzles are still solvable" cases).
+- Old `applySpecialBlocks` (now lives in wrinkle_layerer).
+
+Keep `test/level_generator_test.dart`'s catalog tests if any apply to
+config-table lookups.
+
+## 2. Validate (BACKPRESSURE)
+
+```
+flutter analyze 2>&1 | tail -5            # must say "No issues found"
+# if you touched lib/models/ or lib/services/:
+flutter test test/services/ test/models/ --no-pub --timeout=4x 2>&1 | tail -3   # must end "All tests passed"
+```
+
+If either fails: investigate, fix, re-run. Don't commit broken state.
+
+Pre-existing flaky tests to IGNORE:
+- `test/level_generator_test.dart` "generated solvable levels are solvable"
+  (Level 3 BFS budget — flakes in isolation, passes solo)
+- `test/level_generator_test.dart` "high level puzzles are still solvable"
+  (Level 60 BFS budget — same pattern)
+
+## 3. Commit
+
+```
+git add <touched files>
+git commit -m "<descriptive message ending with the standard Co-Authored-By line>"
+```
+
+Standard commit footer:
+```
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+```
+
+**NEVER push to origin.** Commit locally only.
+
+## 4. Update state log
+
+Append ONE block to `.claude/build-state.md` (append-only — never edit
+prior entries):
+
+```
+### [YYYY-MM-DDTHH:MM] iter — Phase X.Y
+- did: <one line>
+- result: pass | fail (<error>)
+- commit: <new sha>
+- next: <one line — what next iter picks up>
+```
+
+Then `git add .claude/build-state.md && git commit -m "chore(state): Phase X.Y iter log"`.
+
+## 5. Output the completion signal (only when DONE)
+
+When phase H is committed AND `flutter analyze` is clean AND service+model
+tests are green AND the OLD `LevelGenerator.generateLevelWithPar` is
+deleted, append a `STOP_REASON: conveyor-mechanic-shipped-end-to-end` line
+to `.claude/build-state.md` and output the literal token on its own line:
+
+```
 RALPH_DONE
+```
 
-(only on the iteration where you've verified the above — the loop stops as soon as the script sees that token in your final message.)
+The loop runner reads stdout for that token and stops scheduling. Don't
+emit it in any other case.
 
-## 9999. Important — invariants
+## 99999. Inviolable Rules
 
-NEVER push to origin. Commit locally only.
+NEVER push to origin. NEVER run destructive git operations
+(`reset --hard`, `push --force`, `branch -D`, `clean -fd`).
 
-99999. Important — invariants
+## 999999. Inviolable Rules
 
-NEVER run destructive git operations (no `reset --hard`, no `push --force`, no `branch -D`, no `clean -fd`).
+NEVER run `flutter run` or any long-running attached process — would block
+the iteration's turn. Use `flutter analyze` and `flutter test` only.
 
-999999. Important — invariants
+## 9999999. Inviolable Rules
 
-NEVER skip tests if you touched logic. NEVER commit broken state.
+The game must NEVER start with a pre-solved bay on screen. Spec §2.1.
 
-9999999. Important — invariants
+## 99999999. Inviolable Rules
 
-Keep iterations SMALL. One ship per iteration. If you're tempted to do five things at once, pick the most important one and leave the others for the next loop.
+Solvability is guaranteed by construction (reverse-moves). Spec §3.
 
-99999999. Important — invariants
+## 999999999. Inviolable Rules
 
-Don't try to dismiss the iOS Simulator's Daily Rewards popup via osascript clicks — the input doesn't route. If you need a clean sim screenshot, terminate + relaunch the app (`xcrun simctl terminate 8C01668E-EF11-43A9-8448-E276C07C1919 com.go7studio.warehouseSort` + `xcrun simctl launch ...`).
+Wrinkles are POST-SEED additives. The ConveyorSeed generator knows about
+numColors, bayDepth, numEmptyBays, scrambleMoves ONLY. Frozen / fragile /
+priority etc. layer on AFTER.
 
-999999999. Important — invariants
+## 9999999999. Inviolable Rules
 
-If you hit any blocking issue (build error, test failure you can't fix in this iteration, sim won't boot), document it in `/tmp/wh_sort_audit/cron_log.md` and exit GRACEFULLY without committing broken state. The next iteration will pick up the trail.
+Backward compat through phase G. Old generator stays callable until phase
+H. Game stays shippable on every commit.
+
+## 99999999999. Inviolable Rules
+
+Keep iterations SMALL. One ship per run. If you find yourself touching >6
+files or writing >500 LOC, you've bundled two phases — pick one, commit,
+leave the other for the next run.
+
+## 999999999999. Inviolable Rules
+
+If you hit a fundamental blocker (build error you can't fix this run, sim
+won't boot, missing dependency), commit what you have SAFELY (if any),
+write a `STOP_REASON: <reason>` line in `.claude/build-state.md`, output
+`RALPH_DONE`, and exit. Better to stop cleanly than to spin.
