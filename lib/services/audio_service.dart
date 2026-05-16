@@ -12,6 +12,14 @@ class AudioService {
   // can layer over the main sfx track (e.g. slide whoosh + landing thump
   // ring out together instead of the thump killing the slide mid-flight).
   final AudioPlayer _impactPlayer = AudioPlayer();
+  // 2026-05-15 (audit P0 audio race): rewards channel for clear / win /
+  // chain bells. Without this, `playClear` on the main sfx player was
+  // cutting off the slide whoosh from `playSlide` mid-flight (slide
+  // fires at animation start, clear fires ~125ms later when the stack
+  // completes). Now they ring out together — slide on main, thump on
+  // impact, clear+win on rewards — giving a layered audio moment for
+  // satisfying clears instead of last-sound-wins clobbering.
+  final AudioPlayer _rewardsPlayer = AudioPlayer();
   final AudioPlayer _musicPlayer = AudioPlayer();
 
   bool _soundEnabled = true;
@@ -31,9 +39,13 @@ class AudioService {
     try {
       await _sfxPlayer.setReleaseMode(ReleaseMode.stop);
       await _impactPlayer.setReleaseMode(ReleaseMode.stop);
+      await _rewardsPlayer.setReleaseMode(ReleaseMode.stop);
       // Impact layer rides a bit lower than the main sfx so it adds
       // body to slide/clear without overwhelming the lead voice.
       await _impactPlayer.setVolume(0.75);
+      // Rewards channel slightly up so the bell rings out clearly
+      // when layered with slide whoosh + thump.
+      await _rewardsPlayer.setVolume(0.95);
       await _musicPlayer.setReleaseMode(ReleaseMode.loop);
       await _musicPlayer.setVolume(0.3);
 
@@ -60,6 +72,25 @@ class AudioService {
     }
   }
 
+  /// Play a reward sound on the dedicated rewards channel so it layers
+  /// cleanly over slide / thump without interrupting them. Used by
+  /// `playClear`, `playWin`, `playCombo`, `playChain`, `playStar`.
+  /// The rewards player is independent of both `_sfxPlayer` and
+  /// `_impactPlayer`, so a satisfying clear bell rings out while the
+  /// slide whoosh and impact thump can still finish their tails.
+  Future<void> playReward(GameSound sound) async {
+    if (!_soundEnabled) return;
+    if (_failedSounds.contains(sound.path)) return;
+
+    try {
+      await _rewardsPlayer.stop();
+      await _rewardsPlayer.play(AssetSource(sound.path));
+    } catch (e) {
+      _failedSounds.add(sound.path);
+      debugPrint('Rewards audio unavailable (${sound.path}): skipping');
+    }
+  }
+
   /// Play a sound effect
   Future<void> playSound(GameSound sound) async {
     if (!_soundEnabled) return;
@@ -80,8 +111,10 @@ class AudioService {
   /// Play layer slide sound
   Future<void> playSlide() => playSound(GameSound.slide);
 
-  /// Play stack clear sound
-  Future<void> playClear() => playSound(GameSound.clear);
+  /// Play stack clear sound — routed via the rewards channel so the
+  /// satisfying bell doesn't cut off the slide whoosh that fired ~125ms
+  /// earlier. Audit P0 race fix.
+  Future<void> playClear() => playReward(GameSound.clear);
 
   /// Play combo sound with escalating pitch
   Future<void> playCombo(int comboMultiplier) async {
@@ -138,8 +171,9 @@ class AudioService {
     }
   }
 
-  /// Play level win sound
-  Future<void> playWin() => playSound(GameSound.win);
+  /// Play level win sound — rewards channel so it layers over any
+  /// in-flight slide / thump / clear tail.
+  Future<void> playWin() => playReward(GameSound.win);
 
   /// Play error/invalid move sound
   Future<void> playError() => playSound(GameSound.error);
@@ -250,6 +284,7 @@ class AudioService {
       await _musicPlayer.pause();
       await _sfxPlayer.stop();
       await _impactPlayer.stop();
+      await _rewardsPlayer.stop();
       _isMusicPlaying = false;
     } catch (e) {
       debugPrint('Error pausing audio for lifecycle: $e');
@@ -274,6 +309,7 @@ class AudioService {
     try {
       await _sfxPlayer.dispose();
       await _impactPlayer.dispose();
+      await _rewardsPlayer.dispose();
       await _musicPlayer.dispose();
     } catch (e) {
       debugPrint('Error disposing audio players: $e');

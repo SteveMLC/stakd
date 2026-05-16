@@ -2024,10 +2024,16 @@ class _MoveCounterChip extends StatelessWidget {
             ? const Color(0xFFE53935) // red
             : const Color(0xFFFFC107); // yellow / accent
 
+    // Best-stars earned on this level (0..3). Drives the 3 stars
+    // rendered under the move counter so the player can see their
+    // current grade at a glance during replay, matching the Lovart
+    // reference design's "3 stars under the par counter" treatment.
+    final bestStars = StorageService().getLevelStars(gameState.currentLevel);
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOut,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: GameColors.surface,
         borderRadius: BorderRadius.circular(16),
@@ -2042,20 +2048,42 @@ class _MoveCounterChip extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.touch_app, size: 14, color: accent),
-          const SizedBox(width: 4),
-          Text(
-            hasParTarget ? '$moves/$par' : '$moves',
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              color: accent,
-              letterSpacing: 0.3,
-            ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.touch_app, size: 14, color: accent),
+              const SizedBox(width: 4),
+              Text(
+                hasParTarget ? '$moves/$par' : '$moves',
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: accent,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(3, (i) {
+              final filled = i < bestStars;
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 1),
+                child: Icon(
+                  filled ? Icons.star_rounded : Icons.star_outline_rounded,
+                  size: 11,
+                  color: filled
+                      ? const Color(0xFFFFD93D)
+                      : Colors.white.withValues(alpha: 0.35),
+                ),
+              );
+            }),
           ),
         ],
       ),
