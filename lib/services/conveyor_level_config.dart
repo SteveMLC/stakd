@@ -38,13 +38,20 @@ class ConveyorLevelConfig {
   });
 
   /// Look up the difficulty band for a level number. Always returns a
-  /// valid config; numbers > 1000 still get a procedural config (the
-  /// procedural composer in DistrictService will eventually layer more
-  /// wrinkles on top via its own pool draws).
+  /// valid config; numbers > 1000 still get a procedural config.
+  ///
+  /// `numVisibleBays` is sized so the adaptive grid layout in
+  /// `game_board.dart:_getStacksPerRow` lands on a sensible row
+  /// arrangement. Bay slots are 60+12=72pt each at iPhone 17 width
+  /// (430pt) → 5 fit per row. Configs:
+  ///   4 visible → 1 row of 4
+  ///   5 visible → 1 row of 5
+  ///   6 visible → 2 rows of 3 (3×2 grid — what Steve wants for mid+)
+  ///   8 visible → 2 rows of 4
   static ConveyorLevelConfig forLevel(int level) {
     if (level <= 5) {
       return const ConveyorLevelConfig(
-        numVisibleBays: 4,
+        numVisibleBays: 4, // 1×4 row — intro level keeps it minimal
         numColors: 3,
         bayDepth: 4,
         numEmptyBays: 2,
@@ -55,7 +62,7 @@ class ConveyorLevelConfig {
     }
     if (level <= 15) {
       return const ConveyorLevelConfig(
-        numVisibleBays: 4,
+        numVisibleBays: 5, // 1×5 row — first frozen wrinkle joins
         numColors: 4,
         bayDepth: 4,
         numEmptyBays: 2,
@@ -66,7 +73,7 @@ class ConveyorLevelConfig {
     }
     if (level <= 30) {
       return const ConveyorLevelConfig(
-        numVisibleBays: 5,
+        numVisibleBays: 6, // 3×2 grid — the canonical multi-row layout
         numColors: 5,
         bayDepth: 4,
         numEmptyBays: 2,
@@ -77,7 +84,7 @@ class ConveyorLevelConfig {
     }
     if (level <= 60) {
       return const ConveyorLevelConfig(
-        numVisibleBays: 5,
+        numVisibleBays: 6, // 3×2 grid stays — deeper bays, more wrinkles
         numColors: 6,
         bayDepth: 5,
         numEmptyBays: 2,
@@ -88,7 +95,7 @@ class ConveyorLevelConfig {
     }
     if (level <= 100) {
       return const ConveyorLevelConfig(
-        numVisibleBays: 5,
+        numVisibleBays: 6, // 3×2 grid — endgame keeps the same footprint
         numColors: 7,
         bayDepth: 5,
         numEmptyBays: 2,
@@ -105,7 +112,7 @@ class ConveyorLevelConfig {
     }
     // 100+: full wrinkle pool, one fewer empty bay, tightest scramble.
     return const ConveyorLevelConfig(
-      numVisibleBays: 5,
+      numVisibleBays: 6, // 3×2 grid procedural — full wrinkle pool
       numColors: 7,
       bayDepth: 5,
       numEmptyBays: 1,

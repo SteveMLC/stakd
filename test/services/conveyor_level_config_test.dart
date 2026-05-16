@@ -37,16 +37,17 @@ void main() {
       }
     });
 
-    test('early band (L6-15): frozen wrinkle starts, 4 bays + 4 colors', () {
+    test('early band (L6-15): frozen wrinkle starts, 5 bays + 4 colors', () {
       final cfg = ConveyorLevelConfig.forLevel(10);
       expect(cfg.numColors, 4);
       expect(cfg.wrinkles, contains('frozen'));
-      expect(cfg.numVisibleBays, 4);
+      expect(cfg.numVisibleBays, 5);
     });
 
-    test('mid band (L16-30): locked wrinkle joins, 5 bays', () {
+    test('mid band (L16-30): locked wrinkle joins, 6 bays (3×2 grid)', () {
       final cfg = ConveyorLevelConfig.forLevel(20);
-      expect(cfg.numVisibleBays, 5);
+      expect(cfg.numVisibleBays, 6,
+          reason: '3×2 multi-row grid kicks in at mid-game');
       expect(cfg.wrinkles, containsAll(['frozen', 'locked']));
     });
 

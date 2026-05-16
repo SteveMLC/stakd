@@ -295,9 +295,18 @@ empirically with playtests at scale.
 
 ### 5.1 Layout
 
-Horizontal row of `numVisibleBays` bays at the playfield center. The
-current 3×2 grid goes away. A horizontal carousel feels like a conveyor
-belt naturally.
+**2026-05-16 clarification (Steve):** the conveyor metaphor is NOT a
+physical single-line belt. Multi-row grids are the desired layout
+(canonical is 3×2 = 6 visible bays for mid+ game). Each on-screen slot
+is its own "conveyor track" — when the bay in slot `(row=0, col=1)`
+ships, the new delivery slides into slot `(row=0, col=1)` from
+off-screen, not into row 0 from the right with the other bays
+shifting. No cross-row migration; no global slide-shift.
+
+The existing `_getStacksPerRow` adaptive layout handles row math:
+4 → 1 row of 4, 5 → 1 row of 5, 6 → 2 rows of 3 (3×2), 8 → 2 rows of 4.
+`numVisibleBays` in the config table picks the row arrangement
+implicitly.
 
 Above: LOADING DOCK banner (current `loading_dock_banner.dart`, unchanged
 in spirit — shows the colors of the CURRENT visible bays as targets).
