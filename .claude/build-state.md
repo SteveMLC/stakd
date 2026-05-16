@@ -136,3 +136,21 @@ Difficulty = M. Always solvable in ≤M forward moves. No BFS needed.
 - stale cron 00452a02 (from yesterday afternoon, never properly killed) deleted.
 - 3f6a2a4e remains armed. Hypothesis: session-only crons require sustained REPL idle window (no recent user messages) which the active conversation pattern isn't giving. Steve's other working sessions may be using persistent scheduled-tasks (the gated mcp__scheduled-tasks__create_scheduled_task path) which has different fire semantics.
 - Mitigation: continue doing the work synchronously while we figure out scheduling. Each iter still commits + state-logs so any future fire (cron or session restart) can pick up cleanly.
+
+### [2026-05-16T10:59] session restart — phase D.1 shipped overnight
+- did: After Steve restarted Claude, picked up Phase D.1 wiring inline. `completeMove` now auto-fires `shipBayAndPullNext` for every entry in `_recentlyCleared` when `_conveyorMode == true`. Added "Phase D wire-up" test to conveyor_test.
+- result: pass (analyze clean; 194/194 services+models green)
+- commit: c67b7dd
+- next: Phase D.2 — actual VFX in game_board.dart (cash popup + audio + haptic minimum; bay-slide animations Phase D.3).
+
+### [2026-05-16T11:07] ralph-loops auth-block
+- did: Refreshed `PROMPT_polish.md` for conveyor overhaul; launched ralph-loops subprocess runner targeting it.
+- result: fail (claude CLI headless `-p` mode hits 401; claude.ai OAuth doesn't work for subprocess; needs `claude setup-token` one-time setup).
+- commit: (none — no code changes)
+- next: continue synchronous Phase D.2 (the actual VFX overlay); ralph re-armable after Steve runs `claude setup-token`.
+
+### [2026-05-16T11:12] iter — Phase D.2
+- did: `lib/widgets/conveyor_events_overlay.dart` new widget — floating +\$payout cash popup keyed off `gameState.bayShippedSlotThisFrame`. Subscribes to GameState, computes slot center via `_stackKeys[slot]` RenderBox, animates 700ms (float up-left 40×80px + scale punch 1.0 → 1.4 → 1.1 + alpha fade tail), supports concurrent popups for chain-clears. Wired into `game_board.dart` Stack alongside chain text popup + color flash. Audio (`playWin`) + haptic (`successPattern`) fire on each ship event.
+- result: pass (analyze clean; 194/194 services+models green; no new tests this iter — Phase D.3 will add overlay widget tests once the slide animations land).
+- commit: 43a5d78
+- next: Phase D.3 — capture pre-swap bay state in GameState (add `lastShippedStack: GameStack?` getter + setter inside `shipBayAndPullNext`); build proper bay-slide-off animation (crates fade + container slides right); build arrival slide-in for the new delivery.
