@@ -5,88 +5,113 @@ iteration appends a single block at the bottom. Read top-down on resume.
 
 ---
 
-## Current Goal
+## CURRENT PRIORITY 1 — Conveyor Mechanic Overhaul
 
-Ship Warehouse Sort to a state where:
+**Spec:** `docs/conveyor-mechanic-spec.md` (READ THIS FIRST every iteration).
 
-1. All 8 district wrinkles work as real gameplay (frozen + locked + fragile +
-   priority + time-bomb + double-color **DONE**; remaining stubs:
-   **gravity-flip**, **conveyor-drift**, **oversized**).
-2. `flutter analyze` stays clean (no warnings — zen-garden ghost cleared in
-   commit `efb7896`).
-3. `flutter test test/services/` stays at **175/175** green.
-4. In-game visual matches the Lovart reference baseline at
-   `/tmp/wh_sort_audit/POST_ITER5_VERIFIED.png`: glass-tube bays, LOADING DOCK
-   target panel, hydraulic steel-blue pressure gauge, unified inline action
-   bar, 3-zone top HUD.
+Steve's vision (2026-05-16): replace the static "all bays on screen at level
+start, sort them all, level done" model with a **conveyor of deliveries**.
+4-5 bays visible at any time. Player sorts a bay → it ships off (cash payout
++ VFX) → new mixed delivery slides in from the right. A level = 5-25
+deliveries.
 
-When all three stub wrinkles are live AND analyze + tests stay green, log
-`STOP_REASON: all-wrinkles-shipped` and stop iterating.
+The OLD seed/level generator (probabilistic difficulty score + BFS solvability
+validation + retry loops) is being REPLACED with a **reverse-construction**
+generator (industry-standard Water Sort algorithm). Solvability is guaranteed
+by construction. Wrinkles (frozen/fragile/priority/etc.) are POST-SEED
+additives, not baked into seeding.
 
-## Latest State (as of bootstrap)
+## Implementation Phases (work through in order)
+
+| Phase | Deliverable | Status |
+|---|---|---|
+| **A** | docs/conveyor-mechanic-spec.md committed | ✅ DONE this iter |
+| **B** | `lib/services/conveyor_seed.dart` + unit tests | ⏳ NEXT |
+| **C** | `ConveyorLevel` state on GameState; delivery queue + ship-off trigger | pending |
+| **D** | Ship-off + arrival VFX (animations, cash popup, sound, haptic) | pending |
+| **E** | Layout: 3×2 grid → horizontal carousel of 4-5 bays | pending |
+| **F** | New win condition (queue empty AND board cleared) + level config table | pending |
+| **G** | Re-layer wrinkles as per-delivery additives | pending |
+| **H** | Remove old generator + flaky BFS tests | pending |
+
+Each phase is 1-3 cron iterations. Estimated total: 11-14 iterations × 15 min
+= ~3-4 hours of autonomous work.
+
+## Inviolable Requirements (do not violate, ever)
+
+1. The game must **NEVER** start with a pre-solved bay on screen. Generator
+   has a sanity check; tests assert this for levels 1..1000.
+2. Solvability is **guaranteed by construction** (reverse-moves are inverses
+   of valid forward-moves). No BFS validation pass needed. No flaky tests.
+3. Wrinkles are **post-seed additives**. Seed generator knows about
+   `numColors`, `bayDepth`, `numEmptyBays`, `scrambleMoves` ONLY. Frozen /
+   fragile / priority etc. layer on AFTER.
+4. **Backward compat through phase G.** The old `LevelGenerator.generate
+   LevelWithPar` stays callable through phases B-G. Game stays shippable on
+   every commit. Phase H is the cleanup-and-delete pass.
+5. Each cron iteration ends with a CLEAN turn (no `flutter run`, no
+   AskUserQuestion, no waiting on user input). Loop fires next at the next
+   `:00`/`:15`/`:30`/`:45` mark.
+
+## Latest State
 
 - Branch: `main`
-- HEAD: `efb7896` `chore(cleanup): purge stale Stakd / SortBloom / Zen Garden references`
+- HEAD: `cc75b7a` `chore(state): iter 1 log entry — gravity-flip shipped`
+  (gravity-flip wrinkle was iter 1 of the OLD priority. With the conveyor
+  pivot, gravity-flip stays in the codebase but its per-move toggle is
+  decoupled from the level — it's still triggered by a wrinkle flag that
+  the new level config can set. No work needed to preserve it.)
 - Tests: 175/175 service tests green
 - Analyze: clean
 - Sim: iPhone 17 UUID `8C01668E-EF11-43A9-8448-E276C07C1919`, bundle `com.go7studio.warehouseSort`
 - Reference screenshot: `/tmp/wh_sort_audit/POST_ITER5_VERIFIED.png`
 
-## Wrinkle Implementation Templates (read before touching the stubs)
+## Six Working Wrinkles (preserve through transition)
 
-The pattern for any new wrinkle, shipped twice already (fragile = `970335a`,
-priority = `af12000`, time-bomb = `1547954`, double-color = `5ee365e`):
+These stay working through phases B-G; only the LEVEL HARNESS around them
+changes. Phase G re-routes them through the new `ConveyorLevel.wrinkles`
+config list:
 
-1. **Layer field/flag** in `lib/models/layer_model.dart` if it's a crate-level
-   mechanic, OR GameState field if it's a board-level mechanic. Add to
-   `copyWith`, `toJson`, `fromJson`. Factory if needed.
-2. **`LevelParams` field** in `lib/utils/constants.dart`.
-3. **Switch entry** in `lib/services/level_generator.dart`'s `paramsForLevel`
-   that bumps the probability when the wrinkle is in the district's wrinkle
-   list. The district pool is already in `lib/services/district_service.dart`
-   (`wrinklePool` constant).
-4. **Spawn** in `applySpecialBlocks` (crate-level) or board-tick logic in
-   `GameState.completeMove()` (board-level).
-5. **Render** in `lib/widgets/layer_widget.dart` (crate) or
-   `lib/widgets/game_board.dart` (board).
-6. **Event surface** in `lib/screens/game_screen.dart`'s `_handleGameStateChange`
-   if penalty-based: snackbar + haptic + sfx.
-7. **Payout deduction** in `_onLevelComplete` if penalty-based.
-8. **Tests** if you touched logic.
+1. frozen — `Layer.isFrozen` + tap-to-thaw (native)
+2. locked — `Layer.isLocked` + lockedUntil countdown (native)
+3. fragile — wrong-drop penalty (`970335a`)
+4. priority — countdown + miss penalty (`af12000`)
+5. time-bomb — tighter deadline + bigger penalty + 💥 marker (`1547954`)
+6. double-color — multi-color crates match either color (`5ee365e`)
+7. gravity-flip — board inverts every 5 moves (`f1db9a5`)
 
-### gravity-flip (next target)
+Three stubs (oversized / conveyor-drift) remain. They're parked until
+post-conveyor; once the conveyor mechanic is shipped they become
+trivial additions to the wrinkle list.
 
-Per `PROMPT_polish.md`: add a `_gravityFlipped` bool on GameState that toggles
-every 5 moves when the wrinkle is active. In `game_board.dart`, wrap the
-stacks Column in `Transform(transform: Matrix4.identity()..scale(1.0, -1.0))`
-when the flag is true. Snackbar + medium haptic on each flip. New
-`LevelParams.gravityFlipActive: bool = false`. Wire the case in `paramsForLevel`'s
-switch.
+## Reverse-Construction Algorithm (memorize this)
 
-### conveyor-drift
+```
+Input: numColors C, bayDepth D, numEmptyBays E, scrambleMoves M
+Output: List<GameStack> initial state
 
-Every 5 moves, the bottom layer of a random non-empty stack shifts to the
-bottom of a neighbor. New `GameState._applyConveyorDrift()` from
-`completeMove()` when wrinkle active. **CRITICAL**: must NEVER break
-solvability — pick a destination whose existing layers can accept the moved
-layer (top color matches or destination is empty).
+1. Build SOLVED state: C single-color bays + E empty bays.
+2. Repeat M times:
+   - Find all valid (src, dst) pairs where src is non-empty AND dst has
+     space AND src != dst.
+   - Pick one uniformly at random.
+   - Move top crate src → dst.
+3. Sanity check: no bay is single-color-full. (If any is, re-scramble.)
+4. Return bays.
+```
 
-### oversized
-
-Add `slotSpan: int = 1` to Layer (default 1; oversized = 2). Update
-`GameStack.isFull` / `canAccept` / `withLayerAdded` to multiply by span. Render
-in `game_board.dart`'s layer builder by passing `height: GameSizes.layerHeight * 2`
-for span=2. **Depth math is load-bearing** — read all `test/models/` carefully
-before touching.
-
----
+Difficulty = M. Always solvable in ≤M forward moves. No BFS needed.
 
 ## Iteration Log
 
-(append below)
-
-### [2026-05-16T00:42] iter 1
+### [2026-05-16T00:42] iter 1 (OLD PRIORITY — gravity-flip)
 - did: gravity-flip wrinkle end-to-end (LevelParams + level_generator switch + GameState fields/tick/event + game_screen consumer/snackbar + game_board AnimatedRotation wrap)
 - result: pass (flutter analyze clean; flutter test test/services/ 175/175 green; level_generator "high level puzzles" test flaky in isolation but passes solo — same pre-existing BFS-budget issue as Level 3)
 - commit: f1db9a5
 - next: conveyor-drift wrinkle — every 5 moves, bottom layer of random non-empty stack shifts to a neighbor that can accept it (must preserve solvability)
+
+### [2026-05-16T08:50] PIVOT — Priority 1 Conveyor Overhaul
+- did: Steve's vision recorded; docs/conveyor-mechanic-spec.md drafted; old wrinkle-iter cron killed; new phase plan A-H in place.
+- result: spec landed; iter cron paused pending re-arm with new prompt.
+- commit: (pending — committing along with spec doc)
+- next: Phase B — write `lib/services/conveyor_seed.dart` with reverse-construction algorithm + unit tests asserting "no pre-solved bay at construction time" for level 1..100.
