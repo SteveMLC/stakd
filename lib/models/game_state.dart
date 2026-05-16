@@ -625,6 +625,19 @@ class GameState extends ChangeNotifier {
       HydraulicPressureService().onChain(_currentChainLevel);
     }
 
+    // Conveyor mode: a completed bay ships off + pulls the next delivery.
+    // Phase D wire-up — happens AFTER pressure tick so the bay's
+    // completion is still credited to the pressure system, then the
+    // bay rotates out to the conveyor queue. Single bay shipped per
+    // move (chain-clear case still ships them all, but in sequence
+    // since `_recentlyCleared` lists them all). VFX hooks read
+    // `bayShippedSlotThisFrame` to animate.
+    if (_conveyorMode && _recentlyCleared.isNotEmpty) {
+      for (final slot in _recentlyCleared.toList()) {
+        shipBayAndPullNext(slot);
+      }
+    }
+
     // Check win condition
     _checkWinCondition();
 

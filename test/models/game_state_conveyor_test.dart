@@ -199,6 +199,69 @@ void main() {
       expect(state.conveyorLevelComplete, isFalse);
     });
 
+    test('Phase D wire-up: completeMove auto-ships completed bays in conveyor mode',
+        () {
+      // Set up a tiny conveyor level. Visible bays: [completable-via-one-
+      // move bay, empty workspace]. Pending: one fresh mixed bay.
+      // After the player executes the move that completes the visible
+      // bay, completeMove should auto-fire shipBayAndPullNext, advancing
+      // baysShipped and replacing the slot with the pending delivery.
+      final state = GameState();
+      // Two bays:
+      // - Slot 0: needs 1 more red (color 0) to complete (3 reds in a
+      //   row of depth 4)
+      // - Slot 1: has a single red on top — moveable onto slot 0 to
+      //   complete it
+      final almostComplete = GameStack(
+        layers: [
+          Layer(colorIndex: 0),
+          Layer(colorIndex: 0),
+          Layer(colorIndex: 0),
+        ],
+        maxDepth: 4,
+      );
+      final sourceBay = GameStack(
+        layers: [Layer(colorIndex: 0)],
+        maxDepth: 4,
+      );
+      final nextDelivery = GameStack(
+        layers: [
+          Layer(colorIndex: 1),
+          Layer(colorIndex: 2),
+        ],
+        maxDepth: 4,
+      );
+      state.initGame(
+        [almostComplete, sourceBay],
+        1,
+        pendingDeliveries: [nextDelivery],
+        totalDeliveries: 3,
+      );
+      expect(state.conveyorMode, isTrue);
+      expect(state.baysShipped, 0);
+
+      // Player picks the red on slot 1 → drops on slot 0 → slot 0
+      // becomes 4 reds → complete.
+      state.onStackTap(1);
+      state.onStackTap(0);
+      // Animation-style completion path: caller eventually fires
+      // completeMove() after the AnimatedLayerOverlay finishes.
+      state.completeMove();
+
+      // After completeMove: slot 0 was 4-red full → auto-shipped →
+      // baysShipped=1 → pulled in `nextDelivery` (1 blue + 1 green)
+      // → slot 0 now holds the delivery's layers.
+      expect(state.baysShipped, 1, reason: 'auto-ship should have fired');
+      expect(state.pendingDeliveryCount, 0,
+          reason: 'queue dequeued one delivery');
+      expect(state.bayShippedSlotThisFrame, 0,
+          reason: 'VFX event fired with slot=0');
+      // Slot 0 now shows the delivery contents.
+      expect(state.stacks[0].layers.length, 2);
+      expect(state.stacks[0].layers[0].colorIndex, 1);
+      expect(state.stacks[0].layers[1].colorIndex, 2);
+    });
+
     test('initGame resets all conveyor state on reuse', () {
       final state = GameState();
       state.initGame(
