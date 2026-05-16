@@ -191,3 +191,24 @@ Difficulty = M. Always solvable in ≤M forward moves. No BFS needed.
 - next: STOP_REASON line below.
 
 STOP_REASON: conveyor-mechanic-shipped-end-to-end
+
+### [2026-05-16T15:50 UTC] iter — C Phase D.2 polish: dynamic cash payout
+- did: Replaced hardcoded $100 cash popup with `ShipmentRewardCalculator.forBay` lookup. Counts standard vs frozen layers, threads `comboMultiplier(currentCombo)`. Cash popup now reflects real bay value.
+- result: pass (analyze clean; 214/214 tests green)
+- commit: f2f2d4b
+- next: arrival slide-in animation (currently new bay content pops in instantly)
+
+### [2026-05-16T15:55 UTC] iter — C Phase D.4: arrival slide-in
+- did: New `_ArrivalSlideWidget` renders a dark navy delivery panel that slides in from off-screen-right (t=0.40..0.85 of the 700ms run) then fades to reveal the new bay contents. Overlaps with the ghost slide-off exit for a smooth conveyor handoff. Stack: ghost (back) → arrival (middle) → cash popup (top).
+- result: pass (analyze clean; 214/214 tests green)
+- commit: 9f1f7cd
+- next: cloud routine awaits Steve `/web-setup` to fire. Once connected, the routine picks up at LOADING DOCK banner verification or wrinkle stub (oversized) or integration tests.
+
+### [2026-05-16T15:42 UTC] cloud routine armed
+- trigger: trig_01AhtLyrgiqDJX9S4wE4kFQQ
+- schedule: cron `7 * * * *` (hourly at :07 UTC)
+- env: env_01Spk8JVzLAhxHivYZ2hKFjN (anthropic_cloud, Default)
+- model: claude-sonnet-4-6
+- repo: github.com/SteveMLC/stakd
+- BLOCKER: github_repo_access_denied on test fire — Steve to /web-setup
+- NEXT FIRE: 2026-05-16T16:07:00Z (assuming auth fixed by then)
