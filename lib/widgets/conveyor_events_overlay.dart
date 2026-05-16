@@ -4,6 +4,7 @@ import '../models/game_state.dart';
 import '../models/stack_model.dart';
 import '../services/audio_service.dart';
 import '../services/haptic_service.dart';
+import '../services/warehouse_economy_service.dart';
 import '../utils/constants.dart';
 import '../utils/theme_colors.dart';
 
@@ -30,16 +31,17 @@ class ConveyorEventsOverlay extends StatefulWidget {
   /// Returns null when the slot isn't yet laid out.
   final Offset? Function(int slotIndex) slotCenterResolver;
 
-  /// Payout shown in the popup. Phase D.2 v1 hard-codes via the caller;
-  /// Phase F wires this through `WarehouseEconomyService` so it scales
-  /// by level / wrinkles.
-  final int payoutPerBay;
+  /// Fallback payout shown when we can't compute the bay-specific
+  /// value (e.g. lastShippedStack is null at the moment of fire).
+  /// In normal operation the payout is derived from the shipped
+  /// bay's contents via `ShipmentRewardCalculator.forBay`.
+  final int fallbackPayout;
 
   const ConveyorEventsOverlay({
     super.key,
     required this.gameState,
     required this.slotCenterResolver,
-    this.payoutPerBay = 100,
+    this.fallbackPayout = 100,
   });
 
   @override
@@ -86,6 +88,14 @@ class _ConveyorEventsOverlayState extends State<ConveyorEventsOverlay>
     // Capture pre-swap state BEFORE consuming the event.
     final shippedStack = widget.gameState.lastShippedStack;
 
+    // Compute the actual cash value of the shipped bay via the v0.3
+    // economy: $10/standard crate + $25/frozen crate, scaled by the
+    // current combo multiplier. Falls back to `fallbackPayout` only if
+    // the pre-swap stack isn't available (rare edge case).
+    final int payout = shippedStack != null
+        ? _computePayout(shippedStack, widget.gameState)
+        : widget.fallbackPayout;
+
     // Consume the event flag so we don't double-fire on the next
     // notifyListeners. Done synchronously before kicking off the
     // animation.
@@ -112,6 +122,7 @@ class _ConveyorEventsOverlayState extends State<ConveyorEventsOverlay>
       origin: center,
       controller: controller,
       shippedStack: shippedStack,
+      payout: payout,
     );
 
     controller.addStatusListener((status) {
@@ -147,10 +158,7 @@ class _ConveyorEventsOverlayState extends State<ConveyorEventsOverlay>
           if (p.shippedStack != null) {
             yield _ShippedGhostWidget(popup: p);
           }
-          yield _CashPopupWidget(
-            popup: p,
-            payout: widget.payoutPerBay,
-          );
+          yield _CashPopupWidget(popup: p);
         }).toList(),
       ),
     );
@@ -165,12 +173,40 @@ class _CashPopup {
   /// ghost slide-off animation. Null when no pre-swap state was
   /// available (e.g. legacy non-conveyor mode).
   final GameStack? shippedStack;
+  /// Pre-computed cash value for this bay shipment. Captured at
+  /// fire-time so the popup text is stable across the 700ms animation
+  /// even if game state churns underneath.
+  final int payout;
   _CashPopup({
     required this.id,
     required this.origin,
     required this.controller,
+    required this.payout,
     this.shippedStack,
   });
+}
+
+/// Compute the cash value of a shipped bay using the same economy
+/// rules `_onLevelComplete` uses at level end:
+///   - $10 per standard crate, $25 per frozen crate
+///   - scaled by current combo multiplier (rewards chained ships)
+///
+/// Wrinkle penalties (priority miss / time-bomb detonate / fragile
+/// break) are NOT subtracted here — those still apply at payout time
+/// in `_onLevelComplete`. The per-bay popup shows pre-penalty value
+/// so the player sees the full reward for the bay they just shipped.
+int _computePayout(GameStack bay, GameState gameState) {
+  final standardCount = bay.layers.where((l) => !l.isFrozen).length;
+  final frozenCount = bay.layers.where((l) => l.isFrozen).length;
+  final combo = ShipmentRewardCalculator.comboMultiplier(
+    gameState.currentCombo,
+  );
+  final reward = ShipmentRewardCalculator.forBay(
+    standardCount: standardCount,
+    frozenCount: frozenCount,
+    comboMultiplier: combo,
+  );
+  return reward.cash;
 }
 
 /// Ghost render of the just-shipped bay sliding off-screen to the
@@ -244,8 +280,7 @@ class _ShippedGhostWidget extends StatelessWidget {
 
 class _CashPopupWidget extends StatelessWidget {
   final _CashPopup popup;
-  final int payout;
-  const _CashPopupWidget({required this.popup, required this.payout});
+  const _CashPopupWidget({required this.popup});
 
   @override
   Widget build(BuildContext context) {
@@ -299,7 +334,7 @@ class _CashPopupWidget extends StatelessWidget {
                       color: Color(0xFFFFD93D),
                     ),
                     Text(
-                      '+$payout',
+                      '+${popup.payout}',
                       style: const TextStyle(
                         color: Color(0xFFFFE08A),
                         fontWeight: FontWeight.w900,
