@@ -151,7 +151,7 @@ class DailyChallengeService {
     final dayNum = challenge.getDayNumber();
     final timeStr = _formatDuration(time);
     final grid = _buildShareGrid(time, moves);
-    return '''SortBloom Daily #$dayNum\n$grid\n⏱️ $timeStr  •  $moves moves\n🔥 $streak day streak\ngo7studio.com/sortbloom''';
+    return '''Warehouse Sort — Daily Contract #$dayNum\n$grid\n⏱️ $timeStr  •  $moves moves\n🔥 $streak day streak\ngo7studio.com/warehouse-sort''';
   }
 
   String _buildShareGrid(Duration time, int moves) {

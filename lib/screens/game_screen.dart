@@ -2106,7 +2106,7 @@ class _AddTubeButton extends StatelessWidget {
           color: GameColors.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: GameColors.zen.withValues(alpha: 0.5),
+            color: GameColors.tealAccent.withValues(alpha: 0.5),
             width: 1.5,
           ),
         ),
@@ -2118,15 +2118,15 @@ class _AddTubeButton extends StatelessWidget {
               height: 22,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: GameColors.zen.withValues(alpha: 0.2),
+                color: GameColors.tealAccent.withValues(alpha: 0.2),
                 border: Border.all(
-                  color: GameColors.zen,
+                  color: GameColors.tealAccent,
                   width: 1.5,
                 ),
               ),
               child: const Icon(
                 Icons.add,
-                color: GameColors.zen,
+                color: GameColors.tealAccent,
                 size: 14,
               ),
             ),

@@ -463,11 +463,11 @@ class MagnetSelectionOverlay extends StatelessWidget {
             color: GameColors.surface.withValues(alpha: 0.95),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: GameColors.zen.withValues(alpha: 0.5),
+              color: GameColors.tealAccent.withValues(alpha: 0.5),
             ),
             boxShadow: [
               BoxShadow(
-                color: GameColors.zen.withValues(alpha: 0.3),
+                color: GameColors.tealAccent.withValues(alpha: 0.3),
                 blurRadius: 16,
                 spreadRadius: 2,
               ),

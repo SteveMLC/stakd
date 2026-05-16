@@ -1,4 +1,4 @@
-# Firebase Setup for Stakd Leaderboards
+# Firebase Setup for Warehouse Sort Leaderboards
 
 This guide walks you through setting up Firebase for the global leaderboards feature.
 
@@ -12,22 +12,22 @@ This guide walks you through setting up Firebase for the global leaderboards fea
 
 1. Go to [Firebase Console](https://console.firebase.google.com/)
 2. Click "Add Project"
-3. Name it "stakd" or similar
+3. Name it "warehouse-sort" or similar
 4. Enable Google Analytics (optional)
 5. Create the project
 
 ## Step 2: Add Android App
 
 1. In Firebase Console, click "Add app" → Android
-2. Enter package name: `com.go7studio.stakd`
-3. Enter app nickname: "Stakd"
+2. Enter package name: `com.go7studio.warehousesort`
+3. Enter app nickname: "Warehouse Sort"
 4. Download `google-services.json`
 5. Place it in `android/app/google-services.json`
 
 ## Step 3: Add iOS App (Optional)
 
 1. In Firebase Console, click "Add app" → iOS
-2. Enter bundle ID: `com.go7studio.stakd`
+2. Enter bundle ID: `com.go7studio.warehouseSort`
 3. Download `GoogleService-Info.plist`
 4. Place it in `ios/Runner/GoogleService-Info.plist`
 

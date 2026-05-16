@@ -1438,7 +1438,7 @@ class _StackWidgetState extends State<_StackWidget>
                                   : widget.isDragSource
                                   ? Colors.white.withValues(alpha: 0.3)
                                   : widget.isPowerUpHighlighted
-                                  ? GameColors.zen.withValues(alpha: 0.9)
+                                  ? GameColors.tealAccent.withValues(alpha: 0.9)
                                   : isMultiGrabActive
                                   ? glowColor.withValues(
                                       alpha: 0.8 + multiGrabPulse * 0.2,
@@ -1502,7 +1502,7 @@ class _StackWidgetState extends State<_StackWidget>
                               // Power-up highlight glow (magnet eligible)
                               if (widget.isPowerUpHighlighted)
                                 BoxShadow(
-                                  color: GameColors.zen.withValues(alpha: 0.5),
+                                  color: GameColors.tealAccent.withValues(alpha: 0.5),
                                   blurRadius: 16,
                                   spreadRadius: 4,
                                 ),

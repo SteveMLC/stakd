@@ -86,7 +86,7 @@ All Mixkit and Pixabay assets are zero-attribution and need no credit line.
 
 ## Slots-to-engine wiring notes
 
-- `AudioService` (already in stakd codebase) maps method names to file paths. The 21 SFX slot IDs
+- `AudioService` (already in the warehouse_sort codebase) maps method names to file paths. The 21 SFX slot IDs
   above use snake_case names that mirror GDD §7. Steve can choose to add a thin facade
   (`AudioService.playCratePickup()` etc.) or just thread through `playSfx('crate_pickup')`.
 - `combo_chain` is GDD-declared as "reuse star chimes pitched up". Don't download a separate file —

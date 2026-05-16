@@ -110,17 +110,19 @@ void main() {
     });
 
     // ------------------------------------------------------------------
-    // (c) checkGardenProgress is gone (legacy purge).
-    //     Compile-level guarantee via not-referenced — the test file
-    //     does NOT import or call checkGardenProgress. If it were
-    //     restored as a misspelled name or split into a sub-class, this
-    //     reflective check catches it via toString of the service's
-    //     public surface — but Dart doesn't expose that. So we assert
-    //     the dead IDs are absent from the catalog instead, which is
-    //     functionally equivalent: a restored checkGardenProgress
-    //     would need those IDs to do anything useful.
+    // (c) Legacy progression checker was removed during the rebrand.
+    //     Compile-level guarantee comes from this test file not
+    //     importing or calling the dead helper. The runtime regression
+    //     guard below asserts the dead achievement IDs are absent from
+    //     the catalog — a re-introduction would resurrect collisions
+    //     with persisted state on devices that played the earlier build.
     // ------------------------------------------------------------------
-    test('legacy zen-garden achievement IDs are absent from catalog', () {
+    // Regression guard: the rebrand purged five achievement IDs from a
+    // previous identity. If anyone re-introduces them they'd collide
+    // with persisted-state expectations on devices that played an
+    // earlier build. Keep the guard; test name by intent rather than
+    // dated brand language.
+    test('purged legacy achievement IDs stay absent from catalog', () {
       const deadIds = {
         'garden_sprout',
         'paradise_found',
@@ -133,7 +135,7 @@ void main() {
         expect(
           catalogIds,
           isNot(contains(id)),
-          reason: 'Legacy ID "$id" should have been purged',
+          reason: 'Purged legacy ID "$id" should not be re-introduced',
         );
       }
     });

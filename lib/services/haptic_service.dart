@@ -1,8 +1,8 @@
 import 'package:flutter/services.dart';
 import 'storage_service.dart';
 
-/// Haptic feedback service for Stakd
-/// Provides consistent haptic patterns throughout the game
+/// Haptic feedback service for Warehouse Sort.
+/// Provides consistent haptic patterns throughout the game.
 class HapticService {
   // Private constructor - singleton pattern
   HapticService._();

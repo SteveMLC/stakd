@@ -5,8 +5,10 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Generates the Stakd app icon with stacked colorful layers
-/// representing the game mechanic in a zen, playful style.
+/// Generates the Warehouse Sort fallback app icon — stacked colorful
+/// crate layers representing the bay-sort mechanic. Same fallback
+/// renderer as `bin/generate_icon.dart`; this test variant writes the
+/// PNG to disk for visual review under `test/`.
 void main() {
   test('Generate app icon', () async {
     const int size = 1024;

@@ -375,7 +375,7 @@ class AchievementService extends ChangeNotifier {
       target: 100,
     ),
 
-    // 🏭 WAREHOUSE PROGRESSION (6) — replaces zen-garden achievements
+    // 🏭 WAREHOUSE PROGRESSION (6) — warehouse-themed long-arc goals
     AchievementDef(
       id: 'first_shipment',
       name: 'First Shipment',

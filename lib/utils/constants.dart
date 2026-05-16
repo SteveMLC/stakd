@@ -72,7 +72,11 @@ class GameColors {
   static const Color background = Color(0xFF1A1F26);
   static const Color surface = Color(0xFF252B36);
   static const Color accent = Color(0xFFFFC107); // safety yellow
-  static const Color zen = Color(0xFF2FB9B3); // legacy add-tube accent
+  /// Cool teal accent — used by the magnet ("Bay Crane") power-up
+  /// highlight ring and the add-tube/shuffle SFX particle effects.
+  /// (Renamed from the dated `zen` token during the rebrand cleanup;
+  /// the hex stayed the same so visuals don't shift.)
+  static const Color tealAccent = Color(0xFF2FB9B3);
   static const Color text = Color(0xFFEEEEEE);
   static const Color textMuted = Color(0xFF8B95A1);
   static const Color empty = Color(0xFF1C2433);

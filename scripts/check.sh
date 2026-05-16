@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SortBloom build/test gate: run analyze + unit tests fast.
+# Warehouse Sort build/test gate: run analyze + unit tests fast.
 # Use this before commits or as part of an iteration loop.
 
 set -euo pipefail

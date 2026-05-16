@@ -16,8 +16,10 @@ import 'package:flutter/material.dart'
         MaskFilter,
         BlurStyle;
 
-/// Generates the Stakd app icon with stacked colorful layers
-/// representing the game mechanic in a zen, playful style.
+/// Generates the Warehouse Sort fallback app icon — stacked colorful
+/// crate layers representing the bay-sort mechanic. Kept as a
+/// procedural fallback in case the Lovart-generated icon asset is
+/// unavailable at build time.
 Future<void> main() async {
   const int size = 1024;
 

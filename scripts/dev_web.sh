@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# SortBloom dev loop: serve the game on localhost:8765 with a FIFO so we
-# can issue hot-reload (`r`) and hot-restart (`R`) commands from another
-# shell or from automation.
+# Warehouse Sort dev loop: serve the game on localhost:8765 with a FIFO
+# so we can issue hot-reload (`r`) and hot-restart (`R`) commands from
+# another shell or from automation.
 #
 # Usage:
 #   bash scripts/dev_web.sh start    # starts the server in the background
@@ -16,10 +16,12 @@
 
 set -euo pipefail
 
-PORT=${SORTBLOOM_PORT:-8765}
-FIFO=/tmp/sortbloom-flutter-fifo
-LOG=/tmp/sortbloom-flutter.log
-PIDFILE=/tmp/sortbloom-flutter.pid
+# SORTBLOOM_PORT honoured for backward compatibility with any scripts
+# that already export it; new override env is WH_SORT_PORT.
+PORT=${WH_SORT_PORT:-${SORTBLOOM_PORT:-8765}}
+FIFO=/tmp/wh-sort-flutter-fifo
+LOG=/tmp/wh-sort-flutter.log
+PIDFILE=/tmp/wh-sort-flutter.pid
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 cmd=${1:-start}
@@ -37,7 +39,7 @@ start() {
   # `sleep infinity` isn't portable; macOS sleep needs a number.
   ( exec 3>"$FIFO"; sleep 2147483 >&3 ) &
   HOLDER=$!
-  echo "$HOLDER" >/tmp/sortbloom-fifo-holder.pid
+  echo "$HOLDER" >/tmp/wh-sort-fifo-holder.pid
   ( flutter run -d web-server --web-port "$PORT" --web-hostname 127.0.0.1 \
       <"$FIFO" >"$LOG" 2>&1 ) &
   echo $! >"$PIDFILE"
@@ -78,6 +80,12 @@ stop() {
     kill "$pid" 2>/dev/null || true
     rm -f "$PIDFILE"
   fi
+  if [[ -f /tmp/wh-sort-fifo-holder.pid ]]; then
+    kill "$(cat /tmp/wh-sort-fifo-holder.pid)" 2>/dev/null || true
+    rm -f /tmp/wh-sort-fifo-holder.pid
+  fi
+  # Legacy sortbloom-era holder pid (pre-rename); cleaned up so reboots
+  # from old shells don't leave a zombie writer.
   if [[ -f /tmp/sortbloom-fifo-holder.pid ]]; then
     kill "$(cat /tmp/sortbloom-fifo-holder.pid)" 2>/dev/null || true
     rm -f /tmp/sortbloom-fifo-holder.pid

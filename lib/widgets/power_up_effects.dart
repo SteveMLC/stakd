@@ -426,7 +426,7 @@ class _MagnetPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     // Draw magnetic field lines
     final linePaint = Paint()
-      ..color = GameColors.zen.withValues(alpha: 0.4 * opacity * (1 - progress))
+      ..color = GameColors.tealAccent.withValues(alpha: 0.4 * opacity * (1 - progress))
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
 
@@ -449,7 +449,7 @@ class _MagnetPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
 
     final glowPaint = Paint()
-      ..color = GameColors.zen.withValues(alpha: 0.5 * opacity)
+      ..color = GameColors.tealAccent.withValues(alpha: 0.5 * opacity)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
 
     // Draw glow

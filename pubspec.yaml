@@ -34,10 +34,8 @@ flutter:
   
   assets:
     - assets/sounds/
-    - assets/sounds/zen/
     - assets/images/
     - assets/images/textures/
-    - assets/images/zen-garden/
     - assets/images/backgrounds/
     # Custom illustrated icons — locally generated via FLUX.1-schnell,
     # background-stripped via rembg, encoded as WebP (~10-15 KB each).

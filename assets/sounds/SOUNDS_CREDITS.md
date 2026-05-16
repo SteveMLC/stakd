@@ -54,13 +54,6 @@ because Mixkit doesn't expose loopable warehouse-ambient tracks.
 | `forklift_idle.mp3` | ElevenLabs SFX API (`forklift engine humming, low diesel rumble, smooth steady mechanical loop`) | Commercial license | Loopable engine hum for menu screens |
 | `music.mp3` | ElevenLabs SFX API (`Calm warehouse ambient background loop, low conveyor whirr, distant forklift hum`) | Commercial license | 22s ambient background loop |
 
-### Zen mode (legacy CC0)
-
-| File | Source | License |
-|---|---|---|
-| `zen/wind_ambient.mp3` | Carry-over from prior identity (CC0) | CC0 |
-| `zen/wind_chime.mp3` | Carry-over from prior identity (CC0) | CC0 |
-
 ## Fetch script
 
 `tools/fetch_audio.py` — reusable Python fetcher that pulls Mixkit
