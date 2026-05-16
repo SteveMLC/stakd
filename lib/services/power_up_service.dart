@@ -76,6 +76,22 @@ extension PowerUpTypeExtension on PowerUpType {
     }
   }
 
+  /// Per-type neon ring color used by the Lovart-reference power-up
+  /// pill redesign. Cyan + magenta alternation matches the loading-dock
+  /// reference's "energy field" vibe.
+  int get neonHex {
+    switch (this) {
+      case PowerUpType.colorBomb:
+        return 0xFFE74C3C; // dynamite red-orange
+      case PowerUpType.shuffle:
+        return 0xFF2EE0C0; // re-route cyan
+      case PowerUpType.magnet:
+        return 0xFFD24CFF; // crane magenta
+      case PowerUpType.hint:
+        return 0xFFFFD93D; // foreman amber
+    }
+  }
+
   String get description {
     switch (this) {
       case PowerUpType.colorBomb:

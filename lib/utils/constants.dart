@@ -93,13 +93,18 @@ class GameColors {
 
 /// Layout constants
 class GameSizes {
-  static const double stackWidth = 60.0;
-  static const double stackHeight = 200.0; // Default for depth 4-5
+  // 2026-05-15 (Steve reference-design pass): bays restyled as glass
+  // tubes. Width up 60 → 76 so they feel like CONTAINERS not chips;
+  // border radius up 8 → 24 so the bay reads as a rounded capsule /
+  // test tube; spacing down 12 → 10 so 4-bay rows hug the screen
+  // tighter (matches the Lovart loading-dock reference).
+  static const double stackWidth = 76.0;
+  static const double stackHeight = 220.0; // Default for depth 4-5
   static const double layerHeight = 40.0;
   static const double layerMargin = 2.0;
-  static const double stackSpacing = 12.0;
+  static const double stackSpacing = 10.0;
   static const double borderRadius = 12.0;
-  static const double stackBorderRadius = 8.0;
+  static const double stackBorderRadius = 24.0;
 
   /// Calculate dynamic stack height based on max depth
   /// Formula: (depth × (layerHeight + margin)) + topPadding

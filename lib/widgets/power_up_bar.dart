@@ -144,57 +144,65 @@ class _PowerUpButtonState extends State<_PowerUpButton>
                 : null,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              width: 68,
-              height: 80,
+              width: 72,
+              height: 96,
               decoration: BoxDecoration(
-                // Brushed-steel gradient matches the rest of the
-                // industrial UI vocabulary. Active state pops the
-                // accent; disabled fades to surface.
+                // 2026-05-15 (Lovart loading-dock reference): power-up
+                // pill is now a neon-ring circle rather than a
+                // brushed-steel rounded square. Per-type ring colour
+                // (cyan/magenta/red/amber) gives each power-up its own
+                // visual signature; player learns "the cyan one is
+                // re-route" much faster than scanning 4 grey buttons.
+                shape: BoxShape.rectangle,
+                color: const Color(0xFF0B0E16),
                 gradient: isDisabled
                     ? null
-                    : LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: widget.isActive
-                            ? [
-                                GameColors.accent.withValues(alpha: 0.55),
-                                GameColors.accent.withValues(alpha: 0.25),
-                              ]
-                            : const [
-                                Color(0xFF3A4250),
-                                Color(0xFF252B36),
-                                Color(0xFF1A1F26),
-                              ],
+                    : RadialGradient(
+                        center: Alignment.center,
+                        radius: 0.85,
+                        colors: [
+                          Color(widget.type.neonHex).withValues(
+                            alpha: widget.isActive ? 0.45 : 0.18,
+                          ),
+                          const Color(0xFF0B0E16),
+                        ],
+                        stops: const [0.0, 1.0],
                       ),
-                color: isDisabled
-                    ? GameColors.surface.withValues(alpha: 0.5)
-                    : null,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(36),
                 border: Border.all(
-                  color: widget.isActive
-                      ? GameColors.accent
-                      : isDisabled
-                          ? GameColors.empty
-                          : GameColors.accent.withValues(alpha: 0.40),
-                  width: widget.isActive ? 2 : 1.2,
-                ),
-                boxShadow: widget.isActive
-                    ? [
-                        BoxShadow(
-                          color: GameColors.accent.withValues(alpha: 0.5),
-                          blurRadius: 14,
-                          spreadRadius: 2,
+                  color: isDisabled
+                      ? const Color(0xFF2A3140)
+                      : Color(widget.type.neonHex).withValues(
+                          alpha: widget.isActive ? 0.95 : 0.75,
                         ),
-                      ]
-                    : isDisabled
-                        ? null
-                        : [
+                  width: widget.isActive ? 2.5 : 1.8,
+                ),
+                boxShadow: isDisabled
+                    ? null
+                    : widget.isActive
+                        ? [
                             BoxShadow(
-                              color: GameColors.accent.withValues(alpha: 0.20),
-                              blurRadius: 8,
+                              color: Color(widget.type.neonHex).withValues(
+                                alpha: 0.65,
+                              ),
+                              blurRadius: 18,
+                              spreadRadius: 3,
+                            ),
+                          ]
+                        : [
+                            // Soft outer neon halo so each power-up
+                            // pill carries its own glow off the dark
+                            // background, matching the reference's
+                            // arcade-cabinet aesthetic.
+                            BoxShadow(
+                              color: Color(widget.type.neonHex).withValues(
+                                alpha: 0.32,
+                              ),
+                              blurRadius: 12,
+                              spreadRadius: 1,
                             ),
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.35),
+                              color: Colors.black.withValues(alpha: 0.45),
                               blurRadius: 6,
                               offset: const Offset(0, 3),
                             ),
@@ -210,7 +218,7 @@ class _PowerUpButtonState extends State<_PowerUpButton>
                   // so the button is self-labelling without tooltip.
                   Positioned.fill(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(4, 4, 4, 4),
+                      padding: const EdgeInsets.fromLTRB(6, 8, 6, 6),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.start,
                         children: [
@@ -218,25 +226,27 @@ class _PowerUpButtonState extends State<_PowerUpButton>
                             opacity: isDisabled ? 0.32 : 1.0,
                             child: Image.asset(
                               widget.type.iconAsset,
-                              width: 42,
-                              height: 42,
+                              width: 48,
+                              height: 48,
                               fit: BoxFit.contain,
                               filterQuality: FilterQuality.medium,
                             ),
                           ),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: 4),
                           Text(
                             widget.type.shortLabel,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 8.5,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.6,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.8,
                               height: 1.0,
                               color: isDisabled
                                   ? GameColors.textMuted
-                                  : GameColors.accent.withValues(alpha: 0.92),
+                                  : Color(widget.type.neonHex).withValues(
+                                      alpha: 0.95,
+                                    ),
                             ),
                           ),
                         ],

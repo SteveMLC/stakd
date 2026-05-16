@@ -45,6 +45,8 @@ import '../widgets/color_flash_overlay.dart';
 import '../widgets/warehouse_decorations.dart';
 import '../widgets/promotion_ceremony_overlay.dart';
 import '../widgets/warehouse_spinner.dart';
+import '../widgets/loading_dock_banner.dart';
+import '../widgets/contract_progress_bar.dart';
 import '../utils/game_assets.dart';
 import 'settings_screen.dart';
 
@@ -1482,6 +1484,15 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                       // (sequenced reward reveal). Mid-puzzle =
                       // flow state.
 
+                      // LOADING DOCK target panel — Lovart reference
+                      // chrome. Shows distinct color goals + per-color
+                      // delivered checkmarks. Lands above the board so
+                      // the player can read the puzzle objective at a
+                      // glance before any moves.
+                      RepaintBoundary(
+                        child: LoadingDockBanner(gameState: gameState),
+                      ),
+
                       // Game board
                       Expanded(
                         child: GameBoard(
@@ -1499,6 +1510,15 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                               ? _magnetEligibleStacks
                               : null,
                         ),
+                      ),
+
+                      // CONTRACT PROGRESS bar — cyan→magenta sweep
+                      // tracking stack-completion fraction. Sits
+                      // between the playfield and the power-up bar
+                      // so the player feels the puzzle "loading"
+                      // as bays clear.
+                      RepaintBoundary(
+                        child: ContractProgressBar(gameState: gameState),
                       ),
 
                       // Power-up bar

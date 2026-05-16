@@ -1405,25 +1405,23 @@ class _StackWidgetState extends State<_StackWidget>
                           width: double.infinity,
                           height: double.infinity,
                           decoration: BoxDecoration(
-                            // Empty bays get a warm-tinted inner gradient
-                            // so they visibly read as "drop targets here"
-                            // against the dark midnight background. Filled
-                            // bays keep the existing neutral gradient so
-                            // the colored crate layers dominate visually.
-                            gradient: LinearGradient(
+                            // 2026-05-15 (Lovart ref pass): bays now render
+                            // as glass tubes — semi-translucent slate fill
+                            // with subtle inner gradient suggesting the
+                            // hollow cylinder of a test-tube / storage
+                            // capsule. Filled vs empty distinction now
+                            // comes from the crates inside, not bay tint,
+                            // so all bays read uniformly as the same
+                            // container vocabulary.
+                            gradient: const LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
-                              colors: widget.stack.isEmpty
-                                  ? [
-                                      GameColors.accent.withValues(alpha: 0.08),
-                                      Colors.black.withValues(alpha: 0.45),
-                                    ]
-                                  : [
-                                      ThemeColors.emptySlotColor.withValues(
-                                        alpha: 0.85,
-                                      ),
-                                      ThemeColors.emptySlotColor,
-                                    ],
+                              colors: [
+                                Color(0xB30B0E16), // ~70% dark near top
+                                Color(0x800B0E16), // ~50% mid (glass body)
+                                Color(0xB30B0E16), // ~70% dark near bottom
+                              ],
+                              stops: [0.0, 0.5, 1.0],
                             ),
                             borderRadius: BorderRadius.circular(
                               GameSizes.stackBorderRadius,
@@ -1458,14 +1456,16 @@ class _StackWidgetState extends State<_StackWidget>
                                       // there!" hint, not a warning.
                                       alpha: 0.25 + pulseValue * 0.20,
                                     )
-                                  // Empty/idle bay: dim amber border
-                                  // instead of invisible `emptySlotColor`
-                                  // so the player can SEE the bay's
-                                  // perimeter (Winnie's audit
-                                  // 2026-05-15: "bays are invisible").
-                                  : widget.stack.isEmpty
-                                  ? GameColors.accent.withValues(alpha: 0.35)
-                                  : ThemeColors.emptySlotColor,
+                                  // Default idle bay border: soft slate
+                                  // matching the Lovart glass-tube
+                                  // reference. Was amber for empty + dim
+                                  // slate for filled; unified now so all
+                                  // bays read as the same container
+                                  // vocabulary (crates inside differ, not
+                                  // the bay itself).
+                                  : const Color(0xFF6B7B92).withValues(
+                                      alpha: 0.55,
+                                    ),
                               width: widget.isDragValidTarget
                                   ? 3
                                   : widget.isDragInvalidHover
@@ -1586,11 +1586,82 @@ class _StackWidgetState extends State<_StackWidget>
                               ),
                             ],
                           ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(
-                              GameSizes.stackBorderRadius - 2,
-                            ),
-                            child: _buildLayers(),
+                          child: Stack(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(
+                                  GameSizes.stackBorderRadius - 2,
+                                ),
+                                child: _buildLayers(),
+                              ),
+                              // Top rim highlight — the bright meniscus
+                              // of the glass tube's open mouth. Selling
+                              // the "this is a hollow container" read
+                              // that the Lovart reference does so well.
+                              Positioned(
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                height: 6,
+                                child: IgnorePointer(
+                                  child: DecoratedBox(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.only(
+                                        topLeft: Radius.circular(
+                                          GameSizes.stackBorderRadius - 2,
+                                        ),
+                                        topRight: Radius.circular(
+                                          GameSizes.stackBorderRadius - 2,
+                                        ),
+                                      ),
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topCenter,
+                                        end: Alignment.bottomCenter,
+                                        colors: [
+                                          Colors.white.withValues(alpha: 0.28),
+                                          Colors.white.withValues(alpha: 0.06),
+                                          Colors.white.withValues(alpha: 0.0),
+                                        ],
+                                        stops: const [0.0, 0.6, 1.0],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              // Inner side highlights — thin vertical
+                              // streaks on the left/right that read as
+                              // light catching the cylinder's curved
+                              // glass walls.
+                              Positioned(
+                                top: 6,
+                                left: 3,
+                                bottom: 6,
+                                width: 1.5,
+                                child: IgnorePointer(
+                                  child: DecoratedBox(
+                                    decoration: BoxDecoration(
+                                      color:
+                                          Colors.white.withValues(alpha: 0.10),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                top: 6,
+                                right: 3,
+                                bottom: 6,
+                                width: 1,
+                                child: IgnorePointer(
+                                  child: DecoratedBox(
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.20,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         if (_isLongPressing && !_isDragging)
