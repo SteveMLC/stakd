@@ -75,6 +75,8 @@ class LevelGenerator {
 
     double frozenProb = base.frozenBlockProbability;
     double fragileProb = base.fragileBlockProbability;
+    double priorityProb = base.priorityBlockProbability;
+    int priorityDeadline = base.priorityDeadlineMoves;
     // double lockedProb = base.lockedBlockProbability;  // future
     for (final wrinkle in district.wrinkles) {
       switch (wrinkle) {
@@ -89,6 +91,13 @@ class LevelGenerator {
           fragileProb = (fragileProb + 0.10).clamp(0.0, 0.18);
           break;
         case 'priority':
+          // District 9 ("priority" wrinkle): countdown timer on the
+          // crate. If the player doesn't ship it within N moves, they
+          // take a $40 hit at payout. Higher districts (faster pace)
+          // get a tighter deadline; default 8 moves works for D9.
+          priorityProb = (priorityProb + 0.10).clamp(0.0, 0.16);
+          priorityDeadline = 8;
+          break;
         case 'oversized':
         case 'time-bomb':
         case 'conveyor-drift':
@@ -117,6 +126,8 @@ class LevelGenerator {
       maxLockedMoves: base.maxLockedMoves,
       frozenBlockProbability: frozenProb,
       fragileBlockProbability: fragileProb,
+      priorityBlockProbability: priorityProb,
+      priorityDeadlineMoves: priorityDeadline,
     );
   }
 
@@ -665,14 +676,15 @@ class LevelGenerator {
     return stacks;
   }
 
-  /// Apply locked, frozen, and fragile blocks to an already-generated
-  /// puzzle. Caps: max 1 locked, max 2 frozen, max 2 fragile per puzzle.
-  /// Never locks a block at the bottom of a mixed-color stack.
-  /// Lock timer capped at 3 moves.
+  /// Apply locked, frozen, fragile, and priority blocks to an
+  /// already-generated puzzle. Caps: max 1 locked, max 2 frozen, max 2
+  /// fragile, max 1 priority per puzzle. Never locks a block at the
+  /// bottom of a mixed-color stack. Lock timer capped at 3 moves.
   void applySpecialBlocks(List<GameStack> stacks, LevelParams params) {
     if (params.lockedBlockProbability <= 0 &&
         params.frozenBlockProbability <= 0 &&
-        params.fragileBlockProbability <= 0) {
+        params.fragileBlockProbability <= 0 &&
+        params.priorityBlockProbability <= 0) {
       return;
     }
 
@@ -680,9 +692,11 @@ class LevelGenerator {
     int lockedCount = 0;
     int frozenCount = 0;
     int fragileCount = 0;
+    int priorityCount = 0;
     const maxLocked = 1;
     const maxFrozen = 2;
     const maxFragile = 2;
+    const maxPriority = 1;
 
     for (int s = 0; s < stacks.length; s++) {
       final stack = stacks[s];
@@ -728,6 +742,21 @@ class LevelGenerator {
             random.nextDouble() < params.fragileBlockProbability) {
           newLayers.add(Layer.fragile(colorIndex: layer.colorIndex));
           fragileCount++;
+        }
+        // Priority blocks: rare (max 1 per puzzle), prefer TOP of a
+        // mixed-color stack so the player has to actually ship the
+        // crate, not just leave it buried. The countdown is the
+        // params.priorityDeadlineMoves so districts can dial pace.
+        else if (priorityCount < maxPriority &&
+            params.priorityBlockProbability > 0 &&
+            isTop &&
+            isMixed &&
+            random.nextDouble() < params.priorityBlockProbability) {
+          newLayers.add(Layer.priority(
+            colorIndex: layer.colorIndex,
+            deadline: params.priorityDeadlineMoves,
+          ));
+          priorityCount++;
         } else {
           newLayers.add(layer);
         }

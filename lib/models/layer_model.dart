@@ -17,6 +17,12 @@ class Layer {
   final int lockedUntil;   // For locked blocks: number of moves before unlocking (0 = not locked)
   final bool isFrozen;     // Frozen block: must be tapped once to thaw before moving
   final bool isFragile;    // Fragile block: shatters with cash penalty on wrong-color drop attempt
+  /// Priority block countdown.
+  ///   -1 = not a priority block (default)
+  ///   >0 = N moves remaining before expiration penalty
+  ///    0 = already expired (cash penalty already deducted, crate still
+  ///        on the board but rendered as "missed shipment")
+  final int priorityCountdown;
 
   Layer({
     required this.colorIndex,
@@ -26,7 +32,14 @@ class Layer {
     this.lockedUntil = 0,
     this.isFrozen = false,
     this.isFragile = false,
+    this.priorityCountdown = -1,
   }) : id = id ?? UniqueKey().toString();
+
+  /// Convenience: is this a priority block (timer >= 0)?
+  bool get isPriority => priorityCountdown >= 0;
+
+  /// Convenience: has the priority timer hit zero already?
+  bool get isPriorityExpired => priorityCountdown == 0;
 
   /// Get the primary color for this layer
   Color get color => GameColors.getColor(colorIndex);
@@ -68,6 +81,7 @@ class Layer {
     int? lockedUntil,
     bool? isFrozen,
     bool? isFragile,
+    int? priorityCountdown,
   }) {
     return Layer(
       colorIndex: colorIndex ?? this.colorIndex,
@@ -77,7 +91,18 @@ class Layer {
       lockedUntil: lockedUntil ?? this.lockedUntil,
       isFrozen: isFrozen ?? this.isFrozen,
       isFragile: isFragile ?? this.isFragile,
+      priorityCountdown: priorityCountdown ?? this.priorityCountdown,
     );
+  }
+
+  /// Decrement the priority countdown by one move. No-op for non-priority
+  /// layers (`priorityCountdown < 0`) and for already-expired ones
+  /// (`priorityCountdown == 0`). Returns a new Layer instance.
+  Layer decrementPriority() {
+    if (priorityCountdown > 0) {
+      return copyWith(priorityCountdown: priorityCountdown - 1);
+    }
+    return this;
   }
 
   /// Create a thawed copy of this layer (removes frozen state)
@@ -110,6 +135,7 @@ class Layer {
     'lockedUntil': lockedUntil,
     'isFrozen': isFrozen,
     'isFragile': isFragile,
+    'priorityCountdown': priorityCountdown,
   };
 
   factory Layer.fromJson(Map<String, Object?> json) {
@@ -124,6 +150,7 @@ class Layer {
       lockedUntil: (json['lockedUntil'] as int?) ?? 0,
       isFrozen: (json['isFrozen'] as bool?) ?? false,
       isFragile: (json['isFragile'] as bool?) ?? false,
+      priorityCountdown: (json['priorityCountdown'] as int?) ?? -1,
     );
   }
 
@@ -181,6 +208,25 @@ class Layer {
       colorIndex: colorIndex,
       id: id,
       isFragile: true,
+    );
+  }
+
+  /// Factory: Create a priority layer.
+  /// Priority crates render with an orange ribbon + countdown badge.
+  /// They tick down by 1 on every move; when the countdown hits 0 the
+  /// player takes a cash penalty and the crate's badge flips to
+  /// "MISSED" (no further penalty after that — single-shot). District 9
+  /// ("priority" wrinkle) is the introduction.
+  factory Layer.priority({
+    required int colorIndex,
+    required int deadline,
+    String? id,
+  }) {
+    assert(deadline >= 1, 'Priority deadline must be at least 1 move');
+    return Layer(
+      colorIndex: colorIndex,
+      id: id,
+      priorityCountdown: deadline,
     );
   }
 }

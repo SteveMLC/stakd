@@ -323,6 +323,63 @@ class LayerWidget extends StatelessWidget {
                 shadows: [Shadow(color: Colors.black87, blurRadius: 3)],
               ),
             ),
+          // Priority block — orange ribbon overlay + countdown badge.
+          // Active priority (countdown > 0): orange tint + N badge.
+          // Expired priority (countdown == 0): red tint + ✕ marker.
+          if (layer.isPriority)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(
+                      GameSizes.stackBorderRadius - 2,
+                    ),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: layer.isPriorityExpired
+                          ? const [
+                              Color(0x66E53935), // red, low alpha
+                              Color(0x33B71C1C),
+                            ]
+                          : const [
+                              Color(0x55FF8A1E), // orange tint
+                              Color(0x33CC5A00),
+                            ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          if (layer.isPriority)
+            Positioned(
+              top: 2,
+              right: 3,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.75),
+                  borderRadius: BorderRadius.circular(7),
+                  border: Border.all(
+                    color: layer.isPriorityExpired
+                        ? const Color(0xFFFF6B6B)
+                        : const Color(0xFFFFB347),
+                    width: 0.9,
+                  ),
+                ),
+                child: Text(
+                  layer.isPriorityExpired ? '✕' : '${layer.priorityCountdown}',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    height: 1.0,
+                    color: layer.isPriorityExpired
+                        ? const Color(0xFFFF6B6B)
+                        : const Color(0xFFFFE08A),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

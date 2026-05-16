@@ -262,6 +262,28 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
       }
     }
 
+    // Priority-expired event: at least one priority crate's countdown
+    // ticked from 1 → 0 this frame. Same UX pattern as fragile —
+    // klaxon-ish error sfx + snackbar telling the player a shipment
+    // missed its deadline.
+    if (gameState.priorityExpiredThisFrame) {
+      gameState.consumePriorityExpiredEvent();
+      haptics.error();
+      AudioService().playError();
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Priority shipment missed — \$40 docked from your payout.',
+            ),
+            duration: Duration(milliseconds: 1800),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+
     if (!_tutorialService.isActive) return;
 
     // Detect stack selection
@@ -395,17 +417,19 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
       final ventMul = HydraulicPressureService().isVenting
           ? HydraulicPressureService.ventCashMultiplier
           : 1.0;
-      // Apply fragile-crate wrong-drop penalties accrued during this
-      // puzzle (D8 wrinkle). Each shattered fragile docks $25 from the
-      // payout — capped to never go below 0 so a really bad run still
-      // pays out something (the player still earned the clear). Reads
-      // from the `gameState` arg (not `context.read`) to dodge the
-      // use_build_context_synchronously lint after the awaited
-      // storage/coins/achievement calls above.
+      // Apply fragile + priority crate penalties accrued during this
+      // puzzle (D8 / D9 wrinkles). Each shattered fragile docks $25,
+      // each expired priority docks $40 — capped to never go below 0
+      // so a really bad run still pays out something (the player still
+      // earned the clear). Reads from the `gameState` arg (not
+      // `context.read`) to dodge the use_build_context_synchronously
+      // lint after the awaited storage/coins/achievement calls above.
       final fragilePenalty = gameState.fragilePenaltyAccrued;
+      final priorityPenalty = gameState.priorityPenaltyAccrued;
       final rawCash =
           (baseCash * tierMul * starMul * incomeMul * ventMul).floor();
-      final cashEarned = (rawCash - fragilePenalty).clamp(0, 1 << 31);
+      final cashEarned =
+          (rawCash - fragilePenalty - priorityPenalty).clamp(0, 1 << 31);
       final xpEarned = (cashEarned / 2).floor();
       final levelUp = await WarehouseEconomyService().awardReward(
         ShipmentReward(cash: cashEarned, xp: xpEarned),
@@ -1581,11 +1605,14 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                           ),
                         ),
 
-                      // Banner ad (wrapped in RepaintBoundary)
-                      RepaintBoundary(child: _buildBannerAd()),
-
-                      // Bottom controls (wrapped in RepaintBoundary)
+                      // 2026-05-15 (audit P0): banner ad was bisecting
+                      // the bottom UI between Add Tube and the action
+                      // row. Swapped order so action row reads as the
+                      // visual anchor of the screen, and the banner
+                      // (when present) is the very last thing — easy
+                      // for the eye to skip during play.
                       RepaintBoundary(child: _buildBottomControls(gameState, iap)),
+                      RepaintBoundary(child: _buildBannerAd()),
                     ],
                   ),
 

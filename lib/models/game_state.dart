@@ -169,6 +169,8 @@ class GameState extends ChangeNotifier {
     _addTubeUsed = false;
     _fragilePenaltyAccrued = 0;
     _fragileBrokeThisFrame = false;
+    _priorityPenaltyAccrued = 0;
+    _priorityExpiredThisFrame = false;
     _resetPowerUpTracking();
     notifyListeners();
   }
@@ -284,6 +286,19 @@ class GameState extends ChangeNotifier {
   bool get fragileBrokeThisFrame => _fragileBrokeThisFrame;
   void consumeFragileBreakEvent() {
     _fragileBrokeThisFrame = false;
+  }
+
+  /// Pending cash penalty from priority crates that hit their countdown.
+  /// Same payout-time deduction pattern as fragile.
+  int _priorityPenaltyAccrued = 0;
+  int get priorityPenaltyAccrued => _priorityPenaltyAccrued;
+
+  /// One-shot event flag for the UI when a priority just expired this
+  /// frame. The game_screen surfaces a haptic + sfx + snackbar.
+  bool _priorityExpiredThisFrame = false;
+  bool get priorityExpiredThisFrame => _priorityExpiredThisFrame;
+  void consumePriorityExpiredEvent() {
+    _priorityExpiredThisFrame = false;
   }
 
   /// Attempt to move a layer between stacks
@@ -428,6 +443,12 @@ class GameState extends ChangeNotifier {
     // Decrement locked block counters
     _decrementLockedBlocks();
 
+    // Decrement priority countdowns + apply penalty for any priorities
+    // that just hit 0. The crate stays on the board (rendered as
+    // "MISSED" via the layer_widget priority overlay) so the puzzle is
+    // still solvable, but the player takes a cash hit on this clear.
+    _tickPriorityCountdowns();
+
     // Check for completed stacks
     _checkForCompletedStacks();
 
@@ -474,6 +495,48 @@ class GameState extends ChangeNotifier {
           id: stack.id,
         );
       }
+    }
+  }
+
+  /// Tick all priority countdowns down by one move. Any that just hit
+  /// zero this tick trigger a cash penalty + UI event. Once a priority
+  /// has expired (countdown == 0) it stays expired — single-shot
+  /// penalty, no further deductions on subsequent moves.
+  void _tickPriorityCountdowns() {
+    const priorityPenalty = 40;
+    bool anyExpiredThisTick = false;
+
+    for (int i = 0; i < _stacks.length; i++) {
+      final stack = _stacks[i];
+      bool changed = false;
+      final newLayers = <Layer>[];
+
+      for (final layer in stack.layers) {
+        if (layer.priorityCountdown > 0) {
+          final next = layer.decrementPriority();
+          newLayers.add(next);
+          changed = true;
+          if (next.priorityCountdown == 0) {
+            // Just expired this tick — apply the penalty once.
+            _priorityPenaltyAccrued += priorityPenalty;
+            anyExpiredThisTick = true;
+          }
+        } else {
+          newLayers.add(layer);
+        }
+      }
+
+      if (changed) {
+        _stacks[i] = GameStack(
+          layers: newLayers,
+          maxDepth: stack.maxDepth,
+          id: stack.id,
+        );
+      }
+    }
+
+    if (anyExpiredThisTick) {
+      _priorityExpiredThisFrame = true;
     }
   }
 

@@ -149,6 +149,8 @@ class LevelParams {
   final int maxLockedMoves; // Maximum moves a block can be locked for
   final double frozenBlockProbability; // 0.0 to 1.0: chance of frozen blocks
   final double fragileBlockProbability; // 0.0 to 1.0: chance of fragile blocks
+  final double priorityBlockProbability; // 0.0 to 1.0: chance of priority blocks
+  final int priorityDeadlineMoves; // Default countdown for spawned priorities
 
   const LevelParams({
     required this.colors,
@@ -161,6 +163,8 @@ class LevelParams {
     this.maxLockedMoves = 3,
     this.frozenBlockProbability = 0.0,
     this.fragileBlockProbability = 0.0,
+    this.priorityBlockProbability = 0.0,
+    this.priorityDeadlineMoves = 8,
   });
 
   /// Get parameters for a given level number with progressive difficulty
