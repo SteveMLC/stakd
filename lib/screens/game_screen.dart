@@ -46,7 +46,7 @@ import '../widgets/warehouse_decorations.dart';
 import '../widgets/promotion_ceremony_overlay.dart';
 import '../widgets/warehouse_spinner.dart';
 import '../widgets/loading_dock_banner.dart';
-import '../widgets/contract_progress_bar.dart';
+import '../widgets/unified_action_bar.dart';
 import '../utils/game_assets.dart';
 import 'settings_screen.dart';
 
@@ -806,6 +806,7 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
   /// rendering empty on new wrinkles the asset catalog hasn't caught up
   /// to (e.g. conveyor-drift, gravity-flip, double-color, time-bomb
   /// before their dedicated Flux gens).
+  // ignore: unused_element
   String _wrinkleFallbackGlyph(String wrinkleId) {
     switch (wrinkleId) {
       case 'frozen':
@@ -1568,50 +1569,41 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                         ),
                       ),
 
-                      // CONTRACT PROGRESS bar — cyan→magenta sweep
-                      // tracking stack-completion fraction. Sits
-                      // between the playfield and the power-up bar
-                      // so the player feels the puzzle "loading"
-                      // as bays clear.
+                      // 2026-05-15 (Steve direction): CONTRACT PROGRESS
+                      // bar removed at his request — visible progress
+                      // is already implied by the LOADING DOCK
+                      // checkmarks. Keeping the widget around in
+                      // `contract_progress_bar.dart` in case a later
+                      // iteration wants to bring it back as an opt-in
+                      // mini-bar elsewhere.
+
+                      // 2026-05-15 (Steve direction): consolidated the
+                      // old PowerUpBar + AddTubeButton + bottom-controls
+                      // (two stacked rows + a wedged "+TUBE" pill) into
+                      // a SINGLE inline action deck. Restart / undo /
+                      // +tube / BURST / RE-ROUTE / CRANE / HINT all
+                      // sit in one chrome panel along the bottom.
                       RepaintBoundary(
-                        child: ContractProgressBar(gameState: gameState),
-                      ),
-
-                      // Power-up bar
-                      PowerUpBar(
-                        onColorBomb: _onColorBombPressed,
-                        onShuffle: _onShufflePressed,
-                        onMagnet: _onMagnetPressed,
-                        onHint: _onEnhancedHintPressed,
-                        isSelectionMode:
-                            _colorBombSelectionMode || _magnetSelectionMode,
-                        activeSelection: _colorBombSelectionMode
-                            ? PowerUpType.colorBomb
-                            : _magnetSelectionMode
-                            ? PowerUpType.magnet
-                            : null,
-                      ),
-
-                      // Add Tube button — was wedged with `bottom:4`
-                      // padding right above the bottom action bar
-                      // (Steve audit "squeezed between power-ups and
-                      // bottom action bar with no breathing room").
-                      // Centered + given proper vertical air now.
-                      if (!gameState.addTubeUsed)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          child: _AddTubeButton(
-                            onTap: () => _onAddTubePressed(gameState),
-                          ),
+                        child: UnifiedActionBar(
+                          onRestart: _restartLevel,
+                          onUndo: gameState.canUndo
+                              ? _onUndo
+                              : _onUndoWithAd,
+                          onAddTube: () => _onAddTubePressed(gameState),
+                          onColorBomb: _onColorBombPressed,
+                          onShuffle: _onShufflePressed,
+                          onMagnet: _onMagnetPressed,
+                          onHint: _onEnhancedHintPressed,
+                          addTubeAvailable: !gameState.addTubeUsed,
+                          selectionMode: _colorBombSelectionMode ||
+                              _magnetSelectionMode,
+                          activeSelection: _colorBombSelectionMode
+                              ? PowerUpType.colorBomb
+                              : _magnetSelectionMode
+                                  ? PowerUpType.magnet
+                                  : null,
                         ),
-
-                      // 2026-05-15 (audit P0): banner ad was bisecting
-                      // the bottom UI between Add Tube and the action
-                      // row. Swapped order so action row reads as the
-                      // visual anchor of the screen, and the banner
-                      // (when present) is the very last thing — easy
-                      // for the eye to skip during play.
-                      RepaintBoundary(child: _buildBottomControls(gameState, iap)),
+                      ),
                       RepaintBoundary(child: _buildBannerAd()),
                     ],
                   ),
@@ -1801,145 +1793,118 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
   }
 
   Widget _buildTopBar(GameState gameState) {
+    // 2026-05-15 (Steve direction "top panel smaller, spread it across
+    // the top, right side setting, left side back button, CENTER the
+    // level"): refactored to a 3-zone Row with the back arrow pinned
+    // left, the settings cog pinned right, and a single combined
+    // Lv/par/stars chip centered between them. The previous layout
+    // crammed back ▸ Lv ▸ par ▸ settings flush-left and looked dense.
+    final par = gameState.par;
+    final moves = gameState.moveCount;
+    final hasParTarget = par != null;
+    final isUnder = hasParTarget && moves <= par;
+    final isOver = hasParTarget && moves > par + 4;
+    final accent = isUnder
+        ? const Color(0xFF4CAF50)
+        : isOver
+            ? const Color(0xFFE53935)
+            : const Color(0xFFFFC107);
+    final bestStars =
+        StorageService().getLevelStars(gameState.currentLevel);
+    final district =
+        DistrictService().districtForLevel(gameState.currentLevel);
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 4),
       child: Row(
         children: [
-          // Back button
           GameIconButton(icon: Icons.arrow_back, onPressed: _goHome),
-          const SizedBox(width: 8),
-
-          // Level indicator — branded waybill stub, accent border so
-          // it reads as "current contract" rather than a chip. Adds a
-          // tiny district sub-line below "Lv N" so the player keeps
-          // the infinite-scaling district identity in view during play
-          // (e.g. "D3 · COLD STORAGE" under "Lv 12"). District lookup
-          // is via the procedural composer — hand-tuned D1-D6 produce
-          // their curated displayNames; D7+ produce the
-          // "District N — Theme Flavor" composer output.
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: GameColors.surface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: GameColors.accent.withValues(alpha: 0.45),
-                  width: 1.2,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.assignment_outlined,
-                    size: 14,
-                    color: GameColors.accent,
+          Expanded(
+            child: Center(
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: GameColors.surface.withValues(alpha: 0.85),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: accent.withValues(alpha: 0.55),
+                    width: 1.2,
                   ),
-                  const SizedBox(width: 5),
-                  Builder(builder: (_) {
-                    final district = DistrictService()
-                        .districtForLevel(_currentLevel);
-                    // Compact district readout: `D{N}` only (the
-                    // contract-select cards already carry the full
-                    // "LOCAL DOCK / COLD STORAGE" display). Tiny
-                    // wrinkle hint suffix if the district has one
-                    // — single character so the badge stays under
-                    // the constrained 75dp top-bar slot.
-                    final firstWrinkle = district != null &&
-                            district.wrinkles.isNotEmpty
-                        ? district.wrinkles.first
-                        : null;
-                    final wrinkleAsset = wrinkleGlyphAsset(firstWrinkle);
-                    return Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Lv $_currentLevel',
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.4,
-                            height: 1.0,
-                          ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: accent.withValues(
+                        alpha: isUnder || isOver ? 0.25 : 0.10,
+                      ),
+                      blurRadius: 6,
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Lv ${gameState.currentLevel}',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                        height: 1.0,
+                      ),
+                    ),
+                    if (district != null) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        'D${district.number}',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                          fontFamily: 'Courier',
+                          letterSpacing: 1.0,
+                          height: 1.0,
+                          color: GameColors.accent.withValues(alpha: 0.80),
                         ),
-                        if (district != null) ...[
-                          const SizedBox(height: 1),
-                          // Compact district readout — `D{N}` text +
-                          // optional illustrated wrinkle pictogram for
-                          // an active wrinkle (frozen / priority /
-                          // fragile / oversized / etc). Falls back to
-                          // a Unicode snowflake when no asset matches
-                          // the wrinkle id yet so brand-new wrinkles
-                          // don't render empty.
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'D${district.number}',
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 1.0,
-                                  fontFamily: 'Courier',
-                                  color: GameColors.accent
-                                      .withValues(alpha: 0.85),
-                                  height: 1.0,
-                                ),
-                              ),
-                              if (wrinkleAsset != null) ...[
-                                const SizedBox(width: 3),
-                                Image.asset(
-                                  wrinkleAsset,
-                                  width: 10,
-                                  height: 10,
-                                  filterQuality: FilterQuality.medium,
-                                ),
-                              ] else if (firstWrinkle != null) ...[
-                                // Fallback: no asset yet for this wrinkle
-                                // id — use a tiny accent glyph so the
-                                // district badge still signals active
-                                // modifier.
-                                Text(
-                                  ' ${_wrinkleFallbackGlyph(firstWrinkle)}',
-                                  style: TextStyle(
-                                    fontSize: 8,
-                                    fontWeight: FontWeight.w900,
-                                    color: GameColors.accent
-                                        .withValues(alpha: 0.85),
-                                    height: 1.0,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ],
-                      ],
-                    );
-                  }),
-                ],
+                      ),
+                    ],
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 8),
+                      height: 22,
+                      width: 1,
+                      color: Colors.white.withValues(alpha: 0.18),
+                    ),
+                    Icon(Icons.touch_app, size: 13, color: accent),
+                    const SizedBox(width: 3),
+                    Text(
+                      hasParTarget ? '$moves/$par' : '$moves',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: accent,
+                        height: 1.0,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    ...List.generate(3, (i) {
+                      final filled = i < bestStars;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 0.5),
+                        child: Icon(
+                          filled
+                              ? Icons.star_rounded
+                              : Icons.star_outline_rounded,
+                          size: 11,
+                          color: filled
+                              ? const Color(0xFFFFD93D)
+                              : Colors.white.withValues(alpha: 0.30),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
               ),
             ),
           ),
-          const SizedBox(width: 8),
-
-          // Move counter with par — colour-codes by performance:
-          // under par → green, near par → yellow, over par → red.
-          Flexible(
-            child: _MoveCounterChip(gameState: gameState),
-          ),
-          const SizedBox(width: 8),
-
-          // 2026-05-15 (Steve audit): the top-bar hint button was a
-          // duplicate of the same Icons.lightbulb_outline + badge that
-          // already lives in `_buildBottomControls`. Two hint buttons
-          // on screen at once read as a glitch and crammed the HUD.
-          // Bottom hint is the thumb-reachable one and stays canonical.
-          // Settings button is the only secondary action that remains
-          // up top.
           GameIconButton(icon: Icons.settings, onPressed: _goToSettings),
         ],
       ),
@@ -1963,6 +1928,10 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
     );
   }
 
+  // Legacy stacked-row bottom controls — kept for reference but no
+  // longer wired into the game layout (UnifiedActionBar replaces it).
+  // Delete in a future cleanup once the new bar is settled.
+  // ignore: unused_element
   Widget _buildBottomControls(GameState gameState, IapService iap) {
     final bottomPad = MediaQuery.of(context).padding.bottom;
     return Padding(
@@ -2007,6 +1976,7 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
 /// green when the player is under par, yellow as they approach it,
 /// red once they've overshot by ≥5. The colour transitions live in
 /// an AnimatedContainer so the change isn't a jarring snap.
+// ignore: unused_element
 class _MoveCounterChip extends StatelessWidget {
   final GameState gameState;
   const _MoveCounterChip({required this.gameState});
@@ -2091,6 +2061,7 @@ class _MoveCounterChip extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _AddTubeButton extends StatelessWidget {
   final VoidCallback onTap;
 

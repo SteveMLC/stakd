@@ -262,11 +262,21 @@ class _GlassTube extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final h = constraints.maxHeight;
+        // 2026-05-15 (Steve direction "cleaner, more styled, different
+        // tone — hydraulic liquid steel blue"): fluid is now a cool
+        // steel-blue palette that warms toward cyan-white as pressure
+        // rises, and pops bright cyan during a vent. Was warm
+        // amber→red which read as a health-bar alarm in the corner
+        // even at low pressure.
+        const fluidLow = Color(0xFF3B5A78);   // dim cool steel-blue
+        const fluidMid = Color(0xFF4D8AC5);   // hydraulic blue
+        const fluidHigh = Color(0xFF6BD3FF);  // bright cyan near full
+        const fluidVent = Color(0xFF9BFFFF);  // electric vent flash
         final fluidColor = isVenting
-            ? GameColors.accent
+            ? fluidVent
             : Color.lerp(
-                GameColors.accent,
-                const Color(0xFFE53935),
+                fluidLow,
+                fluidHigh,
                 pressure.clamp(0.0, 1.0),
               )!;
         return DecoratedBox(
@@ -302,31 +312,39 @@ class _GlassTube extends StatelessWidget {
                             end: Alignment.topCenter,
                             colors: [
                               fluidColor,
-                              fluidColor.withValues(alpha: 0.65),
+                              fluidMid.withValues(alpha: 0.85),
+                              fluidColor.withValues(alpha: 0.55),
                             ],
+                            stops: const [0.0, 0.6, 1.0],
                           ),
                           boxShadow: isVenting
                               ? [
                                   BoxShadow(
-                                    color: GameColors.accent
-                                        .withValues(alpha: 0.6),
-                                    blurRadius: 8,
+                                    color: fluidVent
+                                        .withValues(alpha: 0.7),
+                                    blurRadius: 12,
                                   ),
                                 ]
-                              : null,
+                              : [
+                                  BoxShadow(
+                                    color: fluidHigh
+                                        .withValues(alpha: 0.18),
+                                    blurRadius: 4,
+                                  ),
+                                ],
                         ),
                       ),
                     );
                   },
                 ),
-                // -------- Zone tick marks --------
+                // -------- Zone tick marks (cyan stepped scale) --------
                 Positioned(
                   bottom: h * 0.33,
                   left: 0,
                   right: 0,
                   child: Container(
                     height: 1,
-                    color: const Color(0xFFFFD93D).withValues(alpha: 0.55),
+                    color: fluidMid.withValues(alpha: 0.45),
                   ),
                 ),
                 Positioned(
@@ -335,7 +353,7 @@ class _GlassTube extends StatelessWidget {
                   right: 0,
                   child: Container(
                     height: 1,
-                    color: const Color(0xFFFF8A1F).withValues(alpha: 0.65),
+                    color: fluidHigh.withValues(alpha: 0.55),
                   ),
                 ),
                 // -------- Needle overlay --------
