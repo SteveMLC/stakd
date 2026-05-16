@@ -156,6 +156,40 @@ void main() {
       expect(state.bayShippedSlotThisFrame, isNull);
     });
 
+    test('Phase D.3: shipBay captures lastShippedStack BEFORE swapping', () {
+      final state = GameState();
+      final solved = _solved(); // 4× color 0
+      final replacement = _mixed(colorOffset: 1);
+      state.initGame(
+        [solved, _mixed()],
+        1,
+        pendingDeliveries: [replacement],
+        totalDeliveries: 3,
+      );
+      // Before ship: no last-shipped state.
+      expect(state.lastShippedStack, isNull);
+      // Ship slot 0.
+      state.shipBayAndPullNext(0);
+      // Captured stack should match the original solved bay
+      // (4 layers all color 0), NOT the replacement that's now in
+      // the slot.
+      final captured = state.lastShippedStack;
+      expect(captured, isNotNull);
+      expect(captured!.layers.length, 4);
+      for (final l in captured.layers) {
+        expect(l.colorIndex, 0,
+            reason: 'lastShippedStack should be the pre-swap content');
+      }
+      // Slot 0 now holds the replacement.
+      expect(state.stacks[0].layers.first.colorIndex,
+          replacement.layers.first.colorIndex);
+      // consumeBayShippedEvent clears both the slot index AND the
+      // captured stack.
+      state.consumeBayShippedEvent();
+      expect(state.bayShippedSlotThisFrame, isNull);
+      expect(state.lastShippedStack, isNull);
+    });
+
     test('conveyorLevelComplete: false until baysShipped reaches total', () {
       final state = GameState();
       state.initGame(

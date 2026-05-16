@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../models/game_state.dart';
+import '../models/stack_model.dart';
 import '../services/audio_service.dart';
 import '../services/haptic_service.dart';
+import '../utils/constants.dart';
+import '../utils/theme_colors.dart';
 
 /// Renders the conveyor-mechanic VFX overlay — floating cash popup +
 /// SFX/haptic — keyed off `GameState.bayShippedSlotThisFrame`. Subscribes
@@ -80,6 +83,9 @@ class _ConveyorEventsOverlayState extends State<ConveyorEventsOverlay>
     final slot = widget.gameState.bayShippedSlotThisFrame;
     if (slot == null) return;
 
+    // Capture pre-swap state BEFORE consuming the event.
+    final shippedStack = widget.gameState.lastShippedStack;
+
     // Consume the event flag so we don't double-fire on the next
     // notifyListeners. Done synchronously before kicking off the
     // animation.
@@ -87,8 +93,8 @@ class _ConveyorEventsOverlayState extends State<ConveyorEventsOverlay>
 
     final center = widget.slotCenterResolver(slot);
     if (center == null) {
-      // Slot not laid out yet — skip the popup, but still play audio
-      // + haptic so the moment isn't completely silent.
+      // Slot not laid out yet — skip visuals, still play audio +
+      // haptic so the moment isn't completely silent.
       AudioService().playWin();
       haptics.successPattern();
       return;
@@ -105,6 +111,7 @@ class _ConveyorEventsOverlayState extends State<ConveyorEventsOverlay>
       id: _nextPopupId++,
       origin: center,
       controller: controller,
+      shippedStack: shippedStack,
     );
 
     controller.addStatusListener((status) {
@@ -133,12 +140,18 @@ class _ConveyorEventsOverlayState extends State<ConveyorEventsOverlay>
     }
     return IgnorePointer(
       child: Stack(
-        children: _activePopups
-            .map((p) => _CashPopupWidget(
-                  popup: p,
-                  payout: widget.payoutPerBay,
-                ))
-            .toList(),
+        children: _activePopups.expand((p) sync* {
+          // Ghost slide-off — only renders if we captured the
+          // pre-swap stack (Phase D.3). Renders below the cash
+          // popup so the popup floats over the moving ghost.
+          if (p.shippedStack != null) {
+            yield _ShippedGhostWidget(popup: p);
+          }
+          yield _CashPopupWidget(
+            popup: p,
+            payout: widget.payoutPerBay,
+          );
+        }).toList(),
       ),
     );
   }
@@ -148,11 +161,85 @@ class _CashPopup {
   final int id;
   final Offset origin;
   final AnimationController controller;
+  /// Captured BEFORE the slot was replaced — drives the Phase D.3
+  /// ghost slide-off animation. Null when no pre-swap state was
+  /// available (e.g. legacy non-conveyor mode).
+  final GameStack? shippedStack;
   _CashPopup({
     required this.id,
     required this.origin,
     required this.controller,
+    this.shippedStack,
   });
+}
+
+/// Ghost render of the just-shipped bay sliding off-screen to the
+/// right. Layered BELOW the cash popup. Renders the original crate
+/// colors so the player sees the "completed cargo" leaving the dock.
+class _ShippedGhostWidget extends StatelessWidget {
+  final _CashPopup popup;
+  const _ShippedGhostWidget({required this.popup});
+
+  @override
+  Widget build(BuildContext context) {
+    final stack = popup.shippedStack;
+    if (stack == null) return const SizedBox.shrink();
+    final stackHeight = GameSizes.getStackHeight(stack.maxDepth);
+    return AnimatedBuilder(
+      animation: popup.controller,
+      builder: (context, _) {
+        // First 0.5 of the run = ghost slides right + fades; back
+        // half it's gone. Slide distance ~600px right.
+        final t = (popup.controller.value / 0.55).clamp(0.0, 1.0);
+        // easeInCubic
+        final eased = t * t * t;
+        final dx = popup.origin.dx - GameSizes.stackWidth / 2 + 600 * eased;
+        final dy = popup.origin.dy - stackHeight / 2;
+        final alpha = (1.0 - t).clamp(0.0, 1.0);
+        return Positioned(
+          left: dx,
+          top: dy,
+          child: Opacity(
+            opacity: alpha,
+            child: SizedBox(
+              width: GameSizes.stackWidth,
+              height: stackHeight,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: stack.layers.reversed.map((layer) {
+                  final gradient = ThemeColors.getGradient(layer.colorIndex);
+                  return Container(
+                    width: GameSizes.stackWidth,
+                    height: GameSizes.layerHeight,
+                    margin: EdgeInsets.only(
+                      bottom: GameSizes.layerMargin,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: gradient,
+                      ),
+                      borderRadius: BorderRadius.circular(
+                        GameSizes.stackBorderRadius - 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: gradient.first.withValues(alpha: 0.4),
+                          blurRadius: 8,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _CashPopupWidget extends StatelessWidget {

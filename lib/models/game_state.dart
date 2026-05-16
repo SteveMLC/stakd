@@ -194,6 +194,7 @@ class GameState extends ChangeNotifier {
     _pendingDeliveries.clear();
     _baysShipped = 0;
     _bayShippedSlotThisFrame = null;
+    _lastShippedStack = null;
     if (pendingDeliveries != null && pendingDeliveries.isNotEmpty) {
       _pendingDeliveries.addAll(pendingDeliveries);
       _conveyorMode = true;
@@ -395,8 +396,16 @@ class GameState extends ChangeNotifier {
   /// in Phase D). Cleared by `consumeBayShippedEvent`.
   int? _bayShippedSlotThisFrame;
   int? get bayShippedSlotThisFrame => _bayShippedSlotThisFrame;
+  /// Pre-swap bay state — captured the instant before
+  /// `shipBayAndPullNext` replaces the slot. Phase D.3 VFX uses this
+  /// to render a "ghost" of the shipped bay sliding right while the
+  /// new delivery fades in at the original position. Cleared along
+  /// with `_bayShippedSlotThisFrame` via `consumeBayShippedEvent`.
+  GameStack? _lastShippedStack;
+  GameStack? get lastShippedStack => _lastShippedStack;
   void consumeBayShippedEvent() {
     _bayShippedSlotThisFrame = null;
+    _lastShippedStack = null;
   }
 
   /// Ship the bay at [slotIndex] (must be fully-sorted single-color
@@ -415,6 +424,10 @@ class GameState extends ChangeNotifier {
 
     _baysShipped++;
     _bayShippedSlotThisFrame = slotIndex;
+    // Capture pre-swap bay state for VFX ghost slide-off. Snapshot
+    // BEFORE we replace `_stacks[slotIndex]` so the overlay can render
+    // the shipped bay's colors mid-flight.
+    _lastShippedStack = bay;
 
     if (_pendingDeliveries.isEmpty) {
       // No more deliveries — leave the slot empty so the player has
