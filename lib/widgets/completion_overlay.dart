@@ -766,9 +766,31 @@ class _ExpandableDetailsState extends State<_ExpandableDetails> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _StatChip(icon: Icons.touch_app, label: '${widget.moves}', subtitle: widget.par != null ? 'moves (par ${widget.par})' : 'moves'),
+                _StatChip(
+                  icon: Icons.touch_app,
+                  label: '${widget.moves}',
+                  subtitle: widget.par != null
+                      ? 'moves (par ${widget.par})'
+                      : 'moves',
+                  // Color-code par performance so the player sees at a
+                  // glance whether they nailed the puzzle (green
+                  // under-par) or burned moves (red over-par-by-5+).
+                  // Audit P0#8: was rendering in neutral gray
+                  // regardless of performance.
+                  accent: widget.par == null
+                      ? null
+                      : widget.moves <= (widget.par!)
+                          ? const Color(0xFF4CAF50) // green — under/at par
+                          : widget.moves <= (widget.par! + 4)
+                              ? const Color(0xFFFFC107) // amber — close
+                              : const Color(0xFFE53935), // red — way over
+                ),
                 const SizedBox(width: 24),
-                _StatChip(icon: Icons.timer, label: _fmtTime(widget.time), subtitle: 'time'),
+                _StatChip(
+                  icon: Icons.timer,
+                  label: _fmtTime(widget.time),
+                  subtitle: 'time',
+                ),
               ],
             ),
             if (_expanded) ...[
@@ -792,10 +814,28 @@ class _ExpandableDetailsState extends State<_ExpandableDetails> {
               ],
             ],
             const SizedBox(height: 4),
-            Icon(
-              _expanded ? Icons.expand_less : Icons.expand_more,
-              size: 16,
-              color: GameColors.textMuted,
+            // Audit P0#9: bare chevron read as a broken expand widget.
+            // Wrapped in a labeled Row so its purpose ("tap to see more
+            // / less stats") is obvious.
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _expanded ? 'Hide details' : 'More stats',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: GameColors.textMuted,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  _expanded ? Icons.expand_less : Icons.expand_more,
+                  size: 14,
+                  color: GameColors.textMuted,
+                ),
+              ],
             ),
           ],
         ),
@@ -808,25 +848,33 @@ class _StatChip extends StatelessWidget {
   final IconData icon;
   final String label;
   final String subtitle;
+  /// Optional override color so caller can paint the chip green/yellow/red
+  /// based on performance (e.g. par-overshoot → red). Falls back to the
+  /// muted text color when null. Used by the moves chip on the completion
+  /// overlay to signal "under par" vs "over par" at a glance.
+  final Color? accent;
 
   const _StatChip({
     required this.icon,
     required this.label,
     required this.subtitle,
+    this.accent,
   });
 
   @override
   Widget build(BuildContext context) {
+    final iconColor = accent ?? GameColors.textMuted;
+    final labelColor = accent ?? GameColors.text;
     return Column(
       children: [
-        Icon(icon, color: GameColors.textMuted, size: 20),
+        Icon(icon, color: iconColor, size: 20),
         const SizedBox(height: 4),
         Text(
           label,
           style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.bold,
-            color: GameColors.text,
+            color: labelColor,
           ),
         ),
         Text(
