@@ -80,6 +80,8 @@ class LevelGenerator {
     double timeBombProb = base.timeBombBlockProbability;
     int timeBombDeadline = base.timeBombDeadlineMoves;
     double doubleColorProb = base.doubleColorBlockProbability;
+    bool gravityFlipActive = base.gravityFlipActive;
+    int gravityFlipPeriod = base.gravityFlipPeriodMoves;
     // double lockedProb = base.lockedBlockProbability;  // future
     for (final wrinkle in district.wrinkles) {
       switch (wrinkle) {
@@ -119,9 +121,18 @@ class LevelGenerator {
           // 1-2 multi-color crates, not a fully chaotic board.
           doubleColorProb = (doubleColorProb + 0.10).clamp(0.0, 0.18);
           break;
+        case 'gravity-flip':
+          // Procedural districts ("gravity-flip" wrinkle): every 5
+          // completed moves, the entire board inverts its render
+          // direction. Bay heights / stack math / solvability stay
+          // intact — it's a pure visual disruption the player has
+          // to re-orient through. GameState handles the period
+          // counter + toggle; the render flip lives in game_board.
+          gravityFlipActive = true;
+          gravityFlipPeriod = 5;
+          break;
         case 'oversized':
         case 'conveyor-drift':
-        case 'gravity-flip':
           // Stubs — these wrinkles need new GameState mechanics before
           // the generator can express them. Tracked as Phase C-3
           // follow-on work. For now they're recognized so the lookup
@@ -150,6 +161,8 @@ class LevelGenerator {
       timeBombBlockProbability: timeBombProb,
       timeBombDeadlineMoves: timeBombDeadline,
       doubleColorBlockProbability: doubleColorProb,
+      gravityFlipActive: gravityFlipActive,
+      gravityFlipPeriodMoves: gravityFlipPeriod,
     );
   }
 

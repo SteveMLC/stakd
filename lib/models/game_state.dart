@@ -147,7 +147,13 @@ class GameState extends ChangeNotifier {
   int? get unstackSlotIndex => _unstackSlotIndex;
 
   /// Initialize game with stacks
-  void initGame(List<GameStack> stacks, int level, {int? par}) {
+  void initGame(
+    List<GameStack> stacks,
+    int level, {
+    int? par,
+    bool gravityFlipActive = false,
+    int gravityFlipPeriodMoves = 5,
+  }) {
     _stacks = stacks;
     _currentLevel = level;
     _selectedStackIndex = -1;
@@ -173,6 +179,11 @@ class GameState extends ChangeNotifier {
     _priorityExpiredThisFrame = false;
     _timeBombPenaltyAccrued = 0;
     _timeBombDetonatedThisFrame = false;
+    _gravityFlipActive = gravityFlipActive;
+    _gravityFlipPeriodMoves = gravityFlipPeriodMoves;
+    _gravityFlipped = false;
+    _movesSinceFlip = 0;
+    _gravityFlippedThisFrame = false;
     _resetPowerUpTracking();
     notifyListeners();
   }
@@ -313,6 +324,24 @@ class GameState extends ChangeNotifier {
   bool get timeBombDetonatedThisFrame => _timeBombDetonatedThisFrame;
   void consumeTimeBombDetonatedEvent() {
     _timeBombDetonatedThisFrame = false;
+  }
+
+  /// Gravity-flip wrinkle state. When `_gravityFlipActive` is true (set
+  /// from LevelParams by `_loadLevel`), the board inverts its render
+  /// direction every `_gravityFlipPeriodMoves` completed moves. The
+  /// flip is purely visual — stack math + solvability are untouched;
+  /// `game_board.dart` reads `gravityFlipped` and conditionally wraps
+  /// the board in a Transform.scale(scaleY: -1).
+  bool _gravityFlipActive = false;
+  bool _gravityFlipped = false;
+  int _movesSinceFlip = 0;
+  int _gravityFlipPeriodMoves = 5;
+  bool _gravityFlippedThisFrame = false;
+  bool get gravityFlipActive => _gravityFlipActive;
+  bool get gravityFlipped => _gravityFlipped;
+  bool get gravityFlippedThisFrame => _gravityFlippedThisFrame;
+  void consumeGravityFlipEvent() {
+    _gravityFlippedThisFrame = false;
   }
 
   /// Attempt to move a layer between stacks
@@ -467,6 +496,19 @@ class GameState extends ChangeNotifier {
     // detonation penalty. Detonated bombs render the 💥 marker in
     // layer_widget and stay on the board (so solvability isn't broken).
     _tickTimeBombCountdowns();
+
+    // Gravity-flip wrinkle: every `_gravityFlipPeriodMoves` completed
+    // moves, toggle the render-inversion flag. Pure visual — stack
+    // math + solvability unaffected. UI consumes the event to surface
+    // a snackbar + haptic so the player isn't surprised by the flip.
+    if (_gravityFlipActive) {
+      _movesSinceFlip++;
+      if (_movesSinceFlip >= _gravityFlipPeriodMoves) {
+        _movesSinceFlip = 0;
+        _gravityFlipped = !_gravityFlipped;
+        _gravityFlippedThisFrame = true;
+      }
+    }
 
     // Check for completed stacks
     _checkForCompletedStacks();

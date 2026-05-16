@@ -284,6 +284,31 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
       }
     }
 
+    // Gravity-flip wrinkle event: the board just inverted its render
+    // direction this frame. Heads-up snackbar + medium haptic so the
+    // player gets a sensory cue to re-orient instead of being silently
+    // bewildered. Purely visual — no payout deduction.
+    if (gameState.gravityFlippedThisFrame) {
+      gameState.consumeGravityFlipEvent();
+      haptics.mediumImpact();
+      AudioService().playPowerUp();
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              gameState.gravityFlipped
+                  ? 'Gravity flipped! Bay floor is now the ceiling.'
+                  : 'Gravity restored.',
+            ),
+            duration: const Duration(milliseconds: 1600),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: const Color(0xCC2E5A8C),
+          ),
+        );
+      }
+    }
+
     // Time-bomb detonation event: harder-edged version of priority.
     // Klaxon SFX (heavier than playError) + medium haptic + snackbar
     // that signals "you blew it." Cash deduction is batched to payout
@@ -636,7 +661,16 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
 
   void _loadLevel() {
     final (stacks, par) = _levelGenerator.generateLevelWithPar(_currentLevel);
-    context.read<GameState>().initGame(stacks, _currentLevel, par: par);
+    // Read district-level wrinkle flags (gravity-flip, etc.) off the
+    // resolved params so GameState can drive the per-move toggles.
+    final params = _levelGenerator.paramsForLevel(_currentLevel);
+    context.read<GameState>().initGame(
+      stacks,
+      _currentLevel,
+      par: par,
+      gravityFlipActive: params.gravityFlipActive,
+      gravityFlipPeriodMoves: params.gravityFlipPeriodMoves,
+    );
     _levelStartTime = DateTime.now();
     _completionDuration = null;
     _showingCompletion = false; // SNAPPY FIX: Reset completion lock

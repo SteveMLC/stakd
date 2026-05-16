@@ -197,7 +197,19 @@ class _GameBoardState extends State<GameBoard>
                         ),
                       ),
                     BoardGrid(
-                      child: Column(
+                      // Gravity-flip wrinkle: when active, the entire
+                      // BoardGrid renders inverted via a 180° rotation
+                      // (Y scale = -1, X scale = -1 so the column order
+                      // doesn't read mirrored — only the up/down feel
+                      // changes). AnimatedRotation gives a 600ms ease so
+                      // the player can track the flip instead of being
+                      // teleported. Pure visual; stack math + drop
+                      // targets stay unchanged.
+                      child: AnimatedRotation(
+                        turns: widget.gameState.gravityFlipped ? 0.5 : 0.0,
+                        duration: const Duration(milliseconds: 600),
+                        curve: Curves.easeOutCubic,
+                        child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: List.generate(rows, (rowIndex) {
                           final startIndex = rowIndex * maxStacksPerRow;
@@ -411,6 +423,7 @@ class _GameBoardState extends State<GameBoard>
                             ),
                           );
                         }),
+                      ),
                       ),
                     ),
                     // Animation overlay — must be a direct Stack child so the

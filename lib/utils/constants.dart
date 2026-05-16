@@ -158,6 +158,14 @@ class LevelParams {
   final double timeBombBlockProbability; // 0.0 to 1.0: chance of time-bomb blocks
   final int timeBombDeadlineMoves; // Default countdown for spawned time-bombs
   final double doubleColorBlockProbability; // 0.0 to 1.0: chance of multi-color blocks
+  /// District-level wrinkle: when true, the entire board inverts its
+  /// render direction every `gravityFlipPeriodMoves` (default 5)
+  /// completed moves. Purely visual — bay heights, crate stacking, and
+  /// solvability all stay intact; the player just has to mentally
+  /// re-orient. Wired by `LevelGenerator.paramsForLevel` when a
+  /// district's wrinkle pool includes `'gravity-flip'`.
+  final bool gravityFlipActive;
+  final int gravityFlipPeriodMoves;
 
   const LevelParams({
     required this.colors,
@@ -175,6 +183,8 @@ class LevelParams {
     this.timeBombBlockProbability = 0.0,
     this.timeBombDeadlineMoves = 6,
     this.doubleColorBlockProbability = 0.0,
+    this.gravityFlipActive = false,
+    this.gravityFlipPeriodMoves = 5,
   });
 
   /// Get parameters for a given level number with progressive difficulty
