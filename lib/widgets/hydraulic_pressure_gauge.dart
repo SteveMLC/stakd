@@ -66,6 +66,14 @@ class _HydraulicPressureGaugeState extends State<HydraulicPressureGauge>
         final pressure = _svc.pressure;
         final isVenting = _svc.isVenting;
         final canVent = _svc.canVent;
+        // 2026-05-15 (Lovart restyle pass): gauge auto-hides until the
+        // player has built measurable pressure. Quiet-state idle bays
+        // were getting a full vertical chrome rail that dominated the
+        // playfield. Now it only swoops in when pressure clears 8%,
+        // so the puzzle stays the visual priority during normal play.
+        if (pressure < 0.08 && !canVent && !isVenting) {
+          return const SizedBox.shrink();
+        }
         return SizedBox(
           width: widget.width,
           child: LayoutBuilder(

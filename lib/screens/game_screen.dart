@@ -239,6 +239,29 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
   }
 
   void _handleGameStateChange(GameState gameState) {
+    // Fragile-break event: a wrong-drop with a fragile crate on top
+    // just got rejected. Surface haptic + audio cue + transient
+    // snackbar so the player understands the cash hit they just took.
+    // The actual cash deduction is batched at level-complete via
+    // `gameState.fragilePenaltyAccrued`.
+    if (gameState.fragileBrokeThisFrame) {
+      gameState.consumeFragileBreakEvent();
+      haptics.error();
+      AudioService().playError();
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Fragile crate cracked — \$25 docked from your payout.',
+            ),
+            duration: Duration(milliseconds: 1600),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+
     if (!_tutorialService.isActive) return;
 
     // Detect stack selection
@@ -372,8 +395,17 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
       final ventMul = HydraulicPressureService().isVenting
           ? HydraulicPressureService.ventCashMultiplier
           : 1.0;
-      final cashEarned =
+      // Apply fragile-crate wrong-drop penalties accrued during this
+      // puzzle (D8 wrinkle). Each shattered fragile docks $25 from the
+      // payout — capped to never go below 0 so a really bad run still
+      // pays out something (the player still earned the clear). Reads
+      // from the `gameState` arg (not `context.read`) to dodge the
+      // use_build_context_synchronously lint after the awaited
+      // storage/coins/achievement calls above.
+      final fragilePenalty = gameState.fragilePenaltyAccrued;
+      final rawCash =
           (baseCash * tierMul * starMul * incomeMul * ventMul).floor();
+      final cashEarned = (rawCash - fragilePenalty).clamp(0, 1 << 31);
       final xpEarned = (cashEarned / 2).floor();
       final levelUp = await WarehouseEconomyService().awardReward(
         ShipmentReward(cash: cashEarned, xp: xpEarned),
@@ -1557,22 +1589,19 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                     ],
                   ),
 
-                  // Hydraulic Pressure gauge — anchored to the left
-                  // edge of the board area. Player taps the VENT
-                  // button on it to trigger a 4-move burst (combo
-                  // immortality, 2× cash on the next clear).
-                  // 2026-05-15 (Steve audit): the 22dp width
-                  // rendered the vertical "PRESSURE" Courier label
-                  // as an illegible anemic sliver. Bumped to 32dp
-                  // so the label + fluid column actually read, and
-                  // pulled `left` further from the screen edge so
-                  // it doesn't hug the safe-area inset.
+                  // Hydraulic Pressure gauge — shrinks to a thin
+                  // right-edge sliver (the gauge widget itself now
+                  // returns SizedBox.shrink when pressure < 8% to
+                  // keep the playfield uncluttered during normal
+                  // play). When pressure ramps up, the slim glass
+                  // column slides into view at width 20dp/height
+                  // 150dp — readable without dominating.
                   const Positioned(
-                    left: 10,
-                    top: 110,
-                    height: 220,
-                    width: 32,
-                    child: HydraulicPressureGauge(),
+                    right: 8,
+                    top: 130,
+                    height: 150,
+                    width: 22,
+                    child: HydraulicPressureGauge(width: 22),
                   ),
 
                   // Power-up selection overlays

@@ -16,6 +16,7 @@ class Layer {
   final List<int>? colors; // For multi-color blocks (contains 2-3 colors)
   final int lockedUntil;   // For locked blocks: number of moves before unlocking (0 = not locked)
   final bool isFrozen;     // Frozen block: must be tapped once to thaw before moving
+  final bool isFragile;    // Fragile block: shatters with cash penalty on wrong-color drop attempt
 
   Layer({
     required this.colorIndex,
@@ -24,6 +25,7 @@ class Layer {
     this.colors,
     this.lockedUntil = 0,
     this.isFrozen = false,
+    this.isFragile = false,
   }) : id = id ?? UniqueKey().toString();
 
   /// Get the primary color for this layer
@@ -65,6 +67,7 @@ class Layer {
     List<int>? colors,
     int? lockedUntil,
     bool? isFrozen,
+    bool? isFragile,
   }) {
     return Layer(
       colorIndex: colorIndex ?? this.colorIndex,
@@ -73,6 +76,7 @@ class Layer {
       colors: colors ?? this.colors,
       lockedUntil: lockedUntil ?? this.lockedUntil,
       isFrozen: isFrozen ?? this.isFrozen,
+      isFragile: isFragile ?? this.isFragile,
     );
   }
 
@@ -105,6 +109,7 @@ class Layer {
     'colors': colors,
     'lockedUntil': lockedUntil,
     'isFrozen': isFrozen,
+    'isFragile': isFragile,
   };
 
   factory Layer.fromJson(Map<String, Object?> json) {
@@ -118,6 +123,7 @@ class Layer {
       colors: (json['colors'] as List<dynamic>?)?.cast<int>(),
       lockedUntil: (json['lockedUntil'] as int?) ?? 0,
       isFrozen: (json['isFrozen'] as bool?) ?? false,
+      isFragile: (json['isFragile'] as bool?) ?? false,
     );
   }
 
@@ -158,6 +164,23 @@ class Layer {
       colorIndex: colorIndex,
       id: id,
       isFrozen: true,
+    );
+  }
+
+  /// Factory: Create a fragile layer.
+  /// Fragile crates render with a cracked-glass overlay and incur a
+  /// cash penalty if the player attempts an invalid move with them on
+  /// top of the source stack. They still ship normally when the move is
+  /// valid, but the "watch the wrong-color drop" tension is what the
+  /// District 8 ("fragile" wrinkle) trades on.
+  factory Layer.fragile({
+    required int colorIndex,
+    String? id,
+  }) {
+    return Layer(
+      colorIndex: colorIndex,
+      id: id,
+      isFragile: true,
     );
   }
 }

@@ -74,6 +74,7 @@ class LevelGenerator {
     if (district == null || district.wrinkles.isEmpty) return base;
 
     double frozenProb = base.frozenBlockProbability;
+    double fragileProb = base.fragileBlockProbability;
     // double lockedProb = base.lockedBlockProbability;  // future
     for (final wrinkle in district.wrinkles) {
       switch (wrinkle) {
@@ -81,6 +82,12 @@ class LevelGenerator {
           frozenProb = (frozenProb + 0.05).clamp(0.0, 0.30);
           break;
         case 'fragile':
+          // District 8 ("fragile" wrinkle): spawns crates that incur a
+          // cash penalty if the player attempts an invalid drop with
+          // them on top. Capped at 0.18 so a typical puzzle gets ~1
+          // fragile crate, not a whole stack of them.
+          fragileProb = (fragileProb + 0.10).clamp(0.0, 0.18);
+          break;
         case 'priority':
         case 'oversized':
         case 'time-bomb':
@@ -109,6 +116,7 @@ class LevelGenerator {
       lockedBlockProbability: base.lockedBlockProbability,
       maxLockedMoves: base.maxLockedMoves,
       frozenBlockProbability: frozenProb,
+      fragileBlockProbability: fragileProb,
     );
   }
 
@@ -657,21 +665,24 @@ class LevelGenerator {
     return stacks;
   }
 
-  /// Apply locked and frozen blocks to an already-generated puzzle.
-  /// Caps: max 1 locked block, max 2 frozen blocks per puzzle.
+  /// Apply locked, frozen, and fragile blocks to an already-generated
+  /// puzzle. Caps: max 1 locked, max 2 frozen, max 2 fragile per puzzle.
   /// Never locks a block at the bottom of a mixed-color stack.
   /// Lock timer capped at 3 moves.
   void applySpecialBlocks(List<GameStack> stacks, LevelParams params) {
     if (params.lockedBlockProbability <= 0 &&
-        params.frozenBlockProbability <= 0) {
+        params.frozenBlockProbability <= 0 &&
+        params.fragileBlockProbability <= 0) {
       return;
     }
 
     final random = Random();
     int lockedCount = 0;
     int frozenCount = 0;
+    int fragileCount = 0;
     const maxLocked = 1;
     const maxFrozen = 2;
+    const maxFragile = 2;
 
     for (int s = 0; s < stacks.length; s++) {
       final stack = stacks[s];
@@ -685,6 +696,7 @@ class LevelGenerator {
       for (int i = 0; i < stack.layers.length; i++) {
         final layer = stack.layers[i];
         final isBottom = (i == 0);
+        final isTop = (i == stack.layers.length - 1);
 
         // Locked blocks: prefer bottom positions, but skip if mixed stack bottom
         if (lockedCount < maxLocked &&
@@ -704,6 +716,18 @@ class LevelGenerator {
             random.nextDouble() < params.frozenBlockProbability) {
           newLayers.add(Layer.frozen(colorIndex: layer.colorIndex));
           frozenCount++;
+        }
+        // Fragile blocks: prefer TOP positions so the player has to
+        // think about where to drop them. Only spawn on stacks that
+        // would actually require movement (mixed colors). Cash penalty
+        // on wrong-color drop attempts is wired in GameState.
+        else if (fragileCount < maxFragile &&
+            params.fragileBlockProbability > 0 &&
+            isTop &&
+            isMixed &&
+            random.nextDouble() < params.fragileBlockProbability) {
+          newLayers.add(Layer.fragile(colorIndex: layer.colorIndex));
+          fragileCount++;
         } else {
           newLayers.add(layer);
         }

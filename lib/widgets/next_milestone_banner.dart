@@ -206,11 +206,16 @@ class NextMilestoneBanner extends StatelessWidget {
   }) {
     final whLevel = economy.warehouseLevel;
 
-    // 1. Frozen crates unlock at L5
-    if (whLevel < 5) {
+    // 1. Frozen crates first appear in District 3 (Cold Storage =
+    // contract levels 11-15) so the home milestone banner advertises
+    // the *contract* threshold, not the warehouse level. The previous
+    // copy ("unlock at Lv 5") was misleading per the special-blocks
+    // audit — Lv 5 has zero frozen probability; D3 = Lv 11 is the
+    // first puzzle where a frozen crate can show up.
+    if (whLevel < 11) {
       return _Milestone(
-        title: 'Frozen Crates unlock at Lv 5',
-        subtitle: 'Sub-zero shipments pay more',
+        title: 'Frozen Crates unlock at Lv 11',
+        subtitle: 'Cold Storage shipments pay more',
         icon: Icons.ac_unit,
         progress: 'Lv $whLevel',
       );

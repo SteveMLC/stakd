@@ -167,6 +167,8 @@ class GameState extends ChangeNotifier {
     _unstackSlotIndex = null;
     _unstakedLayers = [];
     _addTubeUsed = false;
+    _fragilePenaltyAccrued = 0;
+    _fragileBrokeThisFrame = false;
     _resetPowerUpTracking();
     notifyListeners();
   }
@@ -269,6 +271,21 @@ class GameState extends ChangeNotifier {
     }
   }
 
+  /// Pending cash penalties owed for fragile-crate wrong-drop attempts
+  /// during the current puzzle. The game_screen reads this and forwards
+  /// to WarehouseEconomyService at level-complete time so the player
+  /// sees the deduction in the cash payout breakdown.
+  int _fragilePenaltyAccrued = 0;
+  int get fragilePenaltyAccrued => _fragilePenaltyAccrued;
+
+  /// One-shot event flag for the UI to react to a just-occurred fragile
+  /// break (haptic, sound, particle burst). Cleared by the consumer.
+  bool _fragileBrokeThisFrame = false;
+  bool get fragileBrokeThisFrame => _fragileBrokeThisFrame;
+  void consumeFragileBreakEvent() {
+    _fragileBrokeThisFrame = false;
+  }
+
   /// Attempt to move a layer between stacks
   void _tryMove(int fromIndex, int toIndex) {
     final fromStack = _stacks[fromIndex];
@@ -300,11 +317,28 @@ class GameState extends ChangeNotifier {
 
       notifyListeners();
     } else {
+      // Invalid move. If the source layer is FRAGILE, the player just
+      // gambled with a crack-prone crate and lost — accrue a cash
+      // penalty and surface a one-shot event for the UI. The crate
+      // stays on the source stack (it doesn't shatter / vanish) so
+      // the player can still recover the puzzle, but they take the
+      // hit on payout.
+      if (layer.isFragile) {
+        const fragilePenalty = 25;
+        _fragilePenaltyAccrued += fragilePenalty;
+        _fragileBrokeThisFrame = true;
+      }
       // Invalid move - if destination has layers, select it instead
       if (!toStack.isEmpty) {
         _selectedStackIndex = toIndex;
         _isMultiGrabMode = false;
         _multiGrabLayers = null;
+        notifyListeners();
+      } else if (layer.isFragile) {
+        // Empty target + fragile would normally be a valid drop; if
+        // we got here with empty toStack the move was rejected by
+        // some other rule. Still notify so the UI gets the penalty
+        // event surface.
         notifyListeners();
       }
     }

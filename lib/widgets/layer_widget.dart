@@ -296,6 +296,33 @@ class LayerWidget extends StatelessWidget {
                 shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
               ),
             ),
+          // Fragile block — cracked-glass crackle overlay + small
+          // warning glyph. New as of D8 ("fragile" wrinkle) when the
+          // player should be visually warned that this crate carries
+          // a wrong-drop penalty.
+          if (layer.isFragile)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: ClipRRect(
+                  borderRadius:
+                      BorderRadius.circular(GameSizes.stackBorderRadius - 2),
+                  child: CustomPaint(
+                    painter: _FragileCrackPainter(),
+                  ),
+                ),
+              ),
+            ),
+          if (layer.isFragile)
+            const Positioned(
+              top: 2,
+              right: 4,
+              child: Icon(
+                Icons.warning_amber_rounded,
+                color: Color(0xFFFFE08A),
+                size: 14,
+                shadows: [Shadow(color: Colors.black87, blurRadius: 3)],
+              ),
+            ),
         ],
       ),
     );
@@ -457,6 +484,59 @@ class _IceCrystalPainter extends CustomPainter {
     canvas.drawLine(Offset(cx - 10, cy + 6), Offset(cx - 3, cy + 1), paint);
     // Line 4: diagonal bottom-right
     canvas.drawLine(Offset(cx + 10, cy + 6), Offset(cx + 3, cy + 1), paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Paints a cracked-glass crackle pattern over fragile crates so the
+/// player has a clear visual cue that this crate carries the
+/// wrong-drop cash penalty. Lines radiate from a random-ish "impact
+/// point" in the upper-left so each crate looks slightly different.
+class _FragileCrackPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.45)
+      ..strokeWidth = 0.8
+      ..style = PaintingStyle.stroke;
+    final shadow = Paint()
+      ..color = Colors.black.withValues(alpha: 0.35)
+      ..strokeWidth = 1.2
+      ..style = PaintingStyle.stroke;
+
+    // Anchor the "impact" near top-left of the crate so the cracks
+    // look like the box took a knock during loading. Drawing the
+    // shadow line first then the white highlight gives the bevel
+    // illusion that sells the crack as 3D.
+    final impact = Offset(size.width * 0.30, size.height * 0.30);
+
+    // 5 radial fissures fanning out from the impact.
+    final List<Offset> ends = [
+      Offset(size.width * 0.05, size.height * 0.65),
+      Offset(size.width * 0.55, size.height * 0.95),
+      Offset(size.width * 0.95, size.height * 0.55),
+      Offset(size.width * 0.80, size.height * 0.05),
+      Offset(size.width * 0.10, size.height * 0.10),
+    ];
+    for (final end in ends) {
+      canvas.drawLine(impact + const Offset(0.6, 0.6), end, shadow);
+      canvas.drawLine(impact, end, paint);
+    }
+
+    // Two short cross-fissures connecting the radials for the
+    // characteristic "broken windshield" branch geometry.
+    canvas.drawLine(
+      Offset(size.width * 0.42, size.height * 0.60),
+      Offset(size.width * 0.62, size.height * 0.40),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(size.width * 0.20, size.height * 0.45),
+      Offset(size.width * 0.40, size.height * 0.78),
+      paint,
+    );
   }
 
   @override
