@@ -152,12 +152,18 @@ class _ConveyorEventsOverlayState extends State<ConveyorEventsOverlay>
     return IgnorePointer(
       child: Stack(
         children: _activePopups.expand((p) sync* {
-          // Ghost slide-off — only renders if we captured the
-          // pre-swap stack (Phase D.3). Renders below the cash
-          // popup so the popup floats over the moving ghost.
+          // Ghost slide-off (Phase D.3) — only when we captured the
+          // pre-swap stack. Renders BELOW the arrival overlay so it
+          // exits stage right while the new delivery slides in.
           if (p.shippedStack != null) {
             yield _ShippedGhostWidget(popup: p);
           }
+          // Arrival slide-in cover (Phase D.4) — masks the slot for
+          // ~350ms with a dark panel sliding in from the right, then
+          // fades away to reveal the new delivery contents which
+          // already populate the slot underneath.
+          yield _ArrivalSlideWidget(popup: p);
+          // Cash popup on top of everything else.
           yield _CashPopupWidget(popup: p);
         }).toList(),
       ),
@@ -184,6 +190,91 @@ class _CashPopup {
     required this.payout,
     this.shippedStack,
   });
+}
+
+/// Arrival slide-in cover for the new delivery. Renders a dark panel
+/// at the SAME slot position the bay just shipped from. The panel
+/// slides in from off-screen-right over the first 350ms of the run
+/// then fades away by 600ms, revealing the new delivery layers that
+/// already populate the slot underneath (Phase D.1's data flow swaps
+/// them in synchronously when `shipBayAndPullNext` fires).
+///
+/// Gives the visual narrative: shipped bay slides off-right (ghost)
+/// → fresh dock panel slides in from off-screen-right → panel fades
+/// to reveal the new mixed cargo crates the player has to sort.
+class _ArrivalSlideWidget extends StatelessWidget {
+  final _CashPopup popup;
+  const _ArrivalSlideWidget({required this.popup});
+
+  @override
+  Widget build(BuildContext context) {
+    final stack = popup.shippedStack;
+    if (stack == null) return const SizedBox.shrink();
+    final stackHeight = GameSizes.getStackHeight(stack.maxDepth);
+    return AnimatedBuilder(
+      animation: popup.controller,
+      builder: (context, _) {
+        // Arrival fires AFTER the ghost has cleared (ghost is done by
+        // t=0.55). Start the slide-in at t=0.40 so there's a brief
+        // overlap with the ghost exit — feels like the conveyor belt
+        // immediately delivering the next package.
+        final t = popup.controller.value;
+        if (t < 0.40) return const SizedBox.shrink();
+        // Remap t=0.40..0.85 → 0..1 for the slide phase.
+        final slideT = ((t - 0.40) / 0.45).clamp(0.0, 1.0);
+        // easeOutCubic: 1 - (1-t)^3
+        final eased = 1 - ((1 - slideT) * (1 - slideT) * (1 - slideT));
+        // Slide from +400px (off-screen-right) to 0 (slot position).
+        final dx = popup.origin.dx -
+            GameSizes.stackWidth / 2 +
+            400 * (1 - eased);
+        final dy = popup.origin.dy - stackHeight / 2;
+        // After slide completes, fade out 0.85 → 1.0 of run.
+        final fadeT = ((t - 0.85) / 0.15).clamp(0.0, 1.0);
+        final alpha = (1.0 - fadeT * 0.85).clamp(0.0, 1.0);
+        return Positioned(
+          left: dx,
+          top: dy,
+          child: Opacity(
+            opacity: alpha,
+            child: Container(
+              width: GameSizes.stackWidth,
+              height: stackHeight,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xCC0E1422),
+                    Color(0xCC050810),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(
+                  GameSizes.stackBorderRadius,
+                ),
+                border: Border.all(
+                  color: const Color(0xFF2E5A8C).withValues(alpha: 0.7),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF2EE0C0).withValues(alpha: 0.2),
+                    blurRadius: 10,
+                  ),
+                ],
+              ),
+              alignment: Alignment.center,
+              child: const Icon(
+                Icons.local_shipping,
+                size: 22,
+                color: Color(0xFF6BD3FF),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
 /// Compute the cash value of a shipped bay using the same economy
