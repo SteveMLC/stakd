@@ -32,6 +32,11 @@ class UnifiedActionBar extends StatelessWidget {
   final bool addTubeAvailable;
   final bool selectionMode;
   final PowerUpType? activeSelection;
+  /// Forwarded onto the undo cell so TutorialService can still find +
+  /// highlight the undo widget by GlobalKey during the tutorial undo
+  /// step. Without this, the unified-bar refactor would have silently
+  /// broken the tutorial-undo target.
+  final Key? undoKey;
 
   const UnifiedActionBar({
     super.key,
@@ -45,6 +50,7 @@ class UnifiedActionBar extends StatelessWidget {
     required this.addTubeAvailable,
     this.selectionMode = false,
     this.activeSelection,
+    this.undoKey,
   });
 
   @override
@@ -83,12 +89,17 @@ class UnifiedActionBar extends StatelessWidget {
                 onTap: onRestart,
               ),
               _ActionCell(
+                key: undoKey,
                 icon: Icons.undo,
                 ringHex: 0xFF7BB3FF,
                 badge: gameState.undosRemaining > 0
                     ? '${gameState.undosRemaining}'
                     : null,
-                disabled: !gameState.canUndo,
+                // Never fully disable — when canUndo is false we still
+                // want the tap to flow through so `_onUndoWithAd` can
+                // offer the rewarded-ad extra-undo path. The cell
+                // visually dims based on the badge being absent.
+                disabled: false,
                 onTap: onUndo,
               ),
               _ActionCell(
@@ -146,6 +157,7 @@ class _ActionCell extends StatelessWidget {
   final VoidCallback onTap;
 
   const _ActionCell({
+    super.key,
     required this.icon,
     required this.ringHex,
     this.badge,

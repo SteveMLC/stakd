@@ -1585,6 +1585,7 @@ class _GameScreenState extends State<GameScreen> with AchievementToastMixin {
                       // sit in one chrome panel along the bottom.
                       RepaintBoundary(
                         child: UnifiedActionBar(
+                          undoKey: _undoButtonKey,
                           onRestart: _restartLevel,
                           onUndo: gameState.canUndo
                               ? _onUndo
